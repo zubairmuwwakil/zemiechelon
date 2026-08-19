@@ -628,27 +628,27 @@ The console in Track C renders this text directly, so its exact wording is part 
 - Consumes: `scorer.ts` (`CandidateScore`), `catalogue.ts` (`CardProduct`), `purchase.ts`
 - Produces: the functions declared in `Explainer.swift`, with Swift's names preserved.
 
-- [ ] **Step 1: Port the Swift test cases**
+- [x] **Step 1: Port the Swift test cases**
 
 Read `Explainer.swift` and `ExplainerTests.swift`.
 
 **`ExplainerTests.swift` contains 3 test cases. Port all 3.** Assert on **exact strings** — a reworded explanation is a behaviour change, and the fixture `notes` fields reference this phrasing.
 
-- [ ] **Step 2: Run and confirm they fail**
+- [x] **Step 2: Run and confirm they fail**
 
 Run: `npm test -- explainer`
 Expected: FAIL — cannot resolve `../explainer`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Port `Explainer.swift`. Swift string interpolation `"\(x)"` becomes a template literal. Where Swift formats a currency value, reproduce the same rounding and separator behaviour rather than reaching for `Intl.NumberFormat`, whose output is locale-dependent and will differ under CI.
 
-- [ ] **Step 4: Run tests and confirm they pass**
+- [x] **Step 4: Run tests and confirm they pass**
 
 Run: `npm test -- explainer`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/engines/pickme/explainer.ts src/lib/engines/pickme/__tests__/explainer.test.ts
