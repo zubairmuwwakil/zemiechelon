@@ -564,7 +564,7 @@ git commit -m "feat(pickme): port RuleMatcher rule resolution and FX rule select
   - `const FALLBACK_CAD_TO_USD = 0.73`
   - `score(card, purchase, ownerState, asOf): CandidateScore`
 
-- [ ] **Step 1: Port the Swift test cases**
+- [x] **Step 1: Port the Swift test cases**
 
 Read `Scorer.swift` and `ScorerTests.swift`.
 
@@ -580,12 +580,12 @@ Read `Scorer.swift` and `ScorerTests.swift`.
 - `capNearlyExhausted` firing at exactly 90% usage
 - an FX cost reducing `netValueCad` below `grossRewardCad`
 
-- [ ] **Step 2: Run and confirm they fail**
+- [x] **Step 2: Run and confirm they fail**
 
 Run: `npm test -- scorer`
 Expected: FAIL — cannot resolve `../scorer`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Port `Scorer.swift`, preserving its structure: the local `excludedScore` helper, the network gate, the `RuleMatcher` call, the cap split, then valuation. Signature:
 
@@ -600,12 +600,12 @@ export function score(
 
 Traps that apply here specifically: trap 4 (`acceptedNetworks` is a `Set` — use `.has()`), trap 5 (`capProgress?.[capId] ?? 0`), trap 7 (do not round `inCapCad` / `overCapCad`).
 
-- [ ] **Step 4: Run tests and confirm they pass**
+- [x] **Step 4: Run tests and confirm they pass**
 
 Run: `npm test -- scorer`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/engines/pickme/scorer.ts src/lib/engines/pickme/__tests__/scorer.test.ts
