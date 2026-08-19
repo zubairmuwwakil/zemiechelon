@@ -934,7 +934,7 @@ git commit -m "feat(pickme): add seed loading and 27/27 fixture parity gate"
 - Consumes: every module from Tasks 2–8.
 - Produces: the import surface Track C consumes — `recommend`, `makePurchase`, `loadCatalogue`, `loadOwnerState`, and the public types.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/engines/pickme/__tests__/publicSurface.test.ts`:
 
@@ -966,12 +966,12 @@ describe("public surface", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- publicSurface`
 Expected: FAIL — cannot resolve `../index`.
 
-- [ ] **Step 3: Write `index.ts`**
+- [x] **Step 3: Write `index.ts`**
 
 ```ts
 export { recommend } from "./recommendationEngine";
@@ -987,12 +987,12 @@ export type { OwnerState, Valuations, PointValuation } from "./ownerState";
 
 Type-only exports do not appear as runtime keys, so the first test's list stays five entries.
 
-- [ ] **Step 4: Run and confirm it passes**
+- [x] **Step 4: Run and confirm it passes**
 
 Run: `npm test -- publicSurface`
 Expected: PASS — 2 tests.
 
-- [ ] **Step 5: Gate the deploy on tests**
+- [x] **Step 5: Gate the deploy on tests**
 
 In `.github/workflows/deploy.yml`, insert a step between "Install dependencies" and "Build Next.js static export":
 
@@ -1001,12 +1001,12 @@ In `.github/workflows/deploy.yml`, insert a step between "Install dependencies" 
         run: npm test
 ```
 
-- [ ] **Step 6: Run the whole suite**
+- [x] **Step 6: Run the whole suite**
 
 Run: `npm test`
 Expected: PASS — every test from Tasks 1–9, including 27/27 fixture parity.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/engines/pickme/index.ts src/lib/engines/pickme/__tests__/publicSurface.test.ts .github/workflows/deploy.yml
