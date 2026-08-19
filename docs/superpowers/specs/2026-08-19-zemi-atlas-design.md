@@ -178,8 +178,11 @@ from breaking the page.
 - Six private repositories — `Obsidian`, `pickleball-session-manager`,
   `market-data-pipeline`, `Obsidi-Academy`, `AiMiniProj`, `A1.6_AI_Slop` — render
   as **anonymous bodies**. They keep arm, position, magnitude and trail; they
-  carry no label, blurb, stack, or link, and no card panel opens on click. They
-  contribute to the shape of the galaxy without disclosing anything.
+  carry no label, blurb, stack, or link, and open no card. Because nothing can
+  open, they get **no DOM hit target at all** — they exist only in the Field
+  layer, as a sprite and a trail. The Chart layer therefore holds 39 hit
+  targets, not 45. They contribute to the shape of the galaxy without
+  disclosing anything.
   `bodies.generated.json` must not contain their descriptions or topics; the
   build strips those fields rather than relying on the client to hide them.
 
@@ -219,7 +222,7 @@ alone.
 | Layer | Technology | Owns | Must never |
 |---|---|---|---|
 | **Field** | raw three.js | ~20k background stars, arm dust, nebula, trails, flow particles | contain anything clickable |
-| **Chart** | DOM, screen-projected | 45 hit targets (39 labelled, 6 anonymous), arm curves, annotations | exceed ~1k elements |
+| **Chart** | DOM, screen-projected | 39 hit targets, arm curves, annotations | exceed ~1k elements |
 | **Console** | React | the demos, at full fidelity | know the camera exists |
 
 The projection bridge already exists and is retained: `WorldCanvas` →
@@ -296,7 +299,7 @@ either order or concurrently; they meet only at C.
 
 - `derivePosition()` and the arm/spiral model
 - Field layer: stars, dust, trails, temperature
-- Chart layer: 45 projected hit targets (39 labelled, 6 anonymous), arm curves
+- Chart layer: 39 projected hit targets, arm curves
 - Atlas visual treatment (§9)
 - Orbit, zoom, focus; tap-to-focus on touch
 - Card panel on star click (name, era, stack, links)
