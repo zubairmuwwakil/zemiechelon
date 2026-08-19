@@ -30,7 +30,7 @@ Read this before Task 3. Every one of these has bitten a Swift-to-TS port:
 3. **`nil` vs `undefined` vs `null`.** Swift `nil` maps to TS `undefined`, but JSON supplies `null`. Every optional decode must accept both: `x ?? undefined` after reading, not `x!`.
 4. **`Set<Network>`.** `purchase.acceptedNetworks` is a Swift `Set`. Use a real JS `Set<Network>` so `.has()` is O(1) and duplicate entries in JSON collapse identically.
 5. **Dictionary subscript defaults.** `state.capProgress?[capId] ?? 0` becomes `state.capProgress?.[capId] ?? 0`. Note the extra `.` — `?[` is not TS syntax.
-6. **Unresolved owner state excludes the card.** `RuleMatcher` returns `.cardExcluded` rather than skipping a rule. Do not "helpfully" fall through to a lower-tier rule.
+6. **An unresolved owner condition drops that rule; only an empty candidate set excludes the card.** `conditionsResolveTrue` tests `state.x == true`, so `nil` and `false` take the same branch — unresolved is not a third state at the engine boundary, it collapses into "condition not met". `resolve()` filters *every* rule by liveness, conditions and predicate, then returns `.cardExcluded` only when nothing survives; otherwise the best survivor applies, which may well be an unconditional base rule. So there are two ways to get this wrong, not one: do not resolve an unknown condition to `true`, and do not exclude the card the moment a single rule's condition fails. `owner-condition-unresolved-rogers-300` pins both — Rogers loses its conditional 2% rule and is carried by `rogers-base-1_5` at $4.50, not excluded.
 7. **Floating-point accumulation.** Do not round intermediates. Round only at comparison, to 4dp.
 
 ---
@@ -492,7 +492,7 @@ Read `RuleMatcher.swift` end to end, then read `RuleMatcherTests.swift`.
 - `country` and `currency` predicates
 - `recurringViaNetworkIndicator`
 - an `announced` rule outside its `effectiveFrom` window being ignored at `asOf`
-- an `ownerConditions` entry that owner state cannot resolve returning `{ kind: "cardExcluded" }` — **not** falling through to a lower rule
+- an `ownerConditions` entry that owner state cannot resolve dropping *that rule* so a lower unconditional rule still carries the card — and, separately, a card whose every matching rule is unresolved returning `{ kind: "cardExcluded" }`
 - Tangerine `treatAsAllSelected` vs `selectedCategories`
 - `activeFxRule` picking the `current` rule when an `announced` one exists but is not yet effective
 
@@ -523,7 +523,8 @@ export function resolveRule(
   asOf: string,
 ): RuleResolution {
   // Port RuleMatcher.resolve(card:purchase:ownerState:asOf:) here.
-  // Trap 6: an unresolvable ownerCondition returns cardExcluded, never a fallthrough.
+  // Trap 6: an unresolvable ownerCondition drops that rule. cardExcluded only when the
+  // filtered candidate set is empty — never as a reaction to one failed condition.
   // Trap 3: treat JSON null and absent identically when reading optional predicate fields.
 }
 
