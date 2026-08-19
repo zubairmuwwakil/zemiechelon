@@ -398,7 +398,7 @@ Nine lines of Swift, and the only place cap arithmetic lives. Port it exactly.
 - Consumes: nothing.
 - Produces: `splitAtCap(amount: number, capLimit: number, usage: number): { inCap: number; overCap: number }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/engines/pickme/__tests__/capMath.test.ts`:
 
@@ -429,12 +429,12 @@ describe("splitAtCap", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 Run: `npm test -- capMath`
 Expected: FAIL — cannot resolve `../capMath`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/lib/engines/pickme/capMath.ts`:
 
@@ -451,12 +451,12 @@ export function splitAtCap(
 }
 ```
 
-- [ ] **Step 4: Run tests and confirm they pass**
+- [x] **Step 4: Run tests and confirm they pass**
 
 Run: `npm test -- capMath`
 Expected: PASS — 5 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/engines/pickme/capMath.ts src/lib/engines/pickme/__tests__/capMath.test.ts
