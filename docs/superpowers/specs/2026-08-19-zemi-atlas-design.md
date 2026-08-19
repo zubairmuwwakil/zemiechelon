@@ -307,21 +307,39 @@ either order or concurrently; they meet only at C.
 A TypeScript port of the PickMe checkout-recommendation path. Measured scope,
 from `PickMe/Engine/Sources/CardCopilotEngine`:
 
+Scope was determined by walking the actual reference closure from
+`RecommendationEngine`, not by selecting on feature names:
+
+```
+RecommendationEngine -> Scorer -> { CapMath, RuleMatcher }
+Explainer            -> (no engine dependencies)
+```
+
 | Ported | LOC |
 |---|---|
 | `RecommendationEngine.swift` | 176 |
-| `CapProjector.swift` | 294 |
 | `Scorer.swift` | 141 |
-| `RuleMatcher.swift` | 121 |
 | `CatalogueModels.swift` | 132 |
+| `RuleMatcher.swift` | 121 |
 | `OwnerState.swift` | 119 |
-| `Explainer` + `CapWindow` + `CapMath` + `PurchaseContext` | 215 |
-| **Total** | **~1,198** |
+| `Explainer.swift` | 81 |
+| `PurchaseContext.swift` | 52 |
+| `CapMath.swift` | 9 |
+| **Total** | **831** |
 
-Explicitly **not** ported in R1 (~2,036 lines): `RecurringAuditor`,
+`SeedLoader.swift` (52) is **replaced**, not ported: `Bundle.module` resource
+loading becomes a direct JSON import. Its one behaviour worth keeping is the
+`catalogueVersion` MAJOR check, which the TS loader reproduces.
+
+Explicitly **not** ported in R1 (2,403 lines): `RecurringAuditor`,
 `PortfolioAnalyzer`, `BenefitsAdvisor`, `CategoryPickerAdvisor`, `AmbientGate`,
-`AcquisitionAnalyzer`, and their models. These serve other product surfaces, not
-the checkout pick.
+`AcquisitionAnalyzer`, `CapProjector`, `CapWindow`, and their models.
+
+`CapProjector` (294) and `CapWindow` (73) are the notable exclusions, because
+both sound like checkout concerns and are not. `CapProjector` is referenced only
+by `RecurringAuditor`; `CapWindow` only by `CapProjector`. `Scorer` reads
+`cap.limit` and `capProgress` directly and splits with `CapMath`. Porting either
+would have been 367 lines of dead code.
 
 The package contains no platform APIs — no SwiftUI, no SwiftData. It is
 arithmetic and rule matching, which is why it ports.
