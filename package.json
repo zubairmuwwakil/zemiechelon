@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:bodies": "node scripts/build-bodies.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

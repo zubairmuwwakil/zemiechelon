@@ -97,7 +97,7 @@ They diverge sharply. `marketdata` was created 2026-01-03 and pushed 2026-08-19 
   - `types.ts`: `type ArmId = 'foundations' | 'products' | 'labs' | 'self' | 'creative'`; `interface Satellite { id: string; label: string; blurb: string }`; `interface Body { id: string; label: string; arm: ArmId; bornAt: string; lastTouchedAt: string; kind: 'star' | 'system'; anonymous: boolean; blurb?: string; stack?: string[]; links: { github?: string; live?: string; appStore?: string }; satellites?: Satellite[]; consoleId?: string }`
   - `bodies.ts`: `loadBodies(): Body[]`, `EPOCH = '2025-11-06'`
 
-- [ ] **Step 1: Write the build script**
+- [x] **Step 1: Write the build script**
 
 Create `scripts/build-bodies.mjs`:
 
@@ -144,7 +144,7 @@ writeFileSync(
 console.log(`wrote ${bodies.length} bodies (${bodies.filter((b) => b.anonymous).length} anonymous)`);
 ```
 
-- [ ] **Step 2: Add the script to `package.json`**
+- [x] **Step 2: Add the script to `package.json`**
 
 In `"scripts"`:
 
@@ -152,14 +152,14 @@ In `"scripts"`:
 "build:bodies": "node scripts/build-bodies.mjs"
 ```
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `npm run build:bodies`
 Expected: `wrote 45 bodies (6 anonymous)`
 
 If the count differs, the account has changed since this plan was written. Update the arm table in "Design Facts" and the assertions below to match reality — do not force the old numbers.
 
-- [ ] **Step 4: Write `src/lib/atlas/types.ts`**
+- [x] **Step 4: Write `src/lib/atlas/types.ts`**
 
 Declare `ArmId`, `Satellite` and `Body` exactly as given in this task's **Produces** block, plus:
 
@@ -168,7 +168,7 @@ export interface Vec3 { x: number; y: number; z: number }
 export interface ScreenPoint { id: string; x: number; y: number; visible: boolean; depth: number }
 ```
 
-- [ ] **Step 5: Write the failing test**
+- [x] **Step 5: Write the failing test**
 
 Create `src/lib/atlas/__tests__/bodies.test.ts`:
 
@@ -234,12 +234,12 @@ describe("loadBodies", () => {
 });
 ```
 
-- [ ] **Step 6: Run it and confirm it fails**
+- [x] **Step 6: Run it and confirm it fails**
 
 Run: `npm test -- bodies`
 Expected: FAIL — cannot resolve `../bodies`.
 
-- [ ] **Step 7: Write `src/data/bodies.overrides.ts`**
+- [x] **Step 7: Write `src/data/bodies.overrides.ts`**
 
 One entry per body. Anonymous bodies get an arm and nothing else — their label is a generic placeholder like `"Private repository"` and their links object is empty.
 
@@ -295,7 +295,7 @@ Migrate prose for `MoneyTalks`, `PickMe`, `marketdata`, `return-saas` and `pickl
 
 Mark exactly five bodies `kind: "system"`: `MoneyTalks`, `PickMe`, `marketdata`, `agent-orchestrator`, `pickleops`. Everything else is a `star`.
 
-- [ ] **Step 8: Write `src/lib/atlas/bodies.ts`**
+- [x] **Step 8: Write `src/lib/atlas/bodies.ts`**
 
 ```ts
 import generated from "@/data/bodies.generated.json";
@@ -337,12 +337,12 @@ export function loadBodies(): Body[] {
 }
 ```
 
-- [ ] **Step 9: Run tests and confirm they pass**
+- [x] **Step 9: Run tests and confirm they pass**
 
 Run: `npm test -- bodies`
 Expected: PASS — 8 tests. If "no arm assigned" throws, add the named repo to `OVERRIDES`.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add scripts/build-bodies.mjs package.json src/data src/lib/atlas

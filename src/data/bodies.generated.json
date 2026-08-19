@@ -1,0 +1,410 @@
+{
+  "generatedFrom": "zubairmuwwakil",
+  "bodies": [
+    {
+      "id": "A1.6_AI_Slop",
+      "bornAt": "2026-07-20",
+      "lastTouchedAt": "2026-07-20",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "AgeChecker",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "uses html, java script to check persons age",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "agent-orchestrator",
+      "bornAt": "2026-08-16",
+      "lastTouchedAt": "2026-08-16",
+      "anonymous": false,
+      "description": "spin off of cursor",
+      "language": "Python",
+      "topics": []
+    },
+    {
+      "id": "AiMiniProj",
+      "bornAt": "2026-07-15",
+      "lastTouchedAt": "2026-07-15",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "BloombergProject",
+      "bornAt": "2025-12-23",
+      "lastTouchedAt": "2025-12-23",
+      "anonymous": false,
+      "description": "datapipeline for running analytics on stocks",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "C--Practice",
+      "bornAt": "2026-01-23",
+      "lastTouchedAt": "2026-01-23",
+      "anonymous": false,
+      "description": "",
+      "language": "C#",
+      "topics": []
+    },
+    {
+      "id": "clawdbot",
+      "bornAt": "2026-01-26",
+      "lastTouchedAt": "2026-01-26",
+      "anonymous": false,
+      "description": "",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "Coin_Flipper",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "CoinFlipWebsite",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "command-quest",
+      "bornAt": "2026-07-27",
+      "lastTouchedAt": "2026-08-18",
+      "anonymous": false,
+      "description": "CommandQuest is a menu-driven Java console app that teaches real command-line syntax. Users log in with a username and 4-digit PIN, then learn touch, mkdir, ls, and cd by typing each command to build and navigate a virtual file tree. It applies OOP, collections, streams, exceptions, and validated Scanner input.",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "DebuggingTests",
+      "bornAt": "2026-08-12",
+      "lastTouchedAt": "2026-08-12",
+      "anonymous": false,
+      "description": "",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "DebugofFineLegal",
+      "bornAt": "2026-08-12",
+      "lastTouchedAt": "2026-08-12",
+      "anonymous": false,
+      "description": "debugging fine legal repo",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "HTMl_CAT_WEBSITE",
+      "bornAt": "2025-12-09",
+      "lastTouchedAt": "2025-12-09",
+      "anonymous": false,
+      "description": "first website",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "HTML_Recipes",
+      "bornAt": "2025-12-09",
+      "lastTouchedAt": "2025-12-09",
+      "anonymous": false,
+      "description": "recipes made by me",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "HTML-Learning",
+      "bornAt": "2026-08-12",
+      "lastTouchedAt": "2026-08-12",
+      "anonymous": false,
+      "description": "tracking my learning for html",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "java",
+      "bornAt": "2025-12-09",
+      "lastTouchedAt": "2025-12-09",
+      "anonymous": false,
+      "description": "",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "Java-Practice",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-19",
+      "anonymous": false,
+      "description": "",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "JS_Cash_Register",
+      "bornAt": "2025-11-06",
+      "lastTouchedAt": "2025-11-06",
+      "anonymous": false,
+      "description": "Design a cash register drawer function checkCashRegister() that accepts purchase price as the first argument (price), payment as the second argument (cash), and cash-in-drawer (cid) as the third argument.",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "JS_Cipher",
+      "bornAt": "2025-11-06",
+      "lastTouchedAt": "2025-11-06",
+      "anonymous": false,
+      "description": "",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "JS_Tel-_Checker",
+      "bornAt": "2025-11-06",
+      "lastTouchedAt": "2025-11-06",
+      "anonymous": false,
+      "description": "checks is telephone number is valid",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "market-data-pipeline",
+      "bornAt": "2025-12-23",
+      "lastTouchedAt": "2025-12-23",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "marketdata",
+      "bornAt": "2026-01-03",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": false,
+      "description": "MarketLens — market data ingestion pipeline: Spring Boot, Postgres, Flyway, run-tracked Finnhub ingestion",
+      "language": "Java",
+      "topics": []
+    },
+    {
+      "id": "mindmap",
+      "bornAt": "2026-01-05",
+      "lastTouchedAt": "2026-08-09",
+      "anonymous": false,
+      "description": "MindSky — infinite-canvas thought mapping with snapshot undo/redo and debounced autosave",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "MoneyTalks",
+      "bornAt": "2026-08-14",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": false,
+      "description": "financial tracker",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "Obsidi",
+      "bornAt": "2026-07-08",
+      "lastTouchedAt": "2026-08-12",
+      "anonymous": false,
+      "description": "",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "Obsidi-Academy",
+      "bornAt": "2026-07-09",
+      "lastTouchedAt": "2026-07-09",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "Obsidian",
+      "bornAt": "2026-02-01",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "openclaw",
+      "bornAt": "2026-08-16",
+      "lastTouchedAt": "2026-08-16",
+      "anonymous": false,
+      "description": "Your own personal AI assistant. Any OS. Any Platform. The lobster way. 🦞 (will be used as top level layer of orchestrator)",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "Palindrome_Checker",
+      "bornAt": "2025-11-06",
+      "lastTouchedAt": "2025-11-06",
+      "anonymous": false,
+      "description": "checks if prompt entered is a palindrome",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "pb_score_keeper",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "",
+      "language": "JavaScript",
+      "topics": []
+    },
+    {
+      "id": "Pickleball_League_Score_Tracker",
+      "bornAt": "2025-12-09",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "for score keeping ",
+      "language": "JavaScript",
+      "topics": []
+    },
+    {
+      "id": "pickleball-league-template",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "",
+      "language": "JavaScript",
+      "topics": []
+    },
+    {
+      "id": "pickleball-session-manager",
+      "bornAt": "2026-01-02",
+      "lastTouchedAt": "2026-07-20",
+      "anonymous": true,
+      "description": null,
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "pickleops",
+      "bornAt": "2026-08-06",
+      "lastTouchedAt": "2026-08-06",
+      "anonymous": false,
+      "description": "Club pickleball operations in one product: sessions, ladders, Glicko-2 ratings, and payments — a Next.js web app for organizers plus a React Native iOS client shipped to the App Store and maintained through 21 releases in five months.",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "PickMe",
+      "bornAt": "2026-08-15",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": false,
+      "description": "ios app that chooses the best credit card for you to use ",
+      "language": "Swift",
+      "topics": []
+    },
+    {
+      "id": "projectswebsite",
+      "bornAt": "2026-01-12",
+      "lastTouchedAt": "2026-01-12",
+      "anonymous": false,
+      "description": "",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "return-saas",
+      "bornAt": "2026-01-09",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": false,
+      "description": "Looply — tracks subscriptions, bills, and return deadlines from receipt emails: Next.js, TypeScript, Prisma, Postgres",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "RightAngleTriangleSolver",
+      "bornAt": "2025-12-10",
+      "lastTouchedAt": "2025-12-10",
+      "anonymous": false,
+      "description": "",
+      "language": "HTML",
+      "topics": []
+    },
+    {
+      "id": "tb-webapps",
+      "bornAt": "2026-08-18",
+      "lastTouchedAt": "2026-08-18",
+      "anonymous": false,
+      "description": "Stateless API Authentication with JWT & Spring Security Basics",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "TodayILearned",
+      "bornAt": "2026-08-13",
+      "lastTouchedAt": "2026-08-17",
+      "anonymous": false,
+      "description": "TIL repo from obsidian vault",
+      "language": "JavaScript",
+      "topics": []
+    },
+    {
+      "id": "zemiechelon",
+      "bornAt": "2026-08-19",
+      "lastTouchedAt": "2026-08-19",
+      "anonymous": false,
+      "description": "parent company for all my builds",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "Zubair-Portfolio",
+      "bornAt": "2026-01-05",
+      "lastTouchedAt": "2026-01-06",
+      "anonymous": false,
+      "description": "",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "Zubair-Portfolio-Website",
+      "bornAt": "2026-01-06",
+      "lastTouchedAt": "2026-08-18",
+      "anonymous": false,
+      "description": "Source for zubairmuwwakil.com — React + TypeScript portfolio, prerendered to static HTML with per-route SEO checks",
+      "language": "TypeScript",
+      "topics": []
+    },
+    {
+      "id": "zubairmuwwakil",
+      "bornAt": "2026-08-05",
+      "lastTouchedAt": "2026-08-06",
+      "anonymous": false,
+      "description": "Profile README",
+      "language": null,
+      "topics": []
+    },
+    {
+      "id": "zweb",
+      "bornAt": "2026-01-05",
+      "lastTouchedAt": "2026-01-05",
+      "anonymous": false,
+      "description": "",
+      "language": "TypeScript",
+      "topics": []
+    }
+  ]
+}
