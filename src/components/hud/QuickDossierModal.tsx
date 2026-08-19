@@ -7,7 +7,6 @@ import {
   Cpu,
   Globe,
   Mail,
-  MapPin,
   ShieldCheck,
   Trophy,
   User,

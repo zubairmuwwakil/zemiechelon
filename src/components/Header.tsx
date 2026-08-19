@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Shield, Sparkles } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { ZemiMark } from "./icons/ZemiMark";
 
 export function Header() {

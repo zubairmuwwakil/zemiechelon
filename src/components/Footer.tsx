@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -8,7 +7,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="flex size-7 items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.1] p-1">
-              <img src="/icon.svg" alt="Zemi Echelon" className="size-full object-contain" />
+              <Image src="/icon.svg" alt="Zemi Echelon" width={28} height={28} className="size-full object-contain" />
             </div>
             <div>
               <span className="font-bold text-white tracking-tight">ZEMI ECHELON</span>

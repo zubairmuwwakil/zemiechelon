@@ -5,18 +5,13 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Code2,
-  ExternalLink,
   Globe,
-  Layers,
   Mail,
   MapPin,
-  Sparkles,
   Terminal,
-  Trophy,
   X,
 } from "lucide-react";
-import { FOUNDER_INFO, SECTORS, SectorData } from "../data/ecosystem";
+import { FOUNDER_INFO, SECTORS } from "../data/ecosystem";
 import { GithubIcon } from "../icons/GithubIcon";
 import { PickleballMiniGame } from "./PickleballMiniGame";
 

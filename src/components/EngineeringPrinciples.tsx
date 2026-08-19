@@ -1,4 +1,4 @@
-import { Database, Lock, Shield, Sparkles, Terminal, Zap } from "lucide-react";
+import { Database, Lock, Shield, Zap } from "lucide-react";
 
 export function EngineeringPrinciples() {
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Terminal, X } from "lucide-react";
+import { X } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface MiniTerminalModalProps {

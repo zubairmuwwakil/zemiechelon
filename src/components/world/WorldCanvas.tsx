@@ -8,6 +8,50 @@ import { ScreenPinPosition, TimeOfDay } from "./types";
 import { SECTORS } from "../data/ecosystem";
 import { sound } from "@/lib/audio";
 
+// Lighting presets based on Time of Day. A static lookup table, not component state,
+// so it lives at module scope rather than being rebuilt on every render.
+const timePresets = {
+  day: {
+    bg: 0xf7f6f2,
+    fogNear: 28,
+    fogFar: 55,
+    hemiSky: 0xffffff,
+    hemiGround: 0xe5ded1,
+    hemiInt: 1.1,
+    sunColor: 0xfff7ed,
+    sunInt: 1.6,
+    fillColor: 0xe0f2fe,
+    fillInt: 0.6,
+    emissiveInt: 0.4,
+  },
+  golden: {
+    bg: 0xfdebd0,
+    fogNear: 25,
+    fogFar: 50,
+    hemiSky: 0xfed7aa,
+    hemiGround: 0xd97706,
+    hemiInt: 1.0,
+    sunColor: 0xf59e0b,
+    sunInt: 1.9,
+    fillColor: 0xfb923c,
+    fillInt: 0.8,
+    emissiveInt: 0.7,
+  },
+  night: {
+    bg: 0x1e1b4b,
+    fogNear: 20,
+    fogFar: 45,
+    hemiSky: 0x312e81,
+    hemiGround: 0x0f172a,
+    hemiInt: 0.5,
+    sunColor: 0x818cf8,
+    sunInt: 0.7,
+    fillColor: 0x4338ca,
+    fillInt: 0.9,
+    emissiveInt: 1.5,
+  },
+};
+
 interface WorldCanvasProps {
   selectedSectorId: string | null;
   timeOfDay: TimeOfDay;
@@ -34,6 +78,22 @@ export function WorldCanvas({
   const isDraggingRef = useRef(false);
   const pointerDownPosRef = useRef({ x: 0, y: 0 });
 
+  // Mirrors of props the animation loop and event handlers read on every frame. The
+  // WebGL setup effect below runs once on mount, so it reads through these refs rather
+  // than closing over the props directly — otherwise either the effect would need
+  // selectedSectorId in its dependency array (tearing down and rebuilding the whole
+  // renderer every time a sector is selected) or, before this fix, the "isSelected"
+  // check inside animate() silently used the value frozen at mount, so island lift
+  // never reacted to a real selection made after the canvas first mounted.
+  const selectedSectorIdRef = useRef(selectedSectorId);
+  const onSelectSectorRef = useRef(onSelectSector);
+  const onPinsUpdateRef = useRef(onPinsUpdate);
+  useEffect(() => {
+    selectedSectorIdRef.current = selectedSectorId;
+    onSelectSectorRef.current = onSelectSector;
+    onPinsUpdateRef.current = onPinsUpdate;
+  }, [selectedSectorId, onSelectSector, onPinsUpdate]);
+
   // Camera focus on sector change
   useEffect(() => {
     if (cameraManagerRef.current) {
@@ -54,49 +114,6 @@ export function WorldCanvas({
       }
     }
   }, [selectedSectorId]);
-
-  // Lighting presets based on Time of Day
-  const timePresets = {
-    day: {
-      bg: 0xf7f6f2,
-      fogNear: 28,
-      fogFar: 55,
-      hemiSky: 0xffffff,
-      hemiGround: 0xe5ded1,
-      hemiInt: 1.1,
-      sunColor: 0xfff7ed,
-      sunInt: 1.6,
-      fillColor: 0xe0f2fe,
-      fillInt: 0.6,
-      emissiveInt: 0.4,
-    },
-    golden: {
-      bg: 0xfdebd0,
-      fogNear: 25,
-      fogFar: 50,
-      hemiSky: 0xfed7aa,
-      hemiGround: 0xd97706,
-      hemiInt: 1.0,
-      sunColor: 0xf59e0b,
-      sunInt: 1.9,
-      fillColor: 0xfb923c,
-      fillInt: 0.8,
-      emissiveInt: 0.7,
-    },
-    night: {
-      bg: 0x1e1b4b,
-      fogNear: 20,
-      fogFar: 45,
-      hemiSky: 0x312e81,
-      hemiGround: 0x0f172a,
-      hemiInt: 0.5,
-      sunColor: 0x818cf8,
-      sunInt: 0.7,
-      fillColor: 0x4338ca,
-      fillInt: 0.9,
-      emissiveInt: 1.5,
-    },
-  };
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -214,7 +231,7 @@ export function WorldCanvas({
       );
 
       if (dist < 6 && hoveredSectorIdRef.current) {
-        onSelectSector(hoveredSectorIdRef.current);
+        onSelectSectorRef.current(hoveredSectorIdRef.current);
       }
 
       isDraggingRef.current = false;
@@ -289,7 +306,7 @@ export function WorldCanvas({
       // Tactile Island Lift on Hover
       sceneBuilder.interactiveSectors.forEach((sec, id) => {
         const isHovered = hoveredSectorIdRef.current === id;
-        const isSelected = selectedSectorId === id;
+        const isSelected = selectedSectorIdRef.current === id;
         const targetLift = isHovered || isSelected ? 0.35 : 0;
         sec.group.position.y = THREE.MathUtils.lerp(
           sec.group.position.y,
@@ -302,7 +319,7 @@ export function WorldCanvas({
       renderer.render(scene, cameraManager.camera);
 
       const pins = cameraManager.calculateScreenPins(width, height);
-      onPinsUpdate(pins);
+      onPinsUpdateRef.current(pins);
     };
 
     animate();

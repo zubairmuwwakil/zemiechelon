@@ -7,18 +7,10 @@ import {
   Cpu,
   CreditCard,
   FileCode2,
-  Globe2,
   LineChart,
-  Lock,
-  Receipt,
   Repeat,
-  Shield,
-  Smartphone,
-  Sparkles,
   Terminal,
   Trophy,
-  Undo2,
-  Zap,
 } from "lucide-react";
 
 export function EcosystemShowcase() {

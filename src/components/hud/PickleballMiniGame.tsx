@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Trophy, Zap } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface PickleballMiniGameProps {

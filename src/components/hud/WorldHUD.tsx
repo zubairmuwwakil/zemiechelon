@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  ArrowUpRight,
   Coins,
   Cpu,
   FileText,
@@ -10,7 +9,6 @@ import {
   Moon,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
   Sun,
   Sunrise,
   Terminal,

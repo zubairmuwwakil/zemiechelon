@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ArrowDown, ArrowUpRight, Cpu, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import Image from "next/image";
+import { ArrowDown, ArrowUpRight } from "lucide-react";
 
 export function Hero() {
   return (
@@ -60,7 +60,7 @@ export function Hero() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-left">
               <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 glow-emerald">
-                <img src="/icon.svg" alt="Zemi Echelon" className="size-full object-contain" />
+                <Image src="/icon.svg" alt="Zemi Echelon" width={56} height={56} className="size-full object-contain" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">

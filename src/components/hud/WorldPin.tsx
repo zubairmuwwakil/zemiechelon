@@ -1,7 +1,7 @@
 "use client";
 
 import { Coins, Cpu, ShieldCheck, Trophy, User } from "lucide-react";
-import { SECTORS, SectorData } from "../data/ecosystem";
+import { SECTORS } from "../data/ecosystem";
 import { ScreenPinPosition } from "../world/types";
 
 interface WorldPinProps {

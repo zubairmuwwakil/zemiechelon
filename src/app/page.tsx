@@ -8,7 +8,7 @@ import { SectorDrawer } from "@/components/hud/SectorDrawer";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
 import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
 import { ScreenPinPosition, TimeOfDay } from "@/components/world/types";
-import { Compass, Sparkles, Terminal } from "lucide-react";
+import { Compass } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 export default function HomePage() {

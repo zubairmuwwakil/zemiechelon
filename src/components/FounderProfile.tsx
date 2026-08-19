@@ -1,4 +1,4 @@
-import { ArrowUpRight, Code2, Globe2, Layers, Mail, MapPin, Terminal } from "lucide-react";
+import { ArrowUpRight, Code2, Layers, Mail, MapPin } from "lucide-react";
 
 export function FounderProfile() {
   return (
