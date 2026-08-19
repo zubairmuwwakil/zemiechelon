@@ -84,11 +84,15 @@ export function Chart({
     return result;
   }, [bodyMap, points, cameraDistance]);
 
+  // `isolate` gives this layer its own stacking context. The per-label z-indexes
+  // below run into the thousands to depth-sort the chart against itself; without
+  // containment they would also paint over the HUD and the modals, which sit in
+  // the tens.
   return (
     <div
       role="region"
       aria-label="Zemí Atlas chart"
-      className="pointer-events-none absolute inset-0 overflow-hidden"
+      className="pointer-events-none absolute inset-0 overflow-hidden isolate"
     >
       {visibleLabels.map(({ body, point }) => {
         const isSelected = selectedId === body.id;

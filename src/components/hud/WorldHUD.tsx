@@ -2,52 +2,45 @@
 
 import { useState } from "react";
 import {
-  Coins,
-  Cpu,
   FileText,
+  FlaskConical,
   Map,
-  Moon,
+  PenTool,
   RotateCcw,
-  ShieldCheck,
-  Sun,
-  Sunrise,
+  Rocket,
+  Sprout,
   Terminal,
-  Trophy,
   User,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { SECTORS } from "../data/ecosystem";
+import { ARMS } from "@/data/arms";
+import type { ArmId } from "@/lib/atlas/types";
 import { GithubIcon } from "../icons/GithubIcon";
 import { ZemiMark } from "../icons/ZemiMark";
-import { TimeOfDay } from "../world/types";
 import { sound } from "@/lib/audio";
 
 interface WorldHUDProps {
-  selectedSectorId: string | null;
-  timeOfDay: TimeOfDay;
-  onSetTimeOfDay: (time: TimeOfDay) => void;
-  onSelectSector: (sectorId: string | null) => void;
-  onResetCamera: () => void;
+  selectedArmId: ArmId | null;
+  onSelectArm: (armId: ArmId | null) => void;
+  onResetView: () => void;
   isDossierOpen: boolean;
   onToggleDossier: () => void;
   onOpenTerminal: () => void;
 }
 
 const ICONS_MAP: Record<string, React.ElementType> = {
-  Coins,
-  Cpu,
-  Trophy,
-  ShieldCheck,
+  Sprout,
+  Rocket,
+  FlaskConical,
   User,
+  PenTool,
 };
 
 export function WorldHUD({
-  selectedSectorId,
-  timeOfDay,
-  onSetTimeOfDay,
-  onSelectSector,
-  onResetCamera,
+  selectedArmId,
+  onSelectArm,
+  onResetView,
   isDossierOpen,
   onToggleDossier,
   onOpenTerminal,
@@ -73,23 +66,23 @@ export function WorldHUD({
               ZEMI ECHELON
             </span>
             <span className="text-[9px] font-mono tracking-wider text-zinc-600">
-              LIVING MINIATURE CITY
+              CELESTIAL ATLAS
             </span>
           </div>
         </div>
 
-        {/* Center Quick Jump Zone Dock (Desktop & Tablet) */}
+        {/* Center Quick Jump Arm Dock (Desktop & Tablet) */}
         <nav className="pointer-events-auto hidden md:flex items-center gap-1 rounded-2xl border border-zinc-200/80 bg-white/90 p-1 shadow-lg backdrop-blur-md">
-          {SECTORS.map((sector) => {
-            const isSelected = selectedSectorId === sector.id;
-            const IconComponent = ICONS_MAP[sector.icon] || Coins;
+          {ARMS.map((arm) => {
+            const isSelected = selectedArmId === arm.id;
+            const IconComponent = ICONS_MAP[arm.icon] || Sprout;
 
             return (
               <button
-                key={sector.id}
+                key={arm.id}
                 onClick={() => {
                   sound.playClick(600, 0.05);
-                  onSelectSector(isSelected ? null : sector.id);
+                  onSelectArm(isSelected ? null : arm.id);
                 }}
                 className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
                   isSelected
@@ -98,7 +91,7 @@ export function WorldHUD({
                 }`}
               >
                 <IconComponent className="size-3.5" />
-                <span>{sector.shortName}</span>
+                <span>{arm.shortName}</span>
               </button>
             );
           })}
@@ -106,52 +99,6 @@ export function WorldHUD({
 
         {/* Right Controls */}
         <div className="pointer-events-auto flex items-center gap-2">
-          {/* Time of Day Switcher */}
-          <div className="flex items-center rounded-xl border border-zinc-200/80 bg-white/90 p-1 shadow-lg backdrop-blur-md">
-            <button
-              onClick={() => {
-                sound.playClick(650, 0.04);
-                onSetTimeOfDay("day");
-              }}
-              className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
-                timeOfDay === "day"
-                  ? "bg-amber-100 text-amber-900"
-                  : "text-zinc-500 hover:text-zinc-900"
-              }`}
-              title="Daylight"
-            >
-              <Sun className="size-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                sound.playClick(550, 0.04);
-                onSetTimeOfDay("golden");
-              }}
-              className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
-                timeOfDay === "golden"
-                  ? "bg-orange-100 text-orange-900"
-                  : "text-zinc-500 hover:text-zinc-900"
-              }`}
-              title="Golden Hour"
-            >
-              <Sunrise className="size-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                sound.playClick(450, 0.04);
-                onSetTimeOfDay("night");
-              }}
-              className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
-                timeOfDay === "night"
-                  ? "bg-indigo-900 text-white"
-                  : "text-zinc-500 hover:text-zinc-900"
-              }`}
-              title="Twilight"
-            >
-              <Moon className="size-3.5" />
-            </button>
-          </div>
-
           {/* Sound Toggle */}
           <button
             onClick={handleToggleSound}
@@ -185,7 +132,7 @@ export function WorldHUD({
           <button
             onClick={() => {
               sound.playClick(400, 0.06);
-              onResetCamera();
+              onResetView();
             }}
             className="flex size-9 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/90 text-zinc-700 shadow-lg backdrop-blur-md hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
             title="Reset to Overview"
@@ -208,7 +155,7 @@ export function WorldHUD({
             {isDossierOpen ? (
               <>
                 <Map className="size-3.5" />
-                <span className="hidden sm:inline">3D City</span>
+                <span className="hidden sm:inline">Atlas</span>
               </>
             ) : (
               <>

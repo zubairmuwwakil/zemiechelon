@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Zemi Echelon — Interactive 3D Technology Holdings",
+  title: "Zemí Echelon — Atlas of Technology Holdings",
   description:
-    "Interactive 3D diorama map of technology ventures, native iOS copilots, autonomous AI runtimes, and high-concurrency systems engineered by Zubair Muwwakil.",
+    "A navigable celestial atlas of 45 repositories in five arms: technology ventures, native iOS copilots, autonomous AI runtimes, and high-concurrency systems engineered by Zubair Muwwakil.",
   icons: {
     icon: [
       { url: "/favicon-light.png", media: "(prefers-color-scheme: light)" },

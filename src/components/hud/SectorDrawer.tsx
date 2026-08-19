@@ -1,47 +1,72 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ArrowUpRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Crosshair,
   Globe,
   Mail,
   MapPin,
   Terminal,
   X,
 } from "lucide-react";
-import { FOUNDER_INFO, SECTORS } from "../data/ecosystem";
+import { ARMS } from "@/data/arms";
+import { FOUNDER_INFO } from "@/data/founder";
+import { loadBodies } from "@/lib/atlas/bodies";
+import type { ArmId, Body } from "@/lib/atlas/types";
 import { GithubIcon } from "../icons/GithubIcon";
 import { PickleballMiniGame } from "./PickleballMiniGame";
 
 interface SectorDrawerProps {
-  selectedSectorId: string | null;
+  selectedArmId: ArmId | null;
   onClose: () => void;
-  onSelectSector: (sectorId: string) => void;
+  onSelectArm: (armId: ArmId) => void;
+  /** Select this body on the map. Wired to the deep-link hash by the page. */
+  onSelectBody?: (bodyId: string) => void;
   onOpenTerminal?: () => void;
 }
 
+const BODIES = loadBodies();
+
+/**
+ * Systems first, then most recently touched. The old drawer's order was authored
+ * per project; there is nothing left to author it with, and "still alive" is the
+ * ordering a reader actually wants.
+ */
+function inArm(armId: ArmId): Body[] {
+  return BODIES.filter((b) => b.arm === armId && !b.anonymous).sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "system" ? -1 : 1;
+    return b.lastTouchedAt.localeCompare(a.lastTouchedAt);
+  });
+}
+
 export function SectorDrawer({
-  selectedSectorId,
+  selectedArmId,
   onClose,
-  onSelectSector,
+  onSelectArm,
+  onSelectBody,
   onOpenTerminal,
 }: SectorDrawerProps) {
-  if (!selectedSectorId) return null;
+  const armIndex = ARMS.findIndex((a) => a.id === selectedArmId);
+  const arm = armIndex >= 0 ? ARMS[armIndex] : null;
 
-  const currentSectorIndex = SECTORS.findIndex((s) => s.id === selectedSectorId);
-  const sector = SECTORS[currentSectorIndex];
-  if (!sector) return null;
+  const bodies = useMemo(() => (arm ? inArm(arm.id) : []), [arm]);
+  const privateCount = useMemo(
+    () => (arm ? BODIES.filter((b) => b.arm === arm.id && b.anonymous).length : 0),
+    [arm],
+  );
+
+  if (!arm) return null;
 
   const handlePrev = () => {
-    const prevIndex = (currentSectorIndex - 1 + SECTORS.length) % SECTORS.length;
-    onSelectSector(SECTORS[prevIndex].id);
+    onSelectArm(ARMS[(armIndex - 1 + ARMS.length) % ARMS.length].id);
   };
 
   const handleNext = () => {
-    const nextIndex = (currentSectorIndex + 1) % SECTORS.length;
-    onSelectSector(SECTORS[nextIndex].id);
+    onSelectArm(ARMS[(armIndex + 1) % ARMS.length].id);
   };
 
   return (
@@ -54,26 +79,26 @@ export function SectorDrawer({
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-medium border"
                 style={{
-                  backgroundColor: `${sector.themeColor}12`,
-                  borderColor: `${sector.themeColor}30`,
-                  color: sector.themeColor,
+                  backgroundColor: `${arm.themeColor}12`,
+                  borderColor: `${arm.themeColor}30`,
+                  color: arm.themeColor,
                 }}
               >
                 <span
                   className="size-1.5 rounded-full"
-                  style={{ backgroundColor: sector.themeColor }}
+                  style={{ backgroundColor: arm.themeColor }}
                 />
-                ZONE 0{currentSectorIndex + 1}
+                ARM 0{armIndex + 1}
               </span>
               <span className="text-xs font-mono text-zinc-600">
-                {sector.tagline}
+                {arm.tagline}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">
-              {sector.name}
+              {arm.name}
             </h2>
             <p className="mt-1 text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-xl">
-              {sector.description}
+              {arm.description}
             </p>
           </div>
 
@@ -81,14 +106,14 @@ export function SectorDrawer({
             <button
               onClick={handlePrev}
               className="flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-              title="Previous zone"
+              title="Previous arm"
             >
               <ChevronLeft className="size-4" />
             </button>
             <button
               onClick={handleNext}
               className="flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-              title="Next zone"
+              title="Next arm"
             >
               <ChevronRight className="size-4" />
             </button>
@@ -102,15 +127,15 @@ export function SectorDrawer({
           </div>
         </div>
 
-        {/* Playable Minigame for Sports Sector */}
-        {sector.id === "sports" && (
+        {/* Playable Minigame — the pickleball stack lives in this arm */}
+        {arm.id === "products" && (
           <div className="mt-5">
             <PickleballMiniGame />
           </div>
         )}
 
-        {/* Command Quest Terminal Trigger for Intelligence Sector */}
-        {sector.id === "intelligence" && onOpenTerminal && (
+        {/* Command Quest Terminal Trigger — CommandQuest lives in this arm */}
+        {arm.id === "labs" && onOpenTerminal && (
           <div className="mt-5 flex items-center justify-between rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
             <div className="flex items-center gap-2.5">
               <div className="flex size-8 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
@@ -135,8 +160,8 @@ export function SectorDrawer({
           </div>
         )}
 
-        {/* Founder Specific View */}
-        {sector.id === "founder" ? (
+        {/* Founder panel for the Self arm */}
+        {arm.id === "self" && (
           <div className="mt-5 space-y-4">
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50/80 p-5 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -207,89 +232,100 @@ export function SectorDrawer({
               </div>
             </div>
           </div>
-        ) : (
-          /* Project Cards List */
-          <div className="mt-5 space-y-3.5">
-            {sector.projects.map((proj) => (
-              <div
-                key={proj.id}
-                className="group rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 sm:p-5 transition-all hover:bg-white hover:border-zinc-300 hover:shadow-md"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-zinc-900 group-hover:text-zinc-950">
-                        {proj.name}
-                      </h3>
-                      {proj.badge && (
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold border ${
-                            proj.badgeColor === "emerald"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : proj.badgeColor === "sky"
-                              ? "bg-sky-50 text-sky-700 border-sky-200"
-                              : proj.badgeColor === "purple"
-                              ? "bg-purple-50 text-purple-700 border-purple-200"
-                              : proj.badgeColor === "orange"
-                              ? "bg-orange-50 text-orange-700 border-orange-200"
-                              : "bg-zinc-100 text-zinc-700 border-zinc-200"
-                          }`}
-                        >
-                          {proj.badge}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-mono text-zinc-600">
-                      {proj.tagline}
-                    </p>
-                  </div>
+        )}
 
-                  <div className="flex items-center gap-2 pt-1 sm:pt-0">
-                    {proj.liveUrl && (
-                      <a
-                        href={proj.liveUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex h-8 items-center gap-1 rounded-lg bg-zinc-900 px-3 text-xs font-semibold text-white shadow-xs hover:bg-zinc-800 transition-all"
-                      >
-                        <span>Live Site</span>
-                        <ArrowUpRight className="size-3" />
-                      </a>
+        {/* Body Cards List */}
+        <div className="mt-5 space-y-3.5">
+          {bodies.map((body) => (
+            <div
+              key={body.id}
+              className="group rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 sm:p-5 transition-all hover:bg-white hover:border-zinc-300 hover:shadow-md"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-zinc-900 group-hover:text-zinc-950">
+                      {body.label}
+                    </h3>
+                    {body.kind === "system" && (
+                      <span className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+                        SYSTEM
+                      </span>
                     )}
-                    {proj.githubUrl && (
-                      <a
-                        href={proj.githubUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-all"
-                      >
-                        <GithubIcon className="size-3" />
-                        <span>Code</span>
-                      </a>
+                    {body.links.live && (
+                      <span className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                        LIVE
+                      </span>
                     )}
                   </div>
+                  <p className="text-xs font-mono text-zinc-600">
+                    {body.id} · formed {body.bornAt} · touched {body.lastTouchedAt}
+                  </p>
                 </div>
 
+                <div className="flex items-center gap-2 pt-1 sm:pt-0">
+                  {onSelectBody && (
+                    <button
+                      onClick={() => onSelectBody(body.id)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-all"
+                      title={`Find ${body.label} on the atlas`}
+                    >
+                      <Crosshair className="size-3" />
+                      <span>Locate</span>
+                    </button>
+                  )}
+                  {body.links.live && (
+                    <a
+                      href={body.links.live}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center gap-1 rounded-lg bg-zinc-900 px-3 text-xs font-semibold text-white shadow-xs hover:bg-zinc-800 transition-all"
+                    >
+                      <span>Live Site</span>
+                      <ArrowUpRight className="size-3" />
+                    </a>
+                  )}
+                  {body.links.github && (
+                    <a
+                      href={body.links.github}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-all"
+                    >
+                      <GithubIcon className="size-3" />
+                      <span>Code</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {body.blurb && (
                 <p className="mt-2.5 text-xs text-zinc-600 leading-relaxed">
-                  {proj.description}
+                  {body.blurb}
                 </p>
+              )}
 
-                {proj.features && proj.features.length > 0 && (
-                  <div className="mt-3 space-y-1 border-t border-zinc-200/50 pt-2.5">
-                    {proj.features.map((feat, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-1.5 text-[11px] text-zinc-600"
-                      >
-                        <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500 mt-0.5" />
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {body.satellites && body.satellites.length > 0 && (
+                <div className="mt-3 space-y-1 border-t border-zinc-200/50 pt-2.5">
+                  {body.satellites.map((sat) => (
+                    <div
+                      key={sat.id}
+                      className="flex items-start gap-1.5 text-[11px] text-zinc-600"
+                    >
+                      <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500 mt-0.5" />
+                      <span>
+                        <span className="font-semibold text-zinc-700">{sat.label}</span>
+                        {" — "}
+                        {sat.blurb}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
+              {body.stack && body.stack.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {proj.stack.map((item) => (
+                  {body.stack.map((item) => (
                     <span
                       key={item}
                       className="rounded-md border border-zinc-200/80 bg-white px-2 py-0.5 text-[10px] font-mono text-zinc-600"
@@ -298,10 +334,17 @@ export function SectorDrawer({
                     </span>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </div>
+          ))}
+
+          {privateCount > 0 && (
+            <p className="pt-1 text-[11px] font-mono text-zinc-500">
+              + {privateCount} private {privateCount === 1 ? "repository" : "repositories"} in
+              this arm, charted but unnamed.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

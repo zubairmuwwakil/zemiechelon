@@ -22,7 +22,7 @@ const OVERVIEW = { azimuth: 0, elevation: 1.2, distance: 58 };
 const FOV = { wide: 38, narrow: 48 };
 const NARROW_VIEWPORT = 768;
 
-/** How fast the camera catches up to its goal. Matches the old CameraManager. */
+/** How fast the camera catches up to its goal. Matches the feel of the camera this replaces. */
 const LERP_RATE = 4.5;
 
 /** Zoom is proportional, so a wheel notch covers the same fraction at any scale. */
@@ -40,10 +40,10 @@ const fovFor = (width: number) => (width < NARROW_VIEWPORT ? FOV.narrow : FOV.wi
  * An orbit camera in spherical coordinates around a target, plus the 3D -> screen
  * projection the Chart layer positions its DOM hit targets with.
  *
- * Replaces CameraManager, which modelled the camera as position + lookAt and
- * applied drag to the lookAt point. That cannot orbit: swinging where the camera
- * looks shears the scene instead of rotating around it. Here the camera moves on
- * a sphere and always looks at the centre of that sphere.
+ * The camera this replaces modelled itself as position + lookAt and applied drag
+ * to the lookAt point. That cannot orbit: swinging where the camera looks shears
+ * the scene instead of rotating around it. Here the camera moves on a sphere and
+ * always looks at the centre of that sphere.
  */
 export class AtlasCamera {
   public camera: THREE.PerspectiveCamera;
@@ -58,6 +58,11 @@ export class AtlasCamera {
     this.current = { ...OVERVIEW };
     this.goal = { ...OVERVIEW };
     this.apply();
+  }
+
+  /** World units from the target. The Chart thins its labels by this. */
+  public get distance(): number {
+    return this.current.distance;
   }
 
   public resize(width: number, height: number) {
@@ -115,9 +120,9 @@ export class AtlasCamera {
   }
 
   /**
-   * Project world points to screen pixels. Ported from CameraManager's
-   * calculateScreenPins, generalised off the hardcoded SECTORS list and given a
-   * depth so the Chart can z-order labels that land on top of each other.
+   * Project world points to screen pixels. Generalised off the fixed list of
+   * landmarks the old overlay projected, and given a depth so the Chart can
+   * z-order labels that land on top of each other.
    */
   public projectToScreen(
     points: Array<{ id: string; pos: Vec3 }>,

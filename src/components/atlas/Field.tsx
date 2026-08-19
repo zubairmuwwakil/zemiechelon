@@ -12,13 +12,20 @@ export interface FieldProps {
   bodies?: Body[];
   today?: string;
   selectedId?: string | null;
-  onProject: (points: ScreenPoint[]) => void;
+  /** Bump to swing the camera back to the overview. */
+  resetToken?: number;
+  /**
+   * Called once per frame with the projected hit targets and how far out the
+   * camera currently sits — the Chart needs the distance to thin its labels.
+   */
+  onProject: (points: ScreenPoint[], cameraDistance: number) => void;
 }
 
 export function Field({
   bodies: propBodies,
   today: propToday,
   selectedId = null,
+  resetToken = 0,
   onProject,
 }: FieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,6 +48,12 @@ export function Field({
   useEffect(() => {
     onProjectRef.current = onProject;
   }, [onProject]);
+
+  // The HUD's reset control. Runs once on mount with the camera not yet built,
+  // which is harmless: an unbuilt camera already sits at the overview.
+  useEffect(() => {
+    cameraRef.current?.focus(null);
+  }, [resetToken]);
 
   // Focus camera when selection changes
   useEffect(() => {
@@ -138,7 +151,7 @@ export function Field({
       renderer.render(scene, camera.camera);
 
       const screenPoints = camera.projectToScreen(bodyPoints, width, height);
-      onProjectRef.current(screenPoints);
+      onProjectRef.current(screenPoints, camera.distance);
     };
 
     animate();

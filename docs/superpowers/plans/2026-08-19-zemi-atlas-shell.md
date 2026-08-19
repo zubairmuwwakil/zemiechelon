@@ -1277,15 +1277,20 @@ The task where the old world goes. Do the deletions in the same commit as the wi
 
 **Files:**
 - Create: `src/components/atlas/AtlasStage.tsx`
+- Create: `src/data/arms.ts`, `src/data/founder.ts` — the editorial copy the deleted `ecosystem.ts` also carried (arm names, taglines, colours; the founder bio). Not derivable from repository metadata, so it needed a home; it sits beside `bodies.overrides.ts` as editorial input.
 - Modify: `src/app/page.tsx`
 - Modify: `src/components/hud/WorldHUD.tsx`, `SectorDrawer.tsx`, `QuickDossierModal.tsx`
+- Modify: `src/components/atlas/Field.tsx`, `AtlasCamera.ts` — the Chart's density culling needs the camera distance, so `onProject` reports it; `resetToken` gives the HUD's reset button a way in. `AtlasCamera`'s comments named the deleted classes and were reworded.
+- Modify: `src/components/atlas/Chart.tsx` — one class (`isolate`). Its per-label z-indexes run to ~9,000 and painted over the HUD once the two were composed.
 - Delete: `src/components/world/SceneBuilder.ts`, `CameraManager.ts`, `WorldCanvas.tsx`, `types.ts`, `src/components/hud/WorldPin.tsx`, `src/components/data/ecosystem.ts`
+
+**Dropped, not ported:** the time-of-day switcher. It drove `SceneBuilder`'s lighting; the Field has no lighting model and `TimeOfDay` died with `world/types.ts`. Three buttons wired to nothing is worse than three fewer buttons.
 
 **Interfaces:**
 - Consumes: everything from Tasks 1–7.
 - Produces: `<AtlasStage />` — the whole shell, mounted by `page.tsx`.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 Create `src/components/atlas/__tests__/atlasStage.test.tsx`:
 
@@ -1333,24 +1338,24 @@ describe("AtlasStage", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- atlasStage`
 Expected: FAIL — cannot resolve `../AtlasStage`.
 
-- [ ] **Step 3: Write `AtlasStage.tsx`**
+- [x] **Step 3: Write `AtlasStage.tsx`**
 
 Owns `selectedId`, the projected `ScreenPoint[]`, and the hash sync. Composes `<Field onProject={setPoints} />`, `<Chart points={points} onSelect={setSelectedId} />` and `<BodyCard>`. On mount, read `window.location.hash` through `hashToBodyId`; on selection change, write it back. Focusing the camera on the selected body's `derivePosition` goes here, not in `Chart`.
 
-- [ ] **Step 4: Rewire the retained HUD components**
+- [x] **Step 4: Rewire the retained HUD components**
 
 `WorldHUD`, `SectorDrawer` and `QuickDossierModal` all import `SECTORS` from `src/components/data/ecosystem.ts`. Repoint them at `loadBodies()`, grouping by `arm` where they previously grouped by sector. Keep their visual design — this is a data swap, not a redesign. `MiniTerminalModal` and `lib/audio.ts` need no changes.
 
-- [ ] **Step 5: Replace `page.tsx`**
+- [x] **Step 5: Replace `page.tsx`**
 
 Reduce it to mounting `<AtlasStage />` plus the retained HUD. The current file wires five components together with six pieces of state; most of that moves into `AtlasStage`.
 
-- [ ] **Step 6: Delete the island city**
+- [x] **Step 6: Delete the island city**
 
 ```bash
 git rm src/components/world/SceneBuilder.ts \
@@ -1367,14 +1372,14 @@ Before committing, confirm nothing still imports them:
 grep -rn "SceneBuilder\|CameraManager\|WorldCanvas\|WorldPin\|data/ecosystem" src/ && echo "STILL REFERENCED — fix before committing" || echo "clean"
 ```
 
-- [ ] **Step 7: Verify the whole thing builds and passes**
+- [x] **Step 7: Verify the whole thing builds and passes**
 
 ```bash
 npm test && npm run build && npm run lint
 ```
 Expected: all tests pass; `out/` is produced; lint is clean.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A src
