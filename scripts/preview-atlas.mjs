@@ -8,16 +8,10 @@
 //
 // Nothing in src/ depends on this file. Output is gitignored; the script is not.
 //
-//   node scripts/preview-atlas.mjs             -> preview/atlas-frame.svg
-//   node scripts/preview-atlas.mjs --declump   -> preview/atlas-frame-declumped.svg
-//
-// --declump is a DIAGNOSTIC. It tested the hypothesis that the clumping comes
-// from build-bodies.mjs truncating GitHub timestamps to a date. It does not:
-// see the "Radius collisions" note below. Kept as the evidence.
+//   node scripts/preview-atlas.mjs   ->  preview/atlas-frame.svg
 
 import { registerHooks } from "node:module";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -52,11 +46,10 @@ registerHooks({
 });
 
 const { loadBodies, EPOCH } = await import("@/lib/atlas/bodies.ts");
-const { derivePosition, trailEnd, polar, radiusScale, daysSinceEpoch, ARM_ANGLES } =
+const { placeBodies, polar, radiusScale, daysSinceEpoch, ARM_ANGLES } =
   await import("@/lib/atlas/position.ts");
 const { magnitude, temperature } = await import("@/lib/atlas/magnitude.ts");
 
-const DECLUMP = process.argv.includes("--declump");
 const TODAY = new Date().toISOString().slice(0, 10);
 
 // --- Plate geometry ----------------------------------------------------------
@@ -102,41 +95,11 @@ function rampAt(t) {
 }
 
 // --- World -> plate ----------------------------------------------------------
+// placeBodies is the layout entry point: it scatters bodies about the arm spine
+// so that crowded runs fan out. Drawing from derivePosition instead would stack
+// 23 of the 45 on top of each other — that is what this frame first caught.
 const bodies = loadBodies();
-
-// Radius collisions
-// -----------------
-// daysSinceEpoch() rounds to whole days and polar() makes theta a pure function
-// of (arm, radius), so two bodies in the same arm created on the same DAY occupy
-// the identical point: 23 of 45 bodies land within 1px of another.
-//
-// --declump re-derives radii from full second-resolution GitHub timestamps using
-// the unmodified radiusScale/polar. It BARELY MOVES THEM, and that negative
-// result is the useful one: radiusScale is sqrt(days), so its radial resolution
-// runs 13.6 px/day at the epoch down to 0.97 px/day at the frontier — where 17
-// of the 45 bodies actually live. Sub-day precision buys fractions of a pixel
-// there. Separation has to come from theta, not from finer dates.
-let daysOf = (iso) => daysSinceEpoch(iso);
-let bornOf = (b) => b.bornAt;
-let touchedOf = (b) => b.lastTouchedAt;
-
-if (DECLUMP) {
-  const rows = JSON.parse(
-    execFileSync("gh", [
-      "repo", "list", "zubairmuwwakil", "--limit", "100",
-      "--json", "name,createdAt,pushedAt",
-    ], { encoding: "utf8" }),
-  );
-  const stamps = new Map(rows.map((r) => [r.name, r]));
-  const MS_PER_DAY = 86_400_000;
-  daysOf = (iso) => (Date.parse(iso) - Date.parse(EPOCH)) / MS_PER_DAY; // no rounding
-  bornOf = (b) => stamps.get(b.id)?.createdAt ?? b.bornAt;
-  touchedOf = (b) => stamps.get(b.id)?.pushedAt ?? b.lastTouchedAt;
-}
-
-const worldR = (iso) => radiusScale(daysOf(iso));
-const posOf = (b) => (DECLUMP ? polar(b.arm, worldR(bornOf(b))) : derivePosition(b));
-const tailOf = (b) => (DECLUMP ? polar(b.arm, worldR(touchedOf(b))) : trailEnd(b));
+const placement = new Map(placeBodies(bodies).map((p) => [p.id, p]));
 
 const R_MAX_WORLD = radiusScale(daysSinceEpoch(TODAY));
 const SCALE = R_DATA / R_MAX_WORLD;
@@ -161,9 +124,17 @@ function rng(seed) {
 // --- Engraving primitives ----------------------------------------------------
 
 /** Sample an arm's spiral between two world radii, in plate pixels. */
-function armSamples(arm, r0, r1, steps = 220) {
+function armSamples(arm, r0, r1, steps = 220, lane = 0) {
   const pts = [];
-  for (let i = 0; i <= steps; i++) pts.push(px(polar(arm, r0 + ((r1 - r0) * i) / steps)));
+  for (let i = 0; i <= steps; i++) {
+    const r = r0 + ((r1 - r0) * i) / steps;
+    const p = polar(arm, r);
+    if (lane === 0) pts.push(px(p));
+    else {
+      const th = Math.atan2(p.z, p.x) + lane;
+      pts.push(px({ x: Math.cos(th) * r, y: 0, z: Math.sin(th) * r }));
+    }
+  }
   return pts;
 }
 
@@ -408,16 +379,18 @@ out.push(`<text x="${CX}" y="${CY - 44}" text-anchor="middle" font-family="${SER
 // --- Bodies ------------------------------------------------------------------
 const drawn = bodies
   .map((b) => {
-    const p = px(posOf(b));
-    const q = px(tailOf(b));
+    const place = placement.get(b.id);
+    const p = px(place.position);
+    const q = px(place.trailEnd);
     const m = magnitude(b);
     const t = temperature(b, TODAY);
     return {
       b, p, q, m, t,
       colour: rampAt(t),
       rd: 2.6 + m * 1.75,
-      r0: worldR(bornOf(b)),
-      r1: worldR(touchedOf(b)),
+      lane: place.lane,
+      r0: Math.hypot(place.position.x, place.position.z),
+      r1: Math.hypot(place.trailEnd.x, place.trailEnd.z),
     };
   })
   .sort((a, z) => a.m - z.m);
@@ -427,7 +400,7 @@ const drawn = bodies
 // read as a network edge, which is precisely the failure mode being tested.
 for (const s of drawn) {
   if (s.r1 - s.r0 < 0.06) continue;
-  const pts = armSamples(s.b.arm, s.r0, s.r1, 40);
+  const pts = armSamples(s.b.arm, s.r0, s.r1, 40, s.lane);
   const w0 = Math.max(1.4, s.rd * 0.85);
   const gid = `t${s.b.id.replace(/[^a-zA-Z0-9]/g, "")}`;
   defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse"
@@ -627,12 +600,6 @@ Object.keys(ARM_ANGLES).forEach((arm, i) => {
     font-size="11" letter-spacing="1" fill="${INK}" fill-opacity="0.5">${count}</text>`);
 });
 
-if (DECLUMP) {
-  out.push(`<text x="${CX}" y="${SIZE - 66}" text-anchor="middle" font-family="${SERIF}"
-    font-size="12" font-style="italic" letter-spacing="1.4" fill="${INK}" fill-opacity="0.55"
-    ${halo(4)}>diagnostic frame — radii re-derived from second-resolution timestamps</text>`);
-}
-
 // --- Write -------------------------------------------------------------------
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}"
   viewBox="0 0 ${SIZE} ${SIZE}" style="background:${PAPER}">
@@ -641,7 +608,7 @@ ${out.join("\n")}
 </svg>`;
 
 mkdirSync(path.join(ROOT, "preview"), { recursive: true });
-const file = path.join(ROOT, "preview", DECLUMP ? "atlas-frame-declumped.svg" : "atlas-frame.svg");
+const file = path.join(ROOT, "preview", "atlas-frame.svg");
 writeFileSync(file, svg);
 
 // --- Report to stderr --------------------------------------------------------

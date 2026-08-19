@@ -364,7 +364,17 @@ The heart of the design: every visual property is a pure function of metadata. T
 **Interfaces:**
 - Consumes: `types.ts`, `bodies.ts`
 - Produces:
-  - `position.ts`: `ARM_ANGLES: Record<ArmId, number>`, `WIND_RATE`, `daysSinceEpoch(iso: string): number`, `radiusScale(days: number): number`, `polar(arm: ArmId, radius: number): Vec3`, `derivePosition(body: Body): Vec3`, `trailEnd(body: Body): Vec3`
+  - `position.ts`: `ARM_ANGLES: Record<ArmId, number>`, `WIND_RATE`, `daysSinceEpoch(iso: string): number`, `radiusScale(days: number): number`, `polar(arm: ArmId, radius: number): Vec3`, `derivePosition(body: Body): Vec3`, `trailEnd(body: Body): Vec3`, `placeBodies(bodies: Body[]): Placement[]`
+
+> **Amended after Task 3.** `derivePosition`/`trailEnd` give a body's position on the
+> arm *spine*, and the spine alone stacks 23 of the 45 bodies on top of each other:
+> theta is a pure function of `(arm, radius)`, so same-arm same-day repositories
+> coincide, and `radiusScale`'s sqrt yields under 0.04 world units per day at the
+> frontier. A hashed per-body offset was measured and rejected — across 48,000
+> (seed, arm width) combinations the best minimum separation was 0.324 against the
+> 0.35 two glyphs need, and reaching it required a 41° arm half-width against 72°
+> arm spacing. **`placeBodies` is the layout entry point every consumer must use**;
+> `derivePosition` remains the spine, for drawing arm curves.
   - `magnitude.ts`: `SYSTEM_MAGNITUDE`, `magnitude(body: Body): number`, `temperature(body: Body, today: string): number` returning 0 (cold) to 1 (frontier-hot)
 
 - [x] **Step 1: Write the failing position test**
