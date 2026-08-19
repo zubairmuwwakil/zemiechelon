@@ -674,11 +674,11 @@ The ranking, the switch threshold, the suppression rule, and the breakeven calcu
   - `interface Recommendation { winner: CandidateScore; runnerUp?: CandidateScore; switchedFromDefault: boolean; advantageOverDefaultCad?: number; defaultNotAccepted: boolean; suppressedBetterCard?: CandidateScore; valuationSensitive: boolean; valuationDirection?: ValuationDirection; alternateWinnerCardId?: string; breakevenCentsPerPoint?: number; declaredCentsPerPoint?: number; allCandidates: CandidateScore[] }`
   - `recommend(catalogue: Catalogue, ownerState: OwnerState, purchase: PurchaseContext, asOf: string): Recommendation`
 
-- [ ] **Step 1: Read `rank()` and write down its tie-break**
+- [x] **Step 1: Read `rank()` and write down its tie-break**
 
 Before writing any code, read `RecommendationEngine.rank(_:purchase:value:)` and record its tie-breaking rule in a comment at the top of the new file. This is trap 2: Swift's sort is unstable and JS's is stable, so ties must be broken explicitly or the two engines will disagree on cases the fixtures cover.
 
-- [ ] **Step 2: Port the Swift test cases**
+- [x] **Step 2: Port the Swift test cases**
 
 `BreakevenValuationTests.swift` and `ValuationSensitivityTests.swift` contain 1 case each — port both. They do not cover ranking, thresholds or suppression, so the 8 scenarios below are additional and must also be written. **Expect at least 10 cases in `recommendationEngine.test.ts`.**
 
@@ -691,21 +691,21 @@ Before writing any code, read `RecommendationEngine.rank(_:purchase:value:)` and
 - a valuation-insensitive result leaving all four breakeven fields `undefined`
 - a tie at the declared valuation resolving via the recorded tie-break, not sort order
 
-- [ ] **Step 3: Run and confirm they fail**
+- [x] **Step 3: Run and confirm they fail**
 
 Run: `npm test -- recommendationEngine`
 Expected: FAIL — cannot resolve `../recommendationEngine`.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 Port `RecommendationEngine.swift`. Preserve its three-ranking structure — `declared`, `floor`, `aspirational` — and its private `Verdict` intermediate. The Swift `precondition(!scores.isEmpty, ...)` becomes a thrown `Error` with the same message; do not silently return a null recommendation.
 
-- [ ] **Step 5: Run tests and confirm they pass**
+- [x] **Step 5: Run tests and confirm they pass**
 
 Run: `npm test -- recommendationEngine`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/engines/pickme/recommendationEngine.ts src/lib/engines/pickme/__tests__/recommendationEngine.test.ts

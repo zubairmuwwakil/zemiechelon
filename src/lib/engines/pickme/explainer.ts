@@ -1,32 +1,14 @@
 import type { Catalogue } from "./catalogue";
 import type { PurchaseContext } from "./purchase";
-import type { CandidateScore, Warning } from "./scorer";
+import type { Recommendation } from "./recommendationEngine";
+import type { Warning } from "./scorer";
 
-export type ValuationDirection = "below" | "above";
-
-export interface Recommendation {
-  winner: CandidateScore;
-  runnerUp?: CandidateScore;
-  switchedFromDefault: boolean;
-  advantageOverDefaultCad?: number;
-  defaultNotAccepted: boolean;
-  /** A card that beat the default but not by enough to be worth digging out the wallet. */
-  suppressedBetterCard?: CandidateScore;
-  /**
-   * True when the winner depends on the owner's declared point valuation — valuing points
-   * lower (or higher) would pick a different card.
-   */
-  valuationSensitive: boolean;
-  /** Which way the declared valuation would have to move to change the advice. */
-  valuationDirection?: ValuationDirection;
-  /** The card that wins on the other side of the breakeven. */
-  alternateWinnerCardId?: string;
-  /** The cents-per-point at which the recommendation flips to `alternateWinnerCardId`. */
-  breakevenCentsPerPoint?: number;
-  /** The declared cents-per-point the winning score assumed, when valuation-sensitive. */
-  declaredCentsPerPoint?: number;
-  allCandidates: CandidateScore[];
-}
+/**
+ * `Recommendation` is `RecommendationEngine.swift`'s type, not `Explainer.swift`'s — the
+ * explainer only consumes it. Re-exported here so callers of this module keep working, but
+ * declared once so the two files cannot drift apart.
+ */
+export type { Recommendation, ValuationDirection } from "./recommendationEngine";
 
 export interface Explanation {
   headline: string;
