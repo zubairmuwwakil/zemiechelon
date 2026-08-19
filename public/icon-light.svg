@@ -1,37 +1,43 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#F8FAFC"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="swPickMe" x1="80" y1="180" x2="236" y2="280" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0284C7"/>
-      <stop offset="100%" stop-color="#1D4ED8"/>
+    <linearGradient id="goldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
     </linearGradient>
-    <linearGradient id="swMarket" x1="432" y1="180" x2="276" y2="280" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#059669"/>
-      <stop offset="100%" stop-color="#047857"/>
+    <linearGradient id="emeraldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
     </linearGradient>
-    <linearGradient id="swLooply" x1="120" y1="280" x2="392" y2="390" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#EA580C"/>
-      <stop offset="100%" stop-color="#E11D48"/>
+    <linearGradient id="blackGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="100%" stop-color="#09090b" />
     </linearGradient>
-    <filter id="swShadow" x="30" y="30" width="452" height="452" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.08"/>
-    </filter>
   </defs>
 
-  <g filter="url(#swShadow)">
-    <!-- Forewings -->
-    <path d="M 234 212 C 140 156, 76 196, 76 244 C 76 288, 148 276, 234 252 Z" fill="url(#swPickMe)"/>
-    <path d="M 278 212 C 372 156, 436 196, 436 244 C 436 288, 364 276, 278 252 Z" fill="url(#swMarket)"/>
+  <!-- Clean bright porcelain canvas -->
+  <rect width="512" height="512" rx="112" fill="#ffffff" stroke="#e2e8f0" stroke-width="4" />
 
-    <!-- Hindwings -->
-    <path d="M 234 276 C 154 304, 114 364, 166 388 C 218 410, 246 348, 246 348 Z" fill="url(#swLooply)"/>
-    <path d="M 278 276 C 358 304, 398 364, 346 388 C 294 410, 266 348, 266 348 Z" fill="url(#swLooply)"/>
+  <g transform="translate(256, 260)">
+    <!-- Base Ancestral Foundation (Obsidian Black Tier) -->
+    <path d="M -160 110 C -110 95 110 95 160 110 L 130 145 C 80 135 -80 135 -130 145 Z" fill="url(#blackGrad1)" />
+
+    <!-- Lower Echelon Tier (Lush Emerald Green) -->
+    <path d="M -130 90 C -70 50 70 50 130 90 L 110 40 C 60 10 -60 10 -110 40 Z" fill="url(#emeraldGrad1)" />
+
+    <!-- Mid Echelon Tier (Obsidian Black) -->
+    <path d="M -90 25 C -40 -15 40 -15 90 25 L 70 -35 C 35 -65 -35 -65 -70 -35 Z" fill="url(#blackGrad1)" />
+
+    <!-- Apex Trigonolith Summit (Radiant Jamaican Gold) -->
+    <path d="M -50 -50 C -20 -95 0 -140 0 -155 C 0 -140 20 -95 50 -50 C 20 -65 -20 -65 -50 -50 Z" fill="url(#goldGrad1)" />
+
+    <!-- Sacred Ancestral Eye / Solar Meridian (Pure Gold Core with Green Ring) -->
+    <circle cx="0" cy="-25" r="18" fill="url(#goldGrad1)" />
+    <circle cx="0" cy="-25" r="28" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="6 4" />
+
+    <!-- Flank Chevrons in Emerald & Gold -->
+    <path d="M -140 10 L -170 35 L -140 60" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 140 10 L 170 35 L 140 60" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-
-  <!-- Spine in Deep Slate Navy -->
-  <rect x="238" y="86" width="36" height="340" rx="18" fill="#0F172A"/>
-
-  <!-- Apex Node in Clean White & Cobalt -->
-  <circle cx="256" cy="112" r="10" fill="#F8FAFC"/>
-  <circle cx="256" cy="112" r="5" fill="#0284C7"/>
 </svg>

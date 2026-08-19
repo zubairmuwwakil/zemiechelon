@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Zemi Echelon — Technology Ventures & Systems",
+  title: "Zemi Echelon — Interactive 3D Technology Holdings",
   description:
-    "Parent technology umbrella and engineering systems laboratory founded by Zubair Muwwakil. Home to Inunity, PickMe, MarketLens, Looply, and autonomous developer platforms.",
+    "Interactive 3D diorama map of technology ventures, native iOS copilots, autonomous AI runtimes, and high-concurrency systems engineered by Zubair Muwwakil.",
   icons: {
     icon: [
-      { url: "/favicon-dark.png", media: "(prefers-color-scheme: dark)" },
       { url: "/favicon-light.png", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark.png", media: "(prefers-color-scheme: dark)" },
       { url: "/favicon.ico", sizes: "32x32" },
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
@@ -24,11 +22,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className="min-h-screen bg-[#08080a] text-zinc-100 antialiased selection:bg-white selection:text-black">
-        <Header />
-        <main className="min-h-[calc(100vh-4rem)]">{children}</main>
-        <Footer />
+    <html lang="en" className="scroll-smooth">
+      <body className="h-screen w-screen overflow-hidden bg-[#f7f6f2] text-zinc-900 antialiased selection:bg-zinc-900 selection:text-white">
+        {children}
       </body>
     </html>
   );

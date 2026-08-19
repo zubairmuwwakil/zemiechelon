@@ -1,59 +1,43 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#090D16"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Left Forewing (PickMe: Cyan to Cobalt) -->
-    <linearGradient id="intPickMe" x1="60" y1="170" x2="250" y2="280" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#2563EB"/>
+    <linearGradient id="goldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
     </linearGradient>
-    <!-- Right Forewing (MarketLens: Emerald to Teal) -->
-    <linearGradient id="intMarket" x1="452" y1="170" x2="262" y2="280" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#34D399"/>
-      <stop offset="100%" stop-color="#059669"/>
+    <linearGradient id="emeraldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
     </linearGradient>
-    <!-- Lower Hindwings (Looply: Coral to Tangerine) -->
-    <linearGradient id="intLooplyL" x1="120" y1="280" x2="250" y2="390" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F43F5E"/>
-      <stop offset="100%" stop-color="#FB923C"/>
+    <linearGradient id="blackGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="100%" stop-color="#09090b" />
     </linearGradient>
-    <linearGradient id="intLooplyR" x1="392" y1="280" x2="262" y2="390" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F43F5E"/>
-      <stop offset="100%" stop-color="#FB923C"/>
-    </linearGradient>
-    <!-- Titanium Spine -->
-    <linearGradient id="intSpine" x1="256" y1="80" x2="256" y2="430" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="60%" stop-color="#F1F5F9"/>
-      <stop offset="100%" stop-color="#CBD5E1"/>
-    </linearGradient>
-    <filter id="intShadow" x="30" y="30" width="452" height="452" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#0284C7" flood-opacity="0.25"/>
-    </filter>
   </defs>
 
-  <!-- Wings Group with Clean Shadow -->
-  <g filter="url(#intShadow)">
-    <!-- Forewings -->
-    <path d="M 246 220 C 146 156, 70 196, 70 248 C 70 292, 148 280, 246 256 Z" 
-          fill="url(#intPickMe)"/>
-    <path d="M 266 220 C 366 156, 442 196, 442 248 C 442 292, 364 280, 266 256 Z" 
-          fill="url(#intMarket)"/>
+  <!-- Clean bright porcelain canvas -->
+  <rect width="512" height="512" rx="112" fill="#ffffff" stroke="#e2e8f0" stroke-width="4" />
 
-    <!-- Hindwings -->
-    <path d="M 246 270 C 158 300, 110 366, 166 392 C 224 416, 252 350, 252 350 Z" 
-          fill="url(#intLooplyL)"/>
-    <path d="M 266 270 C 354 300, 402 366, 346 392 C 288 416, 260 350, 260 350 Z" 
-          fill="url(#intLooplyR)"/>
+  <g transform="translate(256, 260)">
+    <!-- Base Ancestral Foundation (Obsidian Black Tier) -->
+    <path d="M -160 110 C -110 95 110 95 160 110 L 130 145 C 80 135 -80 135 -130 145 Z" fill="url(#blackGrad1)" />
+
+    <!-- Lower Echelon Tier (Lush Emerald Green) -->
+    <path d="M -130 90 C -70 50 70 50 130 90 L 110 40 C 60 10 -60 10 -110 40 Z" fill="url(#emeraldGrad1)" />
+
+    <!-- Mid Echelon Tier (Obsidian Black) -->
+    <path d="M -90 25 C -40 -15 40 -15 90 25 L 70 -35 C 35 -65 -35 -65 -70 -35 Z" fill="url(#blackGrad1)" />
+
+    <!-- Apex Trigonolith Summit (Radiant Jamaican Gold) -->
+    <path d="M -50 -50 C -20 -95 0 -140 0 -155 C 0 -140 20 -95 50 -50 C 20 -65 -20 -65 -50 -50 Z" fill="url(#goldGrad1)" />
+
+    <!-- Sacred Ancestral Eye / Solar Meridian (Pure Gold Core with Green Ring) -->
+    <circle cx="0" cy="-25" r="18" fill="url(#goldGrad1)" />
+    <circle cx="0" cy="-25" r="28" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="6 4" />
+
+    <!-- Flank Chevrons in Emerald & Gold -->
+    <path d="M -140 10 L -170 35 L -140 60" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 140 10 L 170 35 L 140 60" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-
-  <!-- Central 'I' Inunity Titanium Spine (Towering in Front with Clean Cutout) -->
-  <rect x="238" y="86" width="36" height="340" rx="18" fill="url(#intSpine)"/>
-
-  <!-- Subtle Metamere Rings on Spine (Clean Minimal Tactility) -->
-  <circle cx="256" cy="112" r="10" fill="#090D16"/>
-  <circle cx="256" cy="112" r="5" fill="#38BDF8"/>
-  
-  <line x1="244" y1="236" x2="268" y2="236" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
-  <line x1="244" y1="276" x2="268" y2="276" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
-  <line x1="246" y1="340" x2="266" y2="340" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
 </svg>

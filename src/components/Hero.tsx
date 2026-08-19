@@ -55,29 +55,29 @@ export function Hero() {
           </a>
         </div>
 
-        {/* Dragonfly Prism Badge Showcase */}
+        {/* Zemi Echelon Heritage Crest Showcase */}
         <div className="mt-16 mx-auto max-w-3xl rounded-2xl border border-white/[0.08] bg-[#0d0d12]/60 p-6 backdrop-blur-xl shadow-2xl">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-left">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 glow-cyan">
-                <img src="/icon.svg" alt="Dragonfly Suite" className="size-full object-contain" />
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 glow-emerald">
+                <img src="/icon.svg" alt="Zemi Echelon" className="size-full object-contain" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  The Dragonfly Monogram
-                  <span className="rounded-md bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono text-cyan-400 border border-cyan-500/20">
-                    UNIFIED BRAND
+                  The Sacred Zemí Trigonolith
+                  <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
+                    PLUS ULTRA
                   </span>
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Synthesizes PickMe (card wing), MarketLens (market wing), Looply (return loops), Inunity (spine), and Zemi Echelon (apex crown).
+                  Rooted in Jamaican Taíno ancestral fortitude, ascending through tiered echelon engineering into sovereign systems.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs font-mono text-zinc-400 border-t sm:border-t-0 sm:border-l border-white/[0.08] pt-4 sm:pt-0 sm:pl-6">
               <div className="text-left">
-                <div className="text-white font-semibold">100% Deterministic</div>
-                <div className="text-[11px] text-zinc-400">Zero Credential Scraping</div>
+                <div className="text-white font-semibold">Semper Plus Ultra</div>
+                <div className="text-[11px] text-zinc-400">Further Beyond</div>
               </div>
             </div>
           </div>
