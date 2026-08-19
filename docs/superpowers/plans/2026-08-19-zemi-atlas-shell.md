@@ -1147,7 +1147,7 @@ git commit -m "feat(atlas): add accessible DOM chart layer with density culling"
   - `deepLink.ts`: `bodyIdToHash(id: string): string`, `hashToBodyId(hash: string, bodies: Body[]): string | null`
   - `<BodyCard body onClose />`
 
-- [ ] **Step 1: Write the failing deep-link test**
+- [x] **Step 1: Write the failing deep-link test**
 
 Create `src/lib/atlas/__tests__/deepLink.test.ts`:
 
@@ -1188,16 +1188,16 @@ describe("deep links", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- deepLink`
 Expected: FAIL — cannot resolve `../deepLink`.
 
-- [ ] **Step 3: Write `deepLink.ts`**
+- [x] **Step 3: Write `deepLink.ts`**
 
 `bodyIdToHash` returns `#/${encodeURIComponent(id)}`. `hashToBodyId` strips the `#/` prefix, decodes, matches case-insensitively against `bodies`, and returns `null` for anything unknown or anonymous. Never throw — a bad hash is a user typo, not an exception.
 
-- [ ] **Step 4: Write the failing card test**
+- [x] **Step 4: Write the failing card test**
 
 Create `src/components/atlas/__tests__/bodyCard.test.tsx`:
 
@@ -1246,23 +1246,23 @@ describe("BodyCard", () => {
 });
 ```
 
-- [ ] **Step 5: Run and confirm it fails**
+- [x] **Step 5: Run and confirm it fails**
 
 Run: `npm test -- bodyCard`
 Expected: FAIL — cannot resolve `../BodyCard`.
 
-- [ ] **Step 6: Write `BodyCard.tsx`**
+- [x] **Step 6: Write `BodyCard.tsx`**
 
 A panel showing label, blurb, stack chips, born/last-touched dates, links, and a satellite list for systems. Match the existing `glass-panel-light` treatment in `src/app/globals.css`. Close on Escape and on backdrop click. Focus the panel on open and restore focus to the invoking button on close.
 
 Where `body.consoleId` is set, render a disabled "Open console" affordance marked as coming later — Track C fills it. This is the mount point the architecture reserves; do not wire a console here.
 
-- [ ] **Step 7: Run and confirm both pass**
+- [x] **Step 7: Run and confirm both pass**
 
 Run: `npm test -- deepLink bodyCard`
 Expected: PASS — 10 tests.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/components/atlas src/lib/atlas
