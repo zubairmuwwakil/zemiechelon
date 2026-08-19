@@ -80,13 +80,13 @@ Nothing in this repo runs tests today — `package.json` has only `lint`. This t
 - Consumes: nothing.
 - Produces: `npm test` runs Vitest; `src/data/contracts/*.json` exist and are importable with `resolveJsonModule`.
 
-- [ ] **Step 1: Install the test runner**
+- [x] **Step 1: Install the test runner**
 
 ```bash
 npm install -D vitest@^3 vite-tsconfig-paths@^5
 ```
 
-- [ ] **Step 2: Write the Vitest config**
+- [x] **Step 2: Write the Vitest config**
 
 Create `vitest.config.ts`:
 
@@ -103,7 +103,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Add test scripts to `package.json`**
+- [x] **Step 3: Add test scripts to `package.json`**
 
 In the `"scripts"` block, alongside the existing `"lint": "eslint"`:
 
@@ -112,7 +112,7 @@ In the `"scripts"` block, alongside the existing `"lint": "eslint"`:
 "test:watch": "vitest"
 ```
 
-- [ ] **Step 4: Write the contract sync script**
+- [x] **Step 4: Write the contract sync script**
 
 Create `scripts/sync-contracts.sh`:
 
@@ -154,12 +154,12 @@ Then make it executable:
 chmod +x scripts/sync-contracts.sh
 ```
 
-- [ ] **Step 5: Run the sync**
+- [x] **Step 5: Run the sync**
 
 Run: `./scripts/sync-contracts.sh`
 Expected: three lines of output, and `src/data/contracts/` contains three JSON files.
 
-- [ ] **Step 6: Write the failing test**
+- [x] **Step 6: Write the failing test**
 
 Create `src/lib/engines/pickme/__tests__/contracts.test.ts`:
 
@@ -194,12 +194,12 @@ describe("vendored contracts", () => {
 });
 ```
 
-- [ ] **Step 7: Run it and confirm it fails for the right reason**
+- [x] **Step 7: Run it and confirm it fails for the right reason**
 
 Run: `npm test`
 Expected: FAIL — TypeScript cannot import JSON until `resolveJsonModule` is enabled.
 
-- [ ] **Step 8: Enable JSON imports**
+- [x] **Step 8: Enable JSON imports**
 
 In `tsconfig.json`, add to `compilerOptions`:
 
@@ -207,12 +207,12 @@ In `tsconfig.json`, add to `compilerOptions`:
 "resolveJsonModule": true
 ```
 
-- [ ] **Step 9: Run it and confirm it passes**
+- [x] **Step 9: Run it and confirm it passes**
 
 Run: `npm test`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add vitest.config.ts package.json package-lock.json tsconfig.json scripts/sync-contracts.sh src/data/contracts src/lib/engines/pickme/__tests__/contracts.test.ts
