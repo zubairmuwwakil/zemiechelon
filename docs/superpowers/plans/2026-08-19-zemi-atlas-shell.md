@@ -980,7 +980,7 @@ The accessible half. Every hit target in the product lives here.
 - Consumes: `types.ts`, `bodies.ts`
 - Produces: `<Chart bodies points selectedId onSelect />` where `points: ScreenPoint[]` comes from `Field`'s `onProject`
 
-- [ ] **Step 1: Install DOM test tooling**
+- [x] **Step 1: Install DOM test tooling**
 
 ```bash
 npm install -D jsdom @testing-library/react @testing-library/user-event @testing-library/jest-dom
@@ -988,7 +988,7 @@ npm install -D jsdom @testing-library/react @testing-library/user-event @testing
 
 No change to `vitest.config.ts` is needed — the test file opts in with a docblock.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `src/components/atlas/__tests__/chart.test.tsx`:
 
@@ -1061,12 +1061,12 @@ describe("Chart", () => {
 });
 ```
 
-- [ ] **Step 3: Run and confirm it fails**
+- [x] **Step 3: Run and confirm it fails**
 
 Run: `npm test -- chart`
 Expected: FAIL — cannot resolve `../Chart`.
 
-- [ ] **Step 4: Write `Chart.tsx`**
+- [x] **Step 4: Write `Chart.tsx`**
 
 Follow `WorldPin.tsx`'s positioning technique — an absolutely positioned wrapper with `pointer-events-none`, children with `pointer-events-auto`, positioned by `transform: translate3d(${x}px, ${y}px, 0) translate(-50%, -100%)`. Transform-only positioning keeps this off the layout path, which matters when it runs every frame.
 
@@ -1079,7 +1079,7 @@ Differences from `WorldPin`:
 - Render a real `<button>` with `aria-pressed={selectedId === body.id}` and, for systems, an `aria-description` naming it a system and its satellite count.
 - Size and opacity scale with `magnitude`; do not let a low-magnitude label fall below a 24px hit target or 4.5:1 contrast.
 
-- [ ] **Step 5: Implement density culling**
+- [x] **Step 5: Implement density culling**
 
 This is the spec's risk 2 and the one thing Task 3's preview cannot settle, because a static frame has no zoom level. Aug 2026 holds 11 repos created in 14 days, so at the default zoom their labels will overlap into an unreadable pileup.
 
@@ -1119,12 +1119,12 @@ it("drops the lower-magnitude label when two collide", () => {
 
 `Chart` therefore takes a `cameraDistance: number` prop. Update the earlier tests in this task to pass `cameraDistance={20}`, which is close enough that nothing is culled.
 
-- [ ] **Step 6: Run and confirm it passes**
+- [x] **Step 6: Run and confirm it passes**
 
 Run: `npm test -- chart`
 Expected: PASS — 11 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/atlas package.json package-lock.json
