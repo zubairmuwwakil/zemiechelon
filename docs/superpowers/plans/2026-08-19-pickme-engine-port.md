@@ -339,7 +339,7 @@ Then define the remaining interfaces — `Predicate`, `EarnRule`, `CapMeasure`, 
 
 Translate `Models/OwnerState.swift`. Note `CardState` has eleven optional fields and `capProgress` is `[String: Double]?`, which becomes `capProgress?: Record<string, number>`. Every field stays optional — the Swift comment is explicit that `nil` means unresolved and the engine refuses rather than guessing.
 
-- [ ] **Step 5: Write `purchase.ts`**
+- [x] **Step 5: Write `purchase.ts`**
 
 Translate `Models/PurchaseContext.swift`. Its Swift `init` defaults are the contract:
 
@@ -371,12 +371,12 @@ export function makePurchase(
 }
 ```
 
-- [ ] **Step 6: Run tests and confirm they pass**
+- [x] **Step 6: Run tests and confirm they pass**
 
 Run: `npm test -- types`
 Expected: PASS — 7 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/engines/pickme
