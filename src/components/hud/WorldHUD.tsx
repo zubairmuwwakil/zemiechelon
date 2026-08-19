@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SECTORS } from "../data/ecosystem";
 import { GithubIcon } from "../icons/GithubIcon";
+import { ZemiMark } from "../icons/ZemiMark";
 import { TimeOfDay } from "../world/types";
 import { sound } from "@/lib/audio";
 
@@ -66,8 +67,8 @@ export function WorldHUD({
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         {/* Brand Badge */}
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white/90 px-3.5 py-2 shadow-lg backdrop-blur-md transition-all hover:bg-white">
-          <div className="flex size-8 items-center justify-center rounded-xl bg-zinc-900 text-white p-1">
-            <img src="/icon.svg" alt="Zemi Echelon" className="size-full object-contain invert" />
+          <div className="flex size-9 items-center justify-center rounded-xl bg-zinc-950 p-1 shadow-sm">
+            <ZemiMark className="size-full" />
           </div>
           <div className="flex flex-col">
             <span className="text-xs font-extrabold tracking-tight text-zinc-900">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, Shield, Sparkles } from "lucide-react";
+import { ZemiMark } from "./icons/ZemiMark";
 
 export function Header() {
   return (
@@ -7,8 +8,8 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-white/[0.06] border border-white/[0.1] p-1.5 transition-all group-hover:border-cyan-500/50 group-hover:bg-cyan-500/10">
-            <img src="/icon.svg" alt="Zemi Echelon" className="size-full object-contain" />
+          <div className="flex size-9 items-center justify-center rounded-xl bg-zinc-950 border border-white/[0.1] p-1 transition-all group-hover:border-emerald-500/50">
+            <ZemiMark className="size-full" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold tracking-tight text-white group-hover:text-white/90">
