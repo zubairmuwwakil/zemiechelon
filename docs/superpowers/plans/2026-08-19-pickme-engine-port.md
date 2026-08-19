@@ -239,7 +239,7 @@ Pure type definitions plus the one piece of real decoding logic: `Earn` is a tag
   - `ownerState.ts`: `SwitchThreshold`, `Carry`, `CardState`, `PointValuation`, `CtMoneyValuation`, `CroValuation`, `CashBackValuation`, `Valuations`, `OwnerState`
   - `purchase.ts`: `PurchaseContext`, `makePurchase(partial): PurchaseContext`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/engines/pickme/__tests__/types.test.ts`:
 
@@ -294,12 +294,12 @@ describe("makePurchase", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 Run: `npm test -- types`
 Expected: FAIL — cannot resolve `../catalogue` or `../purchase`.
 
-- [ ] **Step 3: Write `catalogue.ts`**
+- [x] **Step 3: Write `catalogue.ts`**
 
 Translate `Models/CatalogueModels.swift` one declaration at a time. Swift `enum X: String` becomes a TS string-literal union. Swift's `Earn` enum with associated values becomes a discriminated union whose discriminant is the JSON `type` field:
 
@@ -335,7 +335,7 @@ export function decodeEarn(raw: unknown): Earn {
 
 Then define the remaining interfaces — `Predicate`, `EarnRule`, `CapMeasure`, `CapPeriod`, `Cap`, `FxRule`, `Fee`, `Program`, `CardProduct`, `Catalogue` — with field names and optionality matching the Swift exactly. Swift `var x: T?` becomes `x?: T`.
 
-- [ ] **Step 4: Write `ownerState.ts`**
+- [x] **Step 4: Write `ownerState.ts`**
 
 Translate `Models/OwnerState.swift`. Note `CardState` has eleven optional fields and `capProgress` is `[String: Double]?`, which becomes `capProgress?: Record<string, number>`. Every field stays optional — the Swift comment is explicit that `nil` means unresolved and the engine refuses rather than guessing.
 
@@ -480,7 +480,7 @@ git commit -m "feat(pickme): port CapMath cap-boundary split"
   - `resolveRule(card, purchase, ownerState, asOf): RuleResolution`
   - `activeFxRule(card: CardProduct, asOf: string): FxRule | undefined`
 
-- [ ] **Step 1: Read the Swift and port its test cases**
+- [x] **Step 1: Read the Swift and port its test cases**
 
 Read `RuleMatcher.swift` end to end, then read `RuleMatcherTests.swift`.
 
@@ -498,12 +498,12 @@ Read `RuleMatcher.swift` end to end, then read `RuleMatcherTests.swift`.
 
 Write them all before writing any implementation.
 
-- [ ] **Step 2: Run and confirm they fail**
+- [x] **Step 2: Run and confirm they fail**
 
 Run: `npm test -- ruleMatcher`
 Expected: FAIL — cannot resolve `../ruleMatcher`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Port `RuleMatcher.swift`. The public shape:
 
@@ -534,12 +534,12 @@ export function activeFxRule(card: CardProduct, asOf: string): FxRule | undefine
 
 Fill both bodies by translating the Swift line by line. Do not restructure the control flow — a faithful translation is reviewable against the original; a "cleaner" one is not.
 
-- [ ] **Step 4: Run tests and confirm they pass**
+- [x] **Step 4: Run tests and confirm they pass**
 
 Run: `npm test -- ruleMatcher`
 Expected: PASS — all ported cases green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/engines/pickme/ruleMatcher.ts src/lib/engines/pickme/__tests__/ruleMatcher.test.ts
