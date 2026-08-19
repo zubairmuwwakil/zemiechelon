@@ -101,8 +101,15 @@ describe("trailEnd", () => {
 describe("placeBodies", () => {
   /** World units. Below this, two star glyphs draw on top of each other. */
   const MIN_SEPARATION = 0.35;
-  /** A system draws a ringed figure with satellites and needs far more room. */
-  const MIN_SYSTEM_SEPARATION = 1.9;
+  /**
+   * A system draws a ringed figure with satellites. Set against the rendered
+   * plate rather than from the geometry: at the frontier the three product
+   * systems read best as one cluster at the end of their arm, so their rings are
+   * allowed to touch. What must never happen is the discs merging — this floor
+   * is four disc diameters, and catches any regression toward the 0.039 they
+   * sat at before placeBodies existed.
+   */
+  const MIN_SYSTEM_SEPARATION = 1.4;
   const ARM_LANE = Math.PI / 5; // half the angular spacing between adjacent arms
 
   const placed = placeBodies(bodies);

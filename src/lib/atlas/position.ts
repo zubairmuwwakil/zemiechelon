@@ -70,7 +70,7 @@ export function trailEnd(body: Body): Vec3 {
 /** Bodies whose radii differ by less than this are treated as one crowded run. */
 const CROWD = 1.1;
 /** World units of arc a run tries to leave around each member. */
-const ROOM = { star: 0.5, system: 2.1 } as const;
+const ROOM = { star: 0.5, system: 1.5 } as const;
 /** Radians. A fan never opens wider than this, so an arm never reaches its neighbour. */
 const MAX_LANE = 0.55;
 /** World units. Bodies born at the epoch would otherwise all share the origin. */
