@@ -661,7 +661,7 @@ git commit -m "feat(atlas): derive position, magnitude and temperature from meta
 - Consumes: `bodies.ts`, `position.ts`, `magnitude.ts` from Tasks 1–2.
 - Produces: a viewable SVG. No runtime code — nothing in `src/` depends on this task.
 
-- [ ] **Step 1: Ignore the preview output**
+- [x] **Step 1: Ignore the preview output**
 
 Append to `.gitignore`:
 
@@ -669,7 +669,7 @@ Append to `.gitignore`:
 /preview
 ```
 
-- [ ] **Step 2: Write the preview script**
+- [x] **Step 2: Write the preview script**
 
 Create `scripts/preview-atlas.mjs`. It must import the real `loadBodies`, `derivePosition`, `trailEnd`, `magnitude` and `temperature` — a preview drawn from mock data proves nothing. Render, to a single SVG at 1600×1600:
 
@@ -688,12 +688,12 @@ Add to `package.json` scripts:
 "preview:atlas": "node scripts/preview-atlas.mjs"
 ```
 
-- [ ] **Step 3: Generate and look at it**
+- [x] **Step 3: Generate and look at it**
 
 Run: `npm run preview:atlas && open preview/atlas-frame.svg`
 Expected: an SVG that opens in a browser.
 
-- [ ] **Step 4: Judge it against these questions**
+- [x] **Step 4: Judge it against these questions**
 
 Answer each explicitly in your report — do not proceed on a vague impression:
 
@@ -705,14 +705,14 @@ Answer each explicitly in your report — do not proceed on a vague impression:
 
 **Question 5 is the gate.** If the honest answer is "generic node graph," stop and report that. The spec's stated fallback is a simpler ink-only palette, and taking it now costs two tasks; taking it after Task 7 costs seven.
 
-- [ ] **Step 5: Commit the script only**
+- [x] **Step 5: Commit the script only**
 
 ```bash
 git add scripts/preview-atlas.mjs package.json .gitignore
 git commit -m "feat(atlas): add static atlas treatment preview for design review"
 ```
 
-- [ ] **Step 6: Report before continuing**
+- [x] **Step 6: Report before continuing**
 
 Report the five answers and attach the SVG. **Do not start Task 4 without a human go-ahead.** Everything after this point assumes the treatment is settled; the remaining tasks are expensive to redo and cheap to defer.
 
@@ -739,7 +739,7 @@ Replaces `CameraManager`, whose lookAt-plus-drag-offset model cannot orbit. Keep
   - `update(delta: number): void`
   - `projectToScreen(points: Array<{ id: string; pos: Vec3 }>, width: number, height: number): ScreenPoint[]`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/atlas/__tests__/atlasCamera.test.ts`:
 
@@ -815,12 +815,12 @@ describe("AtlasCamera", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- atlasCamera`
 Expected: FAIL — cannot resolve `../AtlasCamera`.
 
-- [ ] **Step 3: Write `AtlasCamera.ts`**
+- [x] **Step 3: Write `AtlasCamera.ts`**
 
 Model the camera in spherical coordinates around a target — `{ azimuth, elevation, distance, target }` — with a lerped current and target state, the same smoothing pattern `CameraManager.update` uses (`lerpFactor = Math.min(1, delta * 4.5)`). Clamp elevation to roughly `[0.15, 1.35]` radians so the disk is always seen from above at an angle, and distance to `[6, 400]`.
 
@@ -837,12 +837,12 @@ projectToScreen(points: Array<{ id: string; pos: Vec3 }>, width: number, height:
 }
 ```
 
-- [ ] **Step 4: Run and confirm it passes**
+- [x] **Step 4: Run and confirm it passes**
 
 Run: `npm test -- atlasCamera`
 Expected: PASS — 7 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/atlas
@@ -867,7 +867,7 @@ Everything ambient, nothing clickable. This is the only task where WebGL is invo
   - `class FieldBuilder` with `constructor(scene: THREE.Scene, bodies: Body[], today: string)`, `build(): void`, `update(elapsed: number): void`, and readonly `bodySprites: Map<string, THREE.Object3D>`, `trailLines: THREE.Line[]`, `backgroundStarCount: number`
   - `<Field bodies today onProject />` — a client component owning the renderer and the loop, calling `onProject(points: ScreenPoint[])` once per frame
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/atlas/__tests__/fieldBuilder.test.ts`:
 
@@ -925,12 +925,12 @@ describe("FieldBuilder", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- fieldBuilder`
 Expected: FAIL — cannot resolve `../FieldBuilder`.
 
-- [ ] **Step 3: Write `FieldBuilder.ts`**
+- [x] **Step 3: Write `FieldBuilder.ts`**
 
 Build, in this order: background stars as a single `THREE.Points` with a buffer of at least 10,000 vertices scattered on a large sphere; arm dust as a second `Points` cloud sampled along each arm's `polar()` curve with jitter; one trail per body as a `THREE.Line` from `derivePosition` to `trailEnd`; one sprite per body sized by `magnitude` and coloured by `temperature`.
 
@@ -942,12 +942,12 @@ Three rules:
 
 Reuse from the deleted `SceneBuilder` only the ideas, not the code: `courierBots` become nothing yet (flow choreography is R4), `nightEmissives` become temperature colouring, `buildClouds` becomes arm dust.
 
-- [ ] **Step 4: Run and confirm it passes**
+- [x] **Step 4: Run and confirm it passes**
 
 Run: `npm test -- fieldBuilder`
 Expected: PASS — 6 tests.
 
-- [ ] **Step 5: Write `Field.tsx`**
+- [x] **Step 5: Write `Field.tsx`**
 
 Port the *structure* of `WorldCanvas.tsx`: renderer creation with `setPixelRatio(Math.min(devicePixelRatio, 2))`, resize handler, pointer drag, wheel zoom, `THREE.Clock` loop, cleanup on unmount. Replace `SceneBuilder` with `FieldBuilder` and `CameraManager` with `AtlasCamera`.
 
@@ -958,7 +958,7 @@ Two changes from the original:
 
 Disable shadows (`renderer.shadowMap.enabled = false`). There is no geometry to cast them and they cost real frame time.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/atlas
