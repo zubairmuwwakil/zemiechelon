@@ -733,7 +733,7 @@ The task the whole plan exists for. All 27 fixture cases must match exactly.
   - `loadCatalogue(): Catalogue`
   - `loadOwnerState(): OwnerState`
 
-- [ ] **Step 1: Write the failing seed test**
+- [x] **Step 1: Write the failing seed test**
 
 Create `src/lib/engines/pickme/__tests__/seed.test.ts`:
 
@@ -765,12 +765,12 @@ describe("seed loading", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- seed`
 Expected: FAIL — cannot resolve `../seed`.
 
-- [ ] **Step 3: Write `seed.ts`**
+- [x] **Step 3: Write `seed.ts`**
 
 ```ts
 import catalogueJson from "@/data/contracts/card-catalogue.json";
@@ -806,12 +806,12 @@ export function loadOwnerState(): OwnerState {
 }
 ```
 
-- [ ] **Step 4: Run and confirm it passes**
+- [x] **Step 4: Run and confirm it passes**
 
 Run: `npm test -- seed`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 5: Write the fixture parity harness**
+- [x] **Step 5: Write the fixture parity harness**
 
 Create `src/lib/engines/pickme/__tests__/fixtureParity.test.ts`. It must apply `pinnedValuations` over owner state and merge each case's `ownerStateOverrides`, or cases will fail for the wrong reason:
 
@@ -907,14 +907,14 @@ describe("engine-fixtures.json parity", () => {
 });
 ```
 
-- [ ] **Step 6: Run the gate**
+- [x] **Step 6: Run the gate**
 
 Run: `npm test -- fixtureParity`
 Expected: 28 tests, all PASS (27 cases plus the count assertion).
 
 If any case fails, fix the **port**, never the fixture. `engine-fixtures.json` is vendored from PickMe and is the specification; editing it to make a test pass destroys the only guarantee this plan provides. If a case appears genuinely wrong, stop and raise it rather than editing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/engines/pickme
