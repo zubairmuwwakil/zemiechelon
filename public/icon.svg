@@ -1,0 +1,59 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#090D16"/>
+  <defs>
+    <!-- Left Forewing (PickMe: Cyan to Cobalt) -->
+    <linearGradient id="intPickMe" x1="60" y1="170" x2="250" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <!-- Right Forewing (MarketLens: Emerald to Teal) -->
+    <linearGradient id="intMarket" x1="452" y1="170" x2="262" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <!-- Lower Hindwings (Looply: Coral to Tangerine) -->
+    <linearGradient id="intLooplyL" x1="120" y1="280" x2="250" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="intLooplyR" x1="392" y1="280" x2="262" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <!-- Titanium Spine -->
+    <linearGradient id="intSpine" x1="256" y1="80" x2="256" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <filter id="intShadow" x="30" y="30" width="452" height="452" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#0284C7" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Wings Group with Clean Shadow -->
+  <g filter="url(#intShadow)">
+    <!-- Forewings -->
+    <path d="M 246 220 C 146 156, 70 196, 70 248 C 70 292, 148 280, 246 256 Z" 
+          fill="url(#intPickMe)"/>
+    <path d="M 266 220 C 366 156, 442 196, 442 248 C 442 292, 364 280, 266 256 Z" 
+          fill="url(#intMarket)"/>
+
+    <!-- Hindwings -->
+    <path d="M 246 270 C 158 300, 110 366, 166 392 C 224 416, 252 350, 252 350 Z" 
+          fill="url(#intLooplyL)"/>
+    <path d="M 266 270 C 354 300, 402 366, 346 392 C 288 416, 260 350, 260 350 Z" 
+          fill="url(#intLooplyR)"/>
+  </g>
+
+  <!-- Central 'I' Inunity Titanium Spine (Towering in Front with Clean Cutout) -->
+  <rect x="238" y="86" width="36" height="340" rx="18" fill="url(#intSpine)"/>
+
+  <!-- Subtle Metamere Rings on Spine (Clean Minimal Tactility) -->
+  <circle cx="256" cy="112" r="10" fill="#090D16"/>
+  <circle cx="256" cy="112" r="5" fill="#38BDF8"/>
+  
+  <line x1="244" y1="236" x2="268" y2="236" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <line x1="244" y1="276" x2="268" y2="276" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <line x1="246" y1="340" x2="266" y2="340" stroke="#090D16" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+</svg>

@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #08080a;
+  --foreground: #f4f4f6;
+  --card: #0e0e12;
+  --card-foreground: #f4f4f6;
+  --popover: #0e0e12;
+  --popover-foreground: #f4f4f6;
+  --primary: #ffffff;
+  --primary-foreground: #08080a;
+  --secondary: #16161c;
+  --secondary-foreground: #f4f4f6;
+  --muted: #141418;
+  --muted-foreground: #9494a0;
+  --accent: #1e1e26;
+  --accent-foreground: #f4f4f6;
+  --destructive: #ef4444;
+  --destructive-foreground: #f4f4f6;
+  --border: #202028;
+  --input: #202028;
+  --ring: #3b82f6;
+  --radius: 0.75rem;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Custom glow and backdrop effects */
+.glow-cyan {
+  box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.25);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.25);
+}
+
+.glow-coral {
+  box-shadow: 0 0 40px -10px rgba(249, 115, 22, 0.25);
+}
+
+.glass-panel {
+  background: rgba(14, 14, 18, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
