@@ -367,7 +367,7 @@ The heart of the design: every visual property is a pure function of metadata. T
   - `position.ts`: `ARM_ANGLES: Record<ArmId, number>`, `WIND_RATE`, `daysSinceEpoch(iso: string): number`, `radiusScale(days: number): number`, `polar(arm: ArmId, radius: number): Vec3`, `derivePosition(body: Body): Vec3`, `trailEnd(body: Body): Vec3`
   - `magnitude.ts`: `SYSTEM_MAGNITUDE`, `magnitude(body: Body): number`, `temperature(body: Body, today: string): number` returning 0 (cold) to 1 (frontier-hot)
 
-- [ ] **Step 1: Write the failing position test**
+- [x] **Step 1: Write the failing position test**
 
 Create `src/lib/atlas/__tests__/position.test.ts`:
 
@@ -461,12 +461,12 @@ describe("trailEnd", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 Run: `npm test -- position`
 Expected: FAIL — cannot resolve `../position`.
 
-- [ ] **Step 3: Write `src/lib/atlas/position.ts`**
+- [x] **Step 3: Write `src/lib/atlas/position.ts`**
 
 ```ts
 import type { ArmId, Body, Vec3 } from "./types";
@@ -514,14 +514,14 @@ export function trailEnd(body: Body): Vec3 {
 }
 ```
 
-- [ ] **Step 4: Run and confirm it passes**
+- [x] **Step 4: Run and confirm it passes**
 
 Run: `npm test -- position`
 Expected: PASS — 13 tests.
 
 If "separates arms by angle" fails, `WIND_RATE` is winding arms into each other; lower it. If "places every 2025 body inside every 2026-08 body" fails, the radius map is not monotonic. Tune the constants — never special-case a body.
 
-- [ ] **Step 5: Write the failing magnitude test**
+- [x] **Step 5: Write the failing magnitude test**
 
 Create `src/lib/atlas/__tests__/magnitude.test.ts`:
 
@@ -586,12 +586,12 @@ describe("temperature", () => {
 });
 ```
 
-- [ ] **Step 6: Run and confirm it fails**
+- [x] **Step 6: Run and confirm it fails**
 
 Run: `npm test -- magnitude`
 Expected: FAIL — cannot resolve `../magnitude`.
 
-- [ ] **Step 7: Write `src/lib/atlas/magnitude.ts`**
+- [x] **Step 7: Write `src/lib/atlas/magnitude.ts`**
 
 ```ts
 import type { Body } from "./types";
@@ -624,12 +624,12 @@ export function temperature(body: Body, today: string): number {
 }
 ```
 
-- [ ] **Step 8: Run and confirm it passes**
+- [x] **Step 8: Run and confirm it passes**
 
 Run: `npm test -- magnitude`
 Expected: PASS — 9 tests.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/lib/atlas
