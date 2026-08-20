@@ -221,11 +221,21 @@ claim with its cited bodies — is what makes a ring an instrument rather than
 decoration. Each ring carries one slow-orbiting bead so the ring reads as moving
 before it is touched.
 
+**Validation is per-ideal, and content arrives last.** A planet that declares no
+ideals renders no rings, which is a legitimate state rather than a failure — so the
+ring *mechanism* is built and testable against fixture ideals before the real claims
+exist. The author supplies the claims and their cited bodies late in R1; each one is
+validated as it lands. Nothing in the build depends on a claim that has not been
+written, and no ideal ships without its evidence.
+
 ### 5.4 Performance constraint
 
 All five planets share **one shader with per-instance uniforms**, not five
-materials. Mobile is a first-class surface (§7.2), and five bespoke materials is
-where the frame budget goes.
+materials. This is an architecture decision that stands on its own: five bespoke
+materials means five draw-call groups and five compile paths for what is one family
+of surfaces. It costs nothing to do this way from the start and is a rewrite later.
+It also happens to be what keeps the frame budget viable on a phone (§7.2), but it
+is not justified by that alone.
 
 ---
 
@@ -264,18 +274,25 @@ Direction A only. Day only. One diorama.
 ported engine passes all 27 cases in `engine-fixtures.json`. A diorama for a planet
 with nothing real on it rebuilds the theatre problem.
 
-### 7.1 Time-to-evidence
+### 7.1 Time-to-evidence — guidance, not a gate
 
-The governing metric is not load time. It is **seconds until something provable is
-on screen**, and the headline fact — 286 days, first website to distributed systems
-— must require zero clicks. If the map does not read at rest, the interactivity is
-decoration.
+Where two implementations are otherwise equal, prefer the one that puts something
+provable on screen sooner, and prefer a map that reads at rest over one that needs
+interaction to make its point. The headline fact — 286 days, first website to
+distributed systems — is worth surfacing early if it is cheap to do so.
 
-### 7.2 Mobile
+This is a tie-breaker for design decisions, **not an acceptance criterion**. No R1
+task is blocked on hitting a time-to-evidence number, and none is defined.
 
-Mobile is a surface, not a degradation. Both target audiences open links from email
-and LinkedIn on a phone. Free 3D orbit there is poor, so: tap-to-focus instead of
-orbit, reduced particle budget, and the Dossier list reachable in one tap.
+### 7.2 Mobile — guidance, not a gate
+
+Both target audiences open links from a phone, so mobile is worth designing for
+rather than degrading into: tap-to-focus reads better than free orbit on a small
+panel, particle budget should scale down on narrow viewports, and the Dossier list
+is the fast path for anyone who does not want the 3D world at all.
+
+Treated as direction, **not as a release gate**. R1 does not block on a mobile
+performance target, and none is defined.
 
 ---
 
