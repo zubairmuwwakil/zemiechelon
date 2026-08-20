@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FOUNDER_QUOTES } from "@/data/quotes";
 import { deriveQuoteStars } from "@/lib/quotes/sky";
@@ -60,5 +60,89 @@ describe("QuoteSky", () => {
   it("still renders reachable stars in day mode", () => {
     render(<QuoteSky cosmicMode="day" points={points} />);
     expect(screen.getAllByRole("button").length).toBeGreaterThan(0);
+  });
+});
+
+describe("QuoteSky day comets", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("flies more than one comet at a time", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(12_000);
+    });
+    expect(screen.getAllByTestId("quote-comet").length).toBeGreaterThan(1);
+  });
+
+  it("never flies more than three at once", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(120_000);
+    });
+    expect(screen.getAllByTestId("quote-comet").length).toBeLessThanOrEqual(3);
+  });
+
+  it("pauses a comet and opens its quote when activated", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+    });
+    const comet = screen.getAllByTestId("quote-comet")[0];
+    fireEvent.click(comet);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent(comet.getAttribute("aria-label")!);
+    expect(comet).toHaveAttribute("data-paused", "true");
+  });
+
+  it("holds a hovered comet in place and releases it on leave", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+    });
+    const comet = screen.getAllByTestId("quote-comet")[0];
+    fireEvent.mouseEnter(comet);
+    expect(comet).toHaveAttribute("data-paused", "true");
+    fireEvent.mouseLeave(comet);
+    expect(comet).toHaveAttribute("data-paused", "false");
+  });
+
+  it("keeps a paused comet alive past the end of its flight", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    const comet = screen.getAllByTestId("quote-comet")[0];
+    const held = comet.getAttribute("aria-label");
+    fireEvent.click(comet);
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(
+      screen.getAllByTestId("quote-comet").map((c) => c.getAttribute("aria-label")),
+    ).toContain(held);
+  });
+
+  it("gives each comet a quote of its own", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="day" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(12_000);
+    });
+    const labels = screen.getAllByTestId("quote-comet").map((c) => c.getAttribute("aria-label"));
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("flies no comets in night mode", async () => {
+    vi.useFakeTimers();
+    render(<QuoteSky cosmicMode="night" points={points} />);
+    await act(async () => {
+      vi.advanceTimersByTime(20_000);
+    });
+    expect(screen.queryAllByTestId("quote-comet")).toHaveLength(0);
   });
 });

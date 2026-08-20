@@ -116,6 +116,52 @@ body {
   }
 }
 
+/* A day-mode quote comet. Travel is expressed in viewport units, not in
+   percentages of the element, so a long quote does not fly further or faster
+   than a short one — `shootingStarGlide` translates by element size, which for
+   a text comet makes speed a function of character count.
+
+   The drift is deliberately shallow (4vh across the whole flight) and the text
+   is not rotated: a tilted comet's vertical footprint grows with its width, so
+   a long quote at a slant swallows the lane above it and two quotes end up
+   reading over each other. This is text meant to be read, not a spark. */
+@keyframes quoteCometGlide {
+  0% {
+    transform: translate3d(58vw, -2vh, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-118vw, 2vh, 0);
+    opacity: 0;
+  }
+}
+
+.quote-comet {
+  animation: quoteCometGlide 11s linear forwards;
+}
+
+/* Hovered, focused, or caught: the comet freezes where it is rather than
+   restarting. Swapping the animation off would snap it back to its start. */
+.quote-comet[data-paused="true"] {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No travel. The quote parks centred and stays readable — motion is removed,
+     content never is. */
+  .quote-comet {
+    animation: none;
+    transform: translateX(-50%);
+    opacity: 1;
+  }
+}
+
 /* Custom minimal scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
