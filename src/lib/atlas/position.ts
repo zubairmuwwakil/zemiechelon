@@ -1,22 +1,16 @@
-import type { ArmId, Body, Vec3 } from "./types";
-import { EPOCH } from "./bodies";
+import type { Body, Vec3 } from "./types";
+import { getScope, GALAXY_ZEMI, type Scope } from "./scopes";
 
-/** Radians. Arms are evenly spaced; the order is fixed so the layout is stable. */
-export const ARM_ANGLES: Record<ArmId, number> = {
-  foundations: 0,
-  products: (2 * Math.PI) / 5,
-  labs: (4 * Math.PI) / 5,
-  self: (6 * Math.PI) / 5,
-  creative: (8 * Math.PI) / 5,
-};
+/** @deprecated Read `scope.arms` instead. Retained so the galaxy's own table stays importable. */
+export const ARM_ANGLES = GALAXY_ZEMI.arms;
 
-/** How far an arm sweeps per e-fold of radius. Higher = tighter spiral. */
-export const WIND_RATE = 0.55;
+/** @deprecated Read `scope.windRate` instead. */
+export const WIND_RATE = GALAXY_ZEMI.windRate;
 
 const MS_PER_DAY = 86_400_000;
 
-export function daysSinceEpoch(iso: string): number {
-  return Math.round((Date.parse(iso) - Date.parse(EPOCH)) / MS_PER_DAY);
+export function daysSinceEpoch(iso: string, epoch: string = GALAXY_ZEMI.epoch): number {
+  return Math.round((Date.parse(iso) - Date.parse(epoch)) / MS_PER_DAY);
 }
 
 /**
@@ -28,8 +22,8 @@ export function radiusScale(days: number): number {
   return Math.sqrt(Math.max(0, days)) * 1.15;
 }
 
-export function polar(arm: ArmId, radius: number): Vec3 {
-  const theta = ARM_ANGLES[arm] + WIND_RATE * Math.log(1 + radius);
+export function polar(arm: string, radius: number, scope: Scope = GALAXY_ZEMI): Vec3 {
+  const theta = scope.arms[arm] + scope.windRate * Math.log(1 + radius);
   return { x: Math.cos(theta) * radius, y: 0, z: Math.sin(theta) * radius };
 }
 
@@ -39,13 +33,13 @@ export function polar(arm: ArmId, radius: number): Vec3 {
  * Chart layers consume. This is the spine itself: the curve the arm is drawn
  * along, and the base that `placeBodies` offsets from.
  */
-export function derivePosition(body: Body): Vec3 {
-  return polar(body.arm, radiusScale(daysSinceEpoch(body.bornAt)));
+export function derivePosition(body: Body, scope: Scope = getScope(body.parent)): Vec3 {
+  return polar(body.arm, radiusScale(daysSinceEpoch(body.bornAt, scope.epoch)), scope);
 }
 
 /** Where a body's trail ends on the spine: its own arm, at last-touched radius. */
-export function trailEnd(body: Body): Vec3 {
-  return polar(body.arm, radiusScale(daysSinceEpoch(body.lastTouchedAt)));
+export function trailEnd(body: Body, scope: Scope = getScope(body.parent)): Vec3 {
+  return polar(body.arm, radiusScale(daysSinceEpoch(body.lastTouchedAt, scope.epoch)), scope);
 }
 
 // --- Scatter -----------------------------------------------------------------
@@ -86,8 +80,8 @@ export interface Placement {
   lane: number;
 }
 
-function at(arm: ArmId, radius: number, lane: number): Vec3 {
-  const theta = ARM_ANGLES[arm] + WIND_RATE * Math.log(1 + radius) + lane;
+function at(arm: string, radius: number, lane: number, scope: Scope): Vec3 {
+  const theta = scope.arms[arm] + scope.windRate * Math.log(1 + radius) + lane;
   return { x: Math.cos(theta) * radius, y: 0, z: Math.sin(theta) * radius };
 }
 
@@ -98,16 +92,16 @@ function at(arm: ArmId, radius: number, lane: number): Vec3 {
  * along it. A run may also be nudged radially, by at most half a day of local
  * radius — enough to unstack the epoch, negligible at the frontier.
  */
-export function placeBodies(bodies: Body[]): Placement[] {
+export function placeBodies(bodies: Body[], scope: Scope = GALAXY_ZEMI): Placement[] {
   const out: Placement[] = [];
 
-  for (const arm of Object.keys(ARM_ANGLES) as ArmId[]) {
+  for (const arm of Object.keys(scope.arms)) {
     const inArm = bodies
       .filter((b) => b.arm === arm)
       .map((b) => ({
         b,
-        day: daysSinceEpoch(b.bornAt),
-        r: Math.max(radiusScale(daysSinceEpoch(b.bornAt)), BULGE),
+        day: daysSinceEpoch(b.bornAt, scope.epoch),
+        r: Math.max(radiusScale(daysSinceEpoch(b.bornAt, scope.epoch)), BULGE),
       }))
       .sort((p, q) => p.r - q.r || p.b.bornAt.localeCompare(q.b.bornAt) || p.b.id.localeCompare(q.b.id));
 
@@ -135,8 +129,8 @@ export function placeBodies(bodies: Body[]): Placement[] {
         out.push({
           id: m.b.id,
           lane,
-          position: at(arm, m.r + nudge, lane),
-          trailEnd: at(arm, Math.max(radiusScale(daysSinceEpoch(m.b.lastTouchedAt)), BULGE) + nudge, lane),
+          position: at(arm, m.r + nudge, lane, scope),
+          trailEnd: at(arm, Math.max(radiusScale(daysSinceEpoch(m.b.lastTouchedAt, scope.epoch)), BULGE) + nudge, lane, scope),
         });
       });
     }
