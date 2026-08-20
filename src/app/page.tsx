@@ -1,89 +1,160 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Compass } from "lucide-react";
-import { AtlasStage } from "@/components/atlas/AtlasStage";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { WorldCanvas, type WorldCanvasHandle } from "@/components/world/WorldCanvas";
+import type { CosmicMode } from "@/components/world/DayNightController";
+import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
+import { ShootingStarQuotes } from "@/components/world/ShootingStarQuotes";
 import { WorldHUD } from "@/components/hud/WorldHUD";
-import { SectorDrawer } from "@/components/hud/SectorDrawer";
+import { CleanPlanetLandingModal } from "@/components/hud/CleanPlanetLandingModal";
+import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
+import { PlanetPinsOverlay } from "@/components/world/PlanetPinsOverlay";
+import { NoiseOverlay } from "@/components/world/NoiseOverlay";
+import type { ScreenPoint } from "@/lib/atlas/types";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
 import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
-import { bodyIdToHash } from "@/lib/atlas/deepLink";
-import type { ArmId } from "@/lib/atlas/types";
+import { BodyCard } from "@/components/atlas/BodyCard";
+import { loadBodies } from "@/lib/atlas/bodies";
+import { sound } from "@/lib/audio";
 
 export default function HomePage() {
-  const [selectedArmId, setSelectedArmId] = useState<ArmId | null>(null);
+  const bodies = useMemo(() => loadBodies(), []);
+  const canvasHandleRef = useRef<WorldCanvasHandle>(null);
+
+  // States
+  const [cosmicMode, setCosmicMode] = useState<CosmicMode>("day");
+  const [activePreset, setActivePreset] = useState<CameraTargetPreset>("galaxy");
+  const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
+  const [screenPoints, setScreenPoints] = useState<ScreenPoint[]>([]);
+
+  // Planetary Landing Workspace state
+  const [activeLandingPlanet, setActiveLandingPlanet] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [resetToken, setResetToken] = useState(0);
 
-  // Selection lives in the URL hash, which AtlasStage listens to. The page never
-  // holds a selected body, so the drawer and the dossier reach the map the same
-  // way a pasted link does.
-  const selectBody = useCallback((bodyId: string) => {
-    window.location.hash = bodyIdToHash(bodyId);
+  // Sector & Planet Landing Selection Handler
+  const handleSelectSector = useCallback((sectorId: string) => {
+    sound.playClick(600, 0.05);
+
+    if (sectorId === "galaxy" || sectorId === "overview") {
+      setActivePreset("galaxy");
+      setActiveLandingPlanet(null);
+    } else if (sectorId === "products" || sectorId === "planet-products") {
+      setActivePreset("products");
+      setActiveLandingPlanet("products");
+    } else if (sectorId === "labs" || sectorId === "planet-labs") {
+      setActivePreset("labs");
+      setActiveLandingPlanet("labs");
+    } else if (sectorId === "foundations" || sectorId === "planet-foundations") {
+      setActivePreset("foundations");
+      setActiveLandingPlanet("foundations");
+    } else if (sectorId === "self" || sectorId === "planet-self" || sectorId === "founder") {
+      setActivePreset("self");
+      setActiveLandingPlanet("self");
+    } else if (sectorId === "creative" || sectorId === "planet-creative") {
+      setActivePreset("creative");
+      setActiveLandingPlanet("creative");
+    } else {
+      setActivePreset("galaxy");
+      setActiveLandingPlanet(null);
+    }
   }, []);
 
-  // AtlasStage owns the hash and the camera; the page only asks for a reset.
+  // Celestial Body Selection Handler
+  const handleSelectBody = useCallback((bodyId: string) => {
+    sound.playClick(700, 0.05);
+    setSelectedBodyId(bodyId);
+  }, []);
+
+  // Reset to Galaxy Orbit
   const resetView = useCallback(() => {
-    setSelectedArmId(null);
-    setResetToken((n) => n + 1);
+    sound.playClick(400, 0.06);
+    setActivePreset("galaxy");
+    setSelectedBodyId(null);
+    setActiveLandingPlanet(null);
   }, []);
+
+  const selectedBody = useMemo(
+    () => (selectedBodyId ? bodies.find((b) => b.id === selectedBodyId) ?? null : null),
+    [bodies, selectedBodyId]
+  );
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#f7f6f2]">
-      {/* Field + Chart + BodyCard, over one shared camera */}
-      <AtlasStage resetToken={resetToken} />
+    <main className="relative h-screen w-screen overflow-hidden select-none">
+      {/* 1. 3D WebGL Minimalist Astrolabe Canvas */}
+      <WorldCanvas
+        ref={canvasHandleRef}
+        bodies={bodies}
+        cosmicMode={cosmicMode}
+        cameraPreset={activePreset}
+        onSelectSector={handleSelectSector}
+        onSelectBody={handleSelectBody}
+        onProjectPins={setScreenPoints}
+      />
 
-      {/* Top HUD Navigation Bar with Arm Dock and Audio Controls */}
+      {/* 2. Tactile Swiss Paper Grain & Archival Noise Overlay */}
+      <NoiseOverlay />
+
+      {/* 2. Floating Planet Pill Badges (Mockup Slides 1, 2, 4) */}
+      <PlanetPinsOverlay
+        points={screenPoints}
+        activePreset={activePreset}
+        cosmicMode={cosmicMode}
+        onSelectPlanet={handleSelectSector}
+      />
+
+      {/* 3. Shooting Star Mantras & Night Star Tooltips (Mockup Slides 1, 2, 4) */}
+      <ShootingStarQuotes cosmicMode={cosmicMode} />
+
+      {/* 4. Top Segmented Capsule HUD (Mockup Slides 1, 2, 4) */}
       <WorldHUD
-        selectedArmId={selectedArmId}
-        onSelectArm={setSelectedArmId}
+        cosmicMode={cosmicMode}
+        onToggleCosmicMode={() =>
+          setCosmicMode((prev) => (prev === "day" ? "night" : "day"))
+        }
+        activePreset={activePreset}
+        onSelectPreset={handleSelectSector}
         onResetView={resetView}
         isDossierOpen={isDossierOpen}
         onToggleDossier={() => setIsDossierOpen((prev) => !prev)}
         onOpenTerminal={() => setIsTerminalOpen(true)}
       />
 
-      {/* Slide-in Arm Dossier Drawer */}
-      <SectorDrawer
-        selectedArmId={selectedArmId}
-        onClose={() => setSelectedArmId(null)}
-        onSelectArm={setSelectedArmId}
-        onSelectBody={selectBody}
+      {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
+      {!activeLandingPlanet && !isDossierOpen && !isTerminalOpen && !selectedBodyId && (
+        <InteractionHintsPill cosmicMode={cosmicMode} />
+      )}
+
+      {/* 6. Clean Planetary Landing Glass Workstation Modal ("Descent Mode" - Mockup Slide 3) */}
+      <CleanPlanetLandingModal
+        planetId={activeLandingPlanet}
+        cosmicMode={cosmicMode}
+        onClose={() => {
+          setActiveLandingPlanet(null);
+          setActivePreset("galaxy");
+        }}
         onOpenTerminal={() => setIsTerminalOpen(true)}
+        onSelectBody={handleSelectBody}
       />
 
-      {/* Full Structured Dossier Modal */}
+      {/* 7. Global Dossier Search Modal (44 Repositories) */}
       <QuickDossierModal
         isOpen={isDossierOpen}
         onClose={() => setIsDossierOpen(false)}
-        onSelectArmFromList={(armId) => {
-          setSelectedArmId(armId);
-          setIsDossierOpen(false);
-        }}
-        onSelectBody={selectBody}
+        onSelectArmFromList={() => {}}
+        onSelectBody={handleSelectBody}
       />
 
-      {/* Retro Command Quest CRT Terminal Modal */}
+      {/* 8. Retro Command Quest CRT Terminal */}
       <MiniTerminalModal
         isOpen={isTerminalOpen}
         onClose={() => setIsTerminalOpen(false)}
       />
 
-      {/* Bottom Interaction Hint */}
-      {!selectedArmId && !isDossierOpen && !isTerminalOpen && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/85 px-4 py-1.5 text-xs font-mono text-zinc-600 shadow-md backdrop-blur-md">
-            <Compass className="size-3.5 text-zinc-400" />
-            <span className="hidden sm:inline">
-              45 bodies, five arms · Drag to orbit · Scroll to zoom · Click a body to open it
-            </span>
-            <span className="sm:hidden">
-              Tap any body to open it
-            </span>
-          </div>
-        </div>
+      {/* 9. Selected Celestial Body Card Modal */}
+      {selectedBody && (
+        <BodyCard body={selectedBody} onClose={() => setSelectedBodyId(null)} />
       )}
-    </div>
+    </main>
   );
 }
