@@ -172,6 +172,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const today = new Date().toISOString().slice(0, 10);
     const sceneBuilder = new WorldSceneBuilder(scene, bodies, today, fieldDensityFor(width));
     sceneBuilder.build();
+    sceneBuilder.setResolution(width, height);
     sceneBuilderRef.current = sceneBuilder;
 
     // 6. Raycasting and pointer interaction
@@ -187,8 +188,26 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       previousPointer = { x: e.clientX, y: e.clientY };
     };
 
+    /** Hover only resolves ideal rings; nothing else in the scene reacts to it. */
+    const onPointerHover = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, cameraManager.camera);
+
+      const rings = sceneBuilder.hitObjects.filter((h) => h.type === "ideal");
+      if (rings.length === 0) return;
+      const hit = raycaster.intersectObjects(rings.map((h) => h.mesh), false)[0];
+      sceneBuilder.setHoveredIdeal(
+        hit ? (rings.find((h) => h.mesh === hit.object)?.id ?? null) : null,
+      );
+    };
+
     const onPointerMove = (e: PointerEvent) => {
-      if (!isDragging) return;
+      if (!isDragging) {
+        onPointerHover(e);
+        return;
+      }
       const dx = e.clientX - previousPointer.x;
       const dy = e.clientY - previousPointer.y;
       dragDistance += Math.hypot(dx, dy);
@@ -255,6 +274,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       renderer.setSize(width, height);
       composer.setSize(width, height);
       bloomPass.resolution.set(width, height);
+      sceneBuilder.setResolution(width, height);
     };
     window.addEventListener("resize", onResize);
 

@@ -1,9 +1,13 @@
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Body } from "@/lib/atlas/types";
 import { placeBodies } from "@/lib/atlas/position";
 import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
+import { idealsFor } from "@/lib/atlas/ideals";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { createAtmosphericGlowMesh } from "./AtmosphereShader";
@@ -119,7 +123,7 @@ export function buildFieldGeometry(
 export interface InteractiveHitObject {
   id: string;
   name: string;
-  type: "planet" | "sector" | "body";
+  type: "planet" | "sector" | "body" | "ideal";
   mesh: THREE.Object3D;
   /**
    * Set when `mesh` is shared. The five planets are one InstancedMesh, so the
@@ -135,6 +139,28 @@ export interface InteractiveHitObject {
  */
 export const PLANET_Y = 1.0;
 
+const RING_SEGMENTS = 192;
+
+/**
+ * Sprite scale with `sizeAttenuation: false`, where scale is a fraction of the
+ * frustum rather than a world length: 0.064 lands the pill at about 60 CSS px
+ * tall on a 720 px viewport, whatever the camera distance.
+ */
+const CLAIM_LABEL_SCALE = 0.064;
+const CLAIM_LABEL_ASPECT = 3.4;
+
+/** Rest, hovered, and hovered-sibling. Dimming is what makes lighting mean something. */
+export const RING_OPACITY = { rest: 0.5, lit: 1, dimmed: 0.12 } as const;
+
+interface IdealRing {
+  id: string;
+  ringMaterial: LineMaterial;
+  label: THREE.Sprite;
+  pivot: THREE.Group;
+  /** Radians per second. */
+  orbitRate: number;
+}
+
 export class WorldSceneBuilder {
   public readonly rootGroup = new THREE.Group();
   public readonly hitObjects: InteractiveHitObject[] = [];
@@ -143,6 +169,14 @@ export class WorldSceneBuilder {
   // Animated celestial elements
   private planetarySpheres: THREE.Mesh[] = [];
   private planetMaterial: THREE.ShaderMaterial | null = null;
+  private idealRings: IdealRing[] = [];
+  private hoveredIdeal: string | null = null;
+  /**
+   * Drawing-buffer size, shared by every screen-space line. Line2 needs it to
+   * turn a pixel width into clip space; a stale value scales every ring wrongly
+   * after a resize.
+   */
+  private readonly resolution = new THREE.Vector2(1, 1);
   private centralCoronaRings: THREE.Mesh[] = [];
   private astrolabeRings: THREE.Mesh[] = [];
   private constellationLines: THREE.LineSegments | null = null;
@@ -166,6 +200,7 @@ export class WorldSceneBuilder {
     this.buildConstellationGrid();
     this.buildCentralAnchorCore();
     this.buildPlanetarySpheres();
+    this.buildIdealRings();
     this.buildSatellitesAndBodies();
   }
 
@@ -444,6 +479,178 @@ export class WorldSceneBuilder {
     this.rootGroup.add(mesh);
   }
 
+  /**
+   * 5b. Ideals rings.
+   *
+   * Radius already *is* time, so these encode ideals rather than skill tiers —
+   * a tier ring would state the same fact twice (§5.3). A planet that declares
+   * no ideals draws nothing, which is the state four of the five are in until
+   * the author's claims land. That is not an empty case to be papered over: an
+   * ideal is only allowed on screen once `validateIdeals` can resolve every
+   * body it cites.
+   */
+  private buildIdealRings(): void {
+    const labels = new Map(this.bodies.map((b) => [b.id, b.label || b.id]));
+
+    for (const planet of derivePlanets(this.bodies)) {
+      const ideals = idealsFor(planet.arm);
+      if (ideals.length === 0) continue;
+
+      const center = toScene(planet.center);
+      const radius = planet.radius * SCENE_SCALE;
+      const family = SURFACE_FAMILIES[planet.arm];
+
+      const group = new THREE.Group();
+      group.name = `ideals-${planet.arm}`;
+      group.position.set(center.x, PLANET_Y, center.z);
+      // Derived, not authored: the old per-planet `tilt` was a typed table.
+      // Reading the arm's own base angle gives every planet a different plane,
+      // and a sixth arm gets one without anybody choosing a number.
+      group.rotation.x = -Math.PI / 2 + GALAXY_ZEMI.arms[planet.arm] * 0.28;
+      group.rotation.y = GALAXY_ZEMI.arms[planet.arm] * 0.14;
+
+      for (const ideal of ideals) {
+        const r = radius * (1.6 + ideal.ordinal * 0.36);
+        const gold = new THREE.Color(DIRECTION_A.gold);
+
+        // Line2, not LineLoop and not RingGeometry, and both alternatives fail
+        // for the same reason. A band thin enough to read as a hairline is a
+        // third of a pixel at galaxy distance, and a triangle that thin covers
+        // no sample centre — the ring is not faint, it is absent. A plain GL
+        // line is no better: WebGL ignores `linewidth`, so at devicePixelRatio
+        // 2 it draws half a CSS pixel. Line2 expands the line in screen space,
+        // so `linewidth` really is pixels, at any dpr and any zoom.
+        const ringMaterial = new LineMaterial({
+          color: gold.getHex(),
+          linewidth: 1.6,
+          transparent: true,
+          opacity: RING_OPACITY.rest,
+          resolution: this.resolution,
+        });
+        const points: number[] = [];
+        for (let seg = 0; seg <= RING_SEGMENTS; seg++) {
+          const a = (seg / RING_SEGMENTS) * Math.PI * 2;
+          points.push(Math.cos(a) * r, Math.sin(a) * r, 0);
+        }
+        const ringGeometry = new LineGeometry();
+        ringGeometry.setPositions(points);
+        group.add(new Line2(ringGeometry, ringMaterial));
+
+        // A hairline is about a pixel wide at galaxy distance, which nothing can
+        // hover. The raycaster skips `visible: false` but hits a fully
+        // transparent material, so the target is fat while the line stays thin.
+        const pick = new THREE.Mesh(
+          new THREE.RingGeometry(r - radius * 0.3, r + radius * 0.3, 64),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }),
+        );
+        group.add(pick);
+
+        const pivot = new THREE.Group();
+        const bead = new THREE.Mesh(
+          new THREE.SphereGeometry(radius * 0.085, 12, 12),
+          new THREE.MeshBasicMaterial({ color: gold, transparent: true, opacity: 0.9 }),
+        );
+        bead.position.set(r, 0, 0);
+        pivot.add(bead);
+        group.add(pivot);
+
+        // World-up and outside the tilted group: the ring leans, the label must
+        // not. Constant screen size, so it is legible from orbit — which is the
+        // only place a claim about the whole ecosystem is worth reading.
+        const label = this.createClaimLabel(ideal.claim, ideal.evidence.map((id) => labels.get(id) ?? id));
+        label.position.set(center.x, PLANET_Y + r * 1.5 + ideal.ordinal * radius * 0.5, center.z);
+        label.scale.set(CLAIM_LABEL_SCALE * CLAIM_LABEL_ASPECT, CLAIM_LABEL_SCALE, 1);
+        label.material.opacity = 0;
+        this.rootGroup.add(label);
+
+        this.idealRings.push({
+          id: ideal.id,
+          ringMaterial,
+          label,
+          pivot,
+          // Tied to the planet's own rate, so the bead belongs to this world
+          // rather than to a global animation clock.
+          orbitRate: family.rotationRate * 6,
+        });
+
+        this.hitObjects.push({
+          id: ideal.id,
+          name: ideal.claim,
+          type: "ideal",
+          mesh: pick,
+          position: new THREE.Vector3(center.x, PLANET_Y, center.z),
+        });
+      }
+
+      this.rootGroup.add(group);
+    }
+  }
+
+  /** Ink on paper, drawn once. A sprite keeps the claim facing the camera. */
+  private createClaimLabel(claim: string, cited: string[]): THREE.Sprite {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = Math.round(1024 / CLAIM_LABEL_ASPECT);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const pad = 18;
+      const radius = 44;
+      // The same glass pill the HUD uses, so a claim reads as part of the
+      // instrument rather than as something painted onto the sky.
+      ctx.beginPath();
+      ctx.roundRect(pad, pad, canvas.width - pad * 2, canvas.height - pad * 2, radius);
+      ctx.fillStyle = "rgba(255,255,255,0.94)";
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = DIRECTION_A.rule;
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = DIRECTION_A.ink;
+      ctx.font = "600 82px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(claim, canvas.width / 2, canvas.height * 0.4, canvas.width - pad * 4);
+      ctx.fillStyle = DIRECTION_A.gold;
+      ctx.font = "400 58px ui-monospace, SFMono-Regular, monospace";
+      ctx.fillText(cited.join("   ·   "), canvas.width / 2, canvas.height * 0.68, canvas.width - pad * 4);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        // Constant screen size. With attenuation the label is four pixels tall
+        // at galaxy framing and fills the frame the moment you fly in.
+        sizeAttenuation: false,
+      }),
+    );
+    sprite.renderOrder = 3;
+    return sprite;
+  }
+
+  /**
+   * Illuminate one ring and dim its siblings. Hovering is what turns a ring
+   * from decoration into an instrument: the claim and the repositories behind
+   * it appear together, so the claim is never on screen without its evidence.
+   */
+  /** Called on mount and on every resize. See `resolution`. */
+  public setResolution(width: number, height: number): void {
+    this.resolution.set(width, height);
+  }
+
+  public setHoveredIdeal(id: string | null): void {
+    if (id === this.hoveredIdeal) return;
+    this.hoveredIdeal = id;
+    for (const ring of this.idealRings) {
+      const state = id === null ? "rest" : ring.id === id ? "lit" : "dimmed";
+      ring.ringMaterial.opacity = RING_OPACITY[state];
+      ring.label.material.opacity = state === "lit" ? 1 : 0;
+    }
+  }
+
   /** 6. 🛰️ Satellites and Repositories orbiting their respective planets */
   private buildSatellitesAndBodies(): void {
     const placements = placeBodies(this.bodies);
@@ -536,6 +743,11 @@ export class WorldSceneBuilder {
     }
     this.planetarySpheres.forEach((ps, idx) => {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
+    });
+
+    // One bead per ring, so a ring reads as moving before it is touched.
+    this.idealRings.forEach((ring) => {
+      ring.pivot.rotation.z += delta * ring.orbitRate;
     });
 
   }
