@@ -38,6 +38,23 @@ export interface WorldCanvasProps {
 }
 
 /**
+ * Bloom is off in day mode, and that is the treatment, not a compromise.
+ *
+ * The pass extracts everything above a luminance threshold, blurs it, and adds
+ * it back. Direction A's ground is #F7F6F2 — luminance 0.97 — so at the old
+ * 0.82 threshold every pixel of the *background* qualified: the whole frame was
+ * blurred and re-added at 35%, flooding an ink-on-paper scene into flat white.
+ * Raising the threshold cannot fix it, because nothing in this treatment is
+ * meant to be brighter than the paper. Direction A is engraved, not emitted.
+ *
+ * Night (R2) is emissive and keeps it.
+ */
+const BLOOM: Record<CosmicMode, { strength: number; threshold: number }> = {
+  day: { strength: 0, threshold: 1 },
+  night: { strength: 0.85, threshold: 0.6 },
+};
+
+/**
  * Scene point -> viewport pixels. `visible` is false behind the camera and past
  * a small off-screen margin, so the overlay never keeps DOM nodes for stars the
  * camera has turned away from.
@@ -91,8 +108,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   useEffect(() => {
     dayNightRef.current?.setMode(cosmicMode);
     if (bloomPassRef.current) {
-      bloomPassRef.current.strength = cosmicMode === "day" ? 0.35 : 0.85;
-      bloomPassRef.current.threshold = cosmicMode === "day" ? 0.82 : 0.6;
+      bloomPassRef.current.strength = BLOOM[cosmicMode].strength;
+      bloomPassRef.current.threshold = BLOOM[cosmicMode].threshold;
     }
   }, [cosmicMode]);
 
@@ -140,9 +157,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      cosmicMode === "day" ? 0.35 : 0.85, // Bloom strength
+      BLOOM[cosmicMode].strength,
       0.45, // Bloom radius
-      cosmicMode === "day" ? 0.82 : 0.6 // Luminance threshold
+      BLOOM[cosmicMode].threshold
     );
     composer.addPass(bloomPass);
     bloomPassRef.current = bloomPass;
