@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { derivePlanets } from "@/lib/atlas/planets";
+import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { loadBodies } from "@/lib/atlas/bodies";
 
 export type CameraTargetPreset =
@@ -17,34 +17,67 @@ export interface CameraPose {
   target: THREE.Vector3;
 }
 
-const derived = derivePlanets(loadBodies());
+const bodies = loadBodies();
+const derived = derivePlanets(bodies);
+
+/**
+ * The drawn instrument's own size. This is the one authored length in the scene:
+ * everything else is a repository date pushed through `radiusScale`.
+ */
+export const ASTROLABE_OUTER = 205;
+
+/**
+ * Layout units -> scene units. `radiusScale` caps the galaxy near 19.5 layout
+ * units, while the astrolabe is drawn ten times wider; this is the single place
+ * the two meet. Deriving it rather than typing it is what makes the outermost
+ * repository land exactly on the outermost ring — the astrolabe stops being
+ * decoration and becomes a scale.
+ */
+export const SCENE_SCALE = ASTROLABE_OUTER / deriveWorldRadius(bodies);
+
+/** Layout-unit vector -> scene-unit vector. */
+export function toScene(v: { x: number; y: number; z: number }): THREE.Vector3 {
+  return new THREE.Vector3(v.x * SCENE_SCALE, v.y * SCENE_SCALE, v.z * SCENE_SCALE);
+}
+
+/** Drawn radius in scene units, per planet. */
+export const PLANET_RADII: Record<string, number> = Object.fromEntries(
+  derived.map((p) => [p.arm, p.radius * SCENE_SCALE]),
+);
 
 /** Derived from repository metadata. Nothing here is authored. */
 export const PLANET_CENTERS: Record<string, THREE.Vector3> = {
   sun: new THREE.Vector3(0, 0, 0),
-  ...Object.fromEntries(
-    derived.map((p) => [p.arm, new THREE.Vector3(p.center.x, p.center.y, p.center.z)]),
-  ),
+  ...Object.fromEntries(derived.map((p) => [p.arm, toScene(p.center)])),
 };
 
-function orbitPose(center: THREE.Vector3, height: number, back: number): CameraPose {
+/** Frame a planet from just outside its own rim, so framing scales with mass. */
+function orbitPose(arm: string): CameraPose {
+  const center = PLANET_CENTERS[arm];
+  const r = PLANET_RADII[arm];
   return {
-    position: new THREE.Vector3(center.x, height, center.z + back),
-    target: new THREE.Vector3(center.x, 2, center.z),
+    position: new THREE.Vector3(center.x, r * 3.6, center.z + r * 4.8),
+    target: new THREE.Vector3(center.x, r * 0.3, center.z),
   };
 }
 
+/**
+ * Derived, not authored: the elevation and framing ratios are kept from the
+ * original pose, but the distance comes from how far the galaxy actually
+ * reaches, so a later epoch reframes itself.
+ */
+const GALAXY_REACH = ASTROLABE_OUTER;
 const GALAXY_POSE: CameraPose = {
-  position: new THREE.Vector3(0, 185, 230),
+  position: new THREE.Vector3(0, GALAXY_REACH * 0.9, GALAXY_REACH * 1.12),
   target: new THREE.Vector3(0, 0, 0),
 };
 
 export const CAMERA_PRESETS: Record<string, CameraPose> = {
   galaxy: GALAXY_POSE,
   overview: GALAXY_POSE,
-  ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(PLANET_CENTERS[p.arm], 24, 32)])),
+  ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(p.arm)])),
   // Retained alias: the HUD and page.tsx both still dispatch "founder".
-  founder: orbitPose(PLANET_CENTERS.self, 24, 32),
+  founder: orbitPose("self"),
 };
 
 export class WorldCameraManager {

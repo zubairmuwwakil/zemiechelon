@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import type { Body } from "@/lib/atlas/types";
-import { placeBodies, daysSinceEpoch } from "@/lib/atlas/position";
+import { placeBodies } from "@/lib/atlas/position";
+import { GALAXY_ZEMI } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
-import { PLANET_CENTERS } from "./WorldCameraManager";
+import { PLANET_CENTERS, PLANET_RADII, SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { createAtmosphericGlowMesh } from "./AtmosphereShader";
 
 export interface InteractiveHitObject {
@@ -106,16 +107,27 @@ export class WorldSceneBuilder {
     const pearlColor = new THREE.Color(0xa1a1aa);
     const violetColor = new THREE.Color(0xa855f7);
 
+    // The dust IS the arms, so it has to be the same spiral the bodies are laid
+    // out on. It used to carry its own wind rate (0.38 against the layout's
+    // 0.55) and its own radius range, which put every planet 25 degrees off the
+    // arm it belongs to — a third of the way to its neighbour.
+    const armNames = Object.keys(GALAXY_ZEMI.arms);
+    const reach = placeBodies(this.bodies).map((p) => Math.hypot(p.position.x, p.position.z));
+    const innerR = Math.min(...reach);
+    const outerR = Math.max(...reach);
+
     for (let i = 0; i < dustCount; i++) {
       const u = i / dustCount;
-      const armIdx = i % 5;
-      const baseAngle = (armIdx * 2 * Math.PI) / 5;
-      const radius = 12 + u * 210 + (Math.random() - 0.5) * 6;
-      const theta = baseAngle + 0.38 * Math.log(1 + radius) + (Math.random() - 0.5) * 0.3;
+      const arm = armNames[i % armNames.length];
+      // Layout units: theta is a function of the layout radius, so the curve is
+      // the arm's own curve. Only the drawn position is converted to the scene.
+      const radius = innerR + u * (outerR - innerR) + (Math.random() - 0.5) * 0.6;
+      const theta =
+        GALAXY_ZEMI.arms[arm] + GALAXY_ZEMI.windRate * Math.log(1 + radius) + (Math.random() - 0.5) * 0.3;
 
-      positions[i * 3] = Math.cos(theta) * radius;
+      positions[i * 3] = Math.cos(theta) * radius * SCENE_SCALE;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 1.2;
-      positions[i * 3 + 2] = Math.sin(theta) * radius;
+      positions[i * 3 + 2] = Math.sin(theta) * radius * SCENE_SCALE;
 
       const r = Math.random();
       const col = r > 0.65 ? goldColor : r > 0.4 ? emeraldColor : r > 0.2 ? violetColor : pearlColor;
@@ -246,12 +258,12 @@ export class WorldSceneBuilder {
         id: "self",
         name: "Planet Self",
         center: PLANET_CENTERS.self,
-        radius: 4.6,
+        radius: PLANET_RADII.self,
         texture: this.createMarbleGoldTexture(),
         emissive: 0x10b981,
         emissiveIntensity: 0.35,
         ringColor: 0x10b981,
-        ringRadii: [6.4, 7.8],
+        ringRadii: [1.391, 1.696].map((m) => m * PLANET_RADII.self),
         tilt: -0.22,
         haloColor: 0x34d399,
       },
@@ -260,12 +272,12 @@ export class WorldSceneBuilder {
         id: "foundations",
         name: "Planet Foundations",
         center: PLANET_CENTERS.foundations,
-        radius: 5.0,
+        radius: PLANET_RADII.foundations,
         texture: this.createCrystallineOceanTexture(),
         emissive: 0x38bdf8,
         emissiveIntensity: 0.35,
         ringColor: 0x38bdf8,
-        ringRadii: [6.8, 8.4],
+        ringRadii: [1.36, 1.68].map((m) => m * PLANET_RADII.foundations),
         tilt: 0.25,
         haloColor: 0x38bdf8,
       },
@@ -274,12 +286,12 @@ export class WorldSceneBuilder {
         id: "products",
         name: "Planet Products",
         center: PLANET_CENTERS.products,
-        radius: 6.4,
+        radius: PLANET_RADII.products,
         texture: this.createGasGiantTexture(),
         emissive: 0xf59e0b,
         emissiveIntensity: 0.4,
         ringColor: 0xf59e0b,
-        ringRadii: [8.8, 10.5, 12.2, 13.6],
+        ringRadii: [1.375, 1.641, 1.906, 2.125].map((m) => m * PLANET_RADII.products),
         tilt: 0.38,
         haloColor: 0xfbbf24,
       },
@@ -288,12 +300,12 @@ export class WorldSceneBuilder {
         id: "labs",
         name: "Planet Labs",
         center: PLANET_CENTERS.labs,
-        radius: 5.4,
+        radius: PLANET_RADII.labs,
         texture: this.createCyberGridTexture(),
         emissive: 0xa855f7,
         emissiveIntensity: 0.4,
         ringColor: 0xa855f7,
-        ringRadii: [7.6, 9.4, 11.0],
+        ringRadii: [1.407, 1.741, 2.037].map((m) => m * PLANET_RADII.labs),
         tilt: -0.32,
         haloColor: 0xc084fc,
       },
@@ -302,12 +314,12 @@ export class WorldSceneBuilder {
         id: "creative",
         name: "Planet Creative",
         center: PLANET_CENTERS.creative,
-        radius: 4.2,
+        radius: PLANET_RADII.creative,
         texture: this.createNebulaTexture(),
         emissive: 0xf43f5e,
         emissiveIntensity: 0.38,
         ringColor: 0xf43f5e,
-        ringRadii: [6.2, 7.8],
+        ringRadii: [1.476, 1.857].map((m) => m * PLANET_RADII.creative),
         tilt: 0.35,
         haloColor: 0xfb7185,
       },
@@ -383,36 +395,18 @@ export class WorldSceneBuilder {
       const placement = placementMap.get(body.id);
       if (!placement) continue;
 
-      let parentCenter = PLANET_CENTERS.foundations;
-      let baseOffset = 8.5;
-      if (body.arm === "products") {
-        parentCenter = PLANET_CENTERS.products;
-        baseOffset = 14.5;
-      } else if (body.arm === "labs") {
-        parentCenter = PLANET_CENTERS.labs;
-        baseOffset = 11.5;
-      } else if (body.arm === "self") {
-        parentCenter = PLANET_CENTERS.self;
-        baseOffset = 9.5;
-      } else if (body.arm === "creative") {
-        parentCenter = PLANET_CENTERS.creative;
-        baseOffset = 8.5;
-      }
-
       const mag = magnitude(body);
       const col = body.kind === "system" ? 0xd97706 : 0x059669;
 
       const bodyGroup = new THREE.Group();
       bodyGroup.name = `body-${body.id}`;
 
-      const dayVal = daysSinceEpoch(body.bornAt);
-      const angle = (dayVal * 0.14) % (2 * Math.PI);
-      const offsetRadius = baseOffset + (dayVal % 6) * 1.2;
-      bodyGroup.position.set(
-        parentCenter.x + Math.cos(angle) * offsetRadius,
-        1.0,
-        parentCenter.z + Math.sin(angle) * offsetRadius
-      );
+      // placeBodies already solved this: the crowd-run fan is what keeps two
+      // repositories born the same day from sharing a point. Ringing bodies
+      // around their planet at an authored offset threw that away and put them
+      // nowhere in particular.
+      const scenePos = toScene(placement.position);
+      bodyGroup.position.set(scenePos.x, 1.0, scenePos.z);
 
       const sphereGeo = new THREE.SphereGeometry(Math.max(0.4, 0.4 + mag * 0.12), 16, 16);
       const sphereMat = new THREE.MeshStandardMaterial({

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { GALAXY_ZEMI } from "../scopes";
-import { derivePlanets } from "../planets";
+import { derivePlanets, deriveWorldRadius } from "../planets";
 
 const bodies = loadBodies();
 const planets = derivePlanets(bodies);
@@ -42,5 +42,30 @@ describe("derivePlanets", () => {
 
   it("places no planet at the origin", () => {
     for (const p of planets) expect(dist(p.center)).toBeGreaterThan(1);
+  });
+
+  // Centres and radii are both in layout units, so they are directly comparable.
+  // Before these existed, SIZE was authored against a scene ten times wider and
+  // gave Products a radius larger than its own distance from the core.
+  it("keeps every planet clear of the core", () => {
+    for (const p of planets) {
+      expect(p.radius, `${p.arm} reaches the core`).toBeLessThan(dist(p.center) * 0.5);
+    }
+  });
+
+  it("never overlaps two planets", () => {
+    for (const a of planets) {
+      for (const b of planets) {
+        if (a.arm >= b.arm) continue;
+        const gap = Math.hypot(a.center.x - b.center.x, a.center.z - b.center.z);
+        expect(gap, `${a.arm} overlaps ${b.arm}`).toBeGreaterThan(a.radius + b.radius);
+      }
+    }
+  });
+
+  it("contains every planet within the derived world radius", () => {
+    const world = deriveWorldRadius(bodies);
+    expect(world).toBeGreaterThan(0);
+    for (const p of planets) expect(dist(p.center) + p.radius).toBeLessThan(world);
   });
 });

@@ -16,8 +16,25 @@ export interface PlanetPlacement {
  * ventures. Weighting by count would give nineteen tutorials more screen area
  * than the company. Size is driven by summed magnitude instead, which `kind:
  * 'system'` already pins for flagships.
+ *
+ * These are LAYOUT units, the same ones `radiusScale` produces — so a radius is
+ * comparable against a centre without a conversion. The renderer multiplies both
+ * by its own scene scale. Sized so the widest pair of neighbours (Foundations and
+ * Products, 12.6 apart) clears by an order of magnitude.
  */
-const SIZE = { base: 3.2, perSystem: 2.6, perStar: 0.18, max: 14 } as const;
+const SIZE = { base: 0.3, perSystem: 0.055, perStar: 0.006, max: 0.75 } as const;
+
+/**
+ * How far the galaxy reaches, in layout units. Derived from the bodies alone —
+ * not from the planets, which would make it circular, and not from a number
+ * someone typed when the world happened to be a different size. The renderer
+ * scales its own furniture off this, so the map stays a pure function of dates.
+ */
+export function deriveWorldRadius(bodies: Body[], scope: Scope = GALAXY_ZEMI): number {
+  return Math.max(
+    ...placeBodies(bodies, scope).map((p) => Math.hypot(p.position.x, p.position.z)),
+  );
+}
 
 export function derivePlanets(bodies: Body[], scope: Scope = GALAXY_ZEMI): PlanetPlacement[] {
   const placements = placeBodies(bodies, scope);
