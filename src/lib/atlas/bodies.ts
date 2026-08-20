@@ -1,8 +1,10 @@
 import generated from "@/data/bodies.generated.json";
 import { OVERRIDES } from "@/data/bodies.overrides";
 import type { Body } from "./types";
+import { GALAXY_ZEMI } from "./scopes";
 
-export const EPOCH = "2025-11-06";
+/** Re-exported from the galaxy scope so the epoch is declared once. */
+export const EPOCH = GALAXY_ZEMI.epoch;
 
 export function loadBodies(): Body[] {
   return generated.bodies.map((g) => {
@@ -15,6 +17,7 @@ export function loadBodies(): Body[] {
     if (g.anonymous) {
       return {
         id: g.id,
+        parent: GALAXY_ZEMI.id,
         label: o.label ?? "Private repository",
         arm: o.arm,
         bornAt: g.bornAt,
@@ -26,6 +29,7 @@ export function loadBodies(): Body[] {
     }
     return {
       id: g.id,
+      parent: GALAXY_ZEMI.id,
       label: o.label ?? g.id,
       arm: o.arm,
       bornAt: g.bornAt,

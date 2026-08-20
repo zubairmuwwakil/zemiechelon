@@ -1,4 +1,8 @@
-export type ArmId = "foundations" | "products" | "labs" | "self" | "creative";
+/** Arms are declared per scope, so this is a scope-keyed name rather than a closed set. */
+export type ArmId = string;
+
+/** e.g. "galaxy:zemi", "planet:products" */
+export type ScopeId = string;
 
 export interface Satellite {
   id: string;
@@ -9,6 +13,7 @@ export interface Satellite {
 export interface Body {
   id: string;
   label: string;
+  parent: ScopeId;
   arm: ArmId;
   bornAt: string;
   lastTouchedAt: string;
