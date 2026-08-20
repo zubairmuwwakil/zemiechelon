@@ -107,6 +107,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // Sync Day/Night mode & bloom parameters
   useEffect(() => {
     dayNightRef.current?.setMode(cosmicMode);
+    sceneBuilderRef.current?.setCosmicMode(cosmicMode);
     if (bloomPassRef.current) {
       bloomPassRef.current.strength = BLOOM[cosmicMode].strength;
       bloomPassRef.current.threshold = BLOOM[cosmicMode].threshold;
@@ -173,6 +174,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const sceneBuilder = new WorldSceneBuilder(scene, bodies, today, fieldDensityFor(width));
     sceneBuilder.build();
     sceneBuilder.setResolution(width, height);
+    sceneBuilder.setCosmicMode(cosmicMode);
     sceneBuilderRef.current = sceneBuilder;
 
     // 6. Raycasting and pointer interaction
@@ -275,6 +277,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       composer.setSize(width, height);
       bloomPass.resolution.set(width, height);
       sceneBuilder.setResolution(width, height);
+    sceneBuilder.setCosmicMode(cosmicMode);
     };
     window.addEventListener("resize", onResize);
 

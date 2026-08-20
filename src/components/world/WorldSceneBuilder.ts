@@ -9,6 +9,7 @@ import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { DIRECTION_A } from "@/lib/theme/directionA";
+import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { createAtmosphericGlowMesh } from "./AtmosphereShader";
 import { PLANET_ATTRIBUTES, SURFACE_FAMILIES, createPlanetMaterial } from "./PlanetSurfaces";
@@ -171,6 +172,7 @@ export class WorldSceneBuilder {
   private planetMaterial: THREE.ShaderMaterial | null = null;
   private idealRings: IdealRing[] = [];
   private hoveredIdeal: string | null = null;
+  private fieldMaterials: THREE.PointsMaterial[] = [];
   /**
    * Drawing-buffer size, shared by every screen-space line. Line2 needs it to
    * turn a pixel width into clip space; a stale value scales every ring wrongly
@@ -293,6 +295,7 @@ export class WorldSceneBuilder {
         }),
       );
       points.name = name;
+      this.fieldMaterials.push(points.material as THREE.PointsMaterial);
       // The shell is larger than any frustum test three.js will infer cheaply,
       // and a wrongly-culled sky is indistinguishable from a missing one.
       points.frustumCulled = false;
@@ -589,6 +592,16 @@ export class WorldSceneBuilder {
    * from decoration into an instrument: the claim and the repositories behind
    * it appear together, so the claim is never on screen without its evidence.
    */
+  /**
+   * Direction A is ink on paper, so on the night ground the two swap roles: the
+   * mark becomes paper and the ground becomes ink. No new token — night uses the
+   * palette it already has, from the other end. Direction C is still R2.
+   */
+  public setCosmicMode(mode: CosmicMode): void {
+    const mark = new THREE.Color(mode === "day" ? DIRECTION_A.dust : DIRECTION_A.ground);
+    for (const material of this.fieldMaterials) material.color.copy(mark);
+  }
+
   /** Called on mount and on every resize. See `resolution`. */
   public setResolution(width: number, height: number): void {
     this.resolution.set(width, height);
