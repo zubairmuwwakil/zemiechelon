@@ -155,6 +155,12 @@ quotes. The hardcoded `nightStars` array is deleted.
 at its own phase — synchronised pulsing reads as a loading state. Click opens the
 card.
 
+> **As shipped in R1, night does not satisfy "selection is derived" above.**
+> `deriveQuoteStars` assigns quotes by array index, so the night sky is always
+> `FOUNDER_QUOTES[0..13]` and 67 of the 81 quotes are unreachable at night. Day
+> comets do satisfy it. Deferred to R2; the fix is written up under Task 5 of
+> `docs/superpowers/plans/2026-08-20-zemi-world-galaxy.md`.
+
 **Day behaviour.** The same stars travel as comets. **2–3 in flight** on staggered
 intervals, not one every 16 seconds: one at a time reads as an event, three reads
 as weather. **Hover or tap pauses the comet in place** and opens the card. This

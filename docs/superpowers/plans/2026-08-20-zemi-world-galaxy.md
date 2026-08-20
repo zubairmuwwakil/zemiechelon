@@ -974,6 +974,45 @@ Replaces five hardcoded viewport percentages that did not move with the
 camera."
 ```
 
+> **Known gap, found while executing Task 7 (2026-08-20). Not fixed; deferred to R2.**
+>
+> `deriveQuoteStars` assigns quotes by array index — `quotes[i].id` — so the
+> night sky is always `FOUNDER_QUOTES[0..13]`, on every visit, for every
+> visitor. Night mode renders no comets, so **67 of the 81 quotes (83%) are
+> unreachable at night.** Day mode is unaffected: comets draw from
+> `createQuoteRotation`, which cycles all 81.
+>
+> This contradicts spec §4, *Selection is derived, not authored*: "drawn from
+> the full set through a session-level no-repeat set, so a second visit is not
+> the same five quotes." The old `ShootingStarQuotes` bound five quotes to five
+> positions; this binds fourteen to fourteen. Better by 2.8×, structurally the
+> same shape.
+>
+> It was left alone because three committed things pin it, one of them
+> deliberately: `sky.test.ts` asserts `it("is deterministic")`, and both this
+> plan's Task 7 test and the shipped one assert star 0's accessible name **is**
+> `FOUNDER_QUOTES[0].text`. Undoing a test written on purpose is a scope call
+> for whoever owns Task 5, not for the task that happened to notice.
+>
+> **Shape of the fix.** `QuoteStar.id` is positional (`quote-star-${i}`), not
+> quote-derived, and the projection bridge keys on `id`. So positions must stay
+> deterministic — they are what `WorldCanvas` projects and what the 0.3-radian
+> separation test guarantees. Only the quote↔star *assignment* needs to vary.
+> Split the two: `deriveQuoteStars` keeps emitting fixed positions and stable
+> ids (the determinism test survives untouched), and a new
+> `assignQuotes(stars, rotation)` draws from the same no-repeat bag the comets
+> already use, so night and day share one selection mechanism instead of two.
+> `QuoteSky` holds the assignment in state, established after mount. The Task 7
+> assertion becomes "every star is named by *some* quote and no two stars share
+> one" — which is what §4 actually asks for.
+>
+> **Do not seed the assignment at module scope.** It looks safe today only by
+> accident: star buttons render from `points`, which starts `[]` and is filled
+> by the rAF loop, so the server emits no star buttons and there is nothing to
+> mismatch. Any later change that renders a star before `points` populates
+> turns a module-scope shuffle into a hydration error. Putting the assignment
+> in state after mount avoids the trap instead of depending on it holding.
+
 ---
 
 ## Task 6: Direction A tokens
@@ -1116,6 +1155,8 @@ ink-on-paper treatment fails."
 **Interfaces:**
 - Consumes: `createQuoteRotation` (Task 4); `deriveQuoteStars`, `QuoteStar` (Task 5); `ScreenPoint` from `src/lib/atlas/types.ts`; `CosmicMode` from `./DayNightController`
 - Produces: `<QuoteSky cosmicMode points={ScreenPoint[]} />`; `<QuoteCard quote onClose />`
+
+> Shipped 2026-08-20. The night sky reaches only the first 14 of 81 quotes — see the *Known gap* note under Task 5. Day comets reach all 81.
 
 - [ ] **Step 1: Write the failing test**
 
