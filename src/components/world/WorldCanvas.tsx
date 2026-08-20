@@ -211,10 +211,13 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         const intersects = raycaster.intersectObjects(meshesToTest, true);
 
         if (intersects.length > 0) {
-          const hitMesh = intersects[0].object;
-          // Find corresponding hit object
+          const hit = intersects[0];
+          // The five planets are one InstancedMesh, so the mesh alone no longer
+          // says which was clicked — without the instance check every planet
+          // resolves to whichever registered first.
           const hitObj = sceneBuilder.hitObjects.find((h) => {
-            let curr: THREE.Object3D | null = hitMesh;
+            if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
+            let curr: THREE.Object3D | null = hit.object;
             while (curr) {
               if (curr === h.mesh) return true;
               curr = curr.parent;

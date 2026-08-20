@@ -3,10 +3,11 @@ import type { Body } from "@/lib/atlas/types";
 import { placeBodies } from "@/lib/atlas/position";
 import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
-import { deriveWorldRadius } from "@/lib/atlas/planets";
+import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { DIRECTION_A } from "@/lib/theme/directionA";
-import { PLANET_CENTERS, PLANET_RADII, SCENE_SCALE, toScene } from "./WorldCameraManager";
+import { SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { createAtmosphericGlowMesh } from "./AtmosphereShader";
+import { PLANET_ATTRIBUTES, SURFACE_FAMILIES, createPlanetMaterial } from "./PlanetSurfaces";
 
 export const BACKGROUND_STAR_COUNT = 12_000;
 export const ARM_DUST_COUNT = 4_500;
@@ -120,8 +121,19 @@ export interface InteractiveHitObject {
   name: string;
   type: "planet" | "sector" | "body";
   mesh: THREE.Object3D;
+  /**
+   * Set when `mesh` is shared. The five planets are one InstancedMesh, so the
+   * mesh alone no longer identifies which of them was hit.
+   */
+  instanceId?: number;
   position: THREE.Vector3;
 }
+
+/**
+ * Scene units the planets ride above the plane. The pins in WorldCanvas are
+ * placed relative to this, so it is one number rather than six.
+ */
+export const PLANET_Y = 1.0;
 
 export class WorldSceneBuilder {
   public readonly rootGroup = new THREE.Group();
@@ -130,7 +142,7 @@ export class WorldSceneBuilder {
 
   // Animated celestial elements
   private planetarySpheres: THREE.Mesh[] = [];
-  private planetEquatorialRings: THREE.Group[] = [];
+  private planetMaterial: THREE.ShaderMaterial | null = null;
   private centralCoronaRings: THREE.Mesh[] = [];
   private astrolabeRings: THREE.Mesh[] = [];
   private constellationLines: THREE.LineSegments | null = null;
@@ -365,140 +377,71 @@ export class WorldSceneBuilder {
     this.rootGroup.add(sunGroup);
   }
 
-  /** 5. 🪐 The 5 Core Celestial Spheres with Distinct Personalities */
+  /**
+   * 5. The five surface families, as ONE InstancedMesh over ONE shader.
+   *
+   * Five bespoke materials is five draw-call groups and five compile paths for
+   * what is one family of surfaces (§5.4). Everything that differs between the
+   * planets — pattern, spin, base, accent — rides on instance attributes.
+   */
   private buildPlanetarySpheres(): void {
-    const planetConfigs = [
-      // 1. Planet Self (The Founder's Sphere / Sacred Zemí) - r=36, Size=4.6
-      {
-        id: "self",
-        name: "Planet Self",
-        center: PLANET_CENTERS.self,
-        radius: PLANET_RADII.self,
-        texture: this.createMarbleGoldTexture(),
-        emissive: 0x10b981,
-        emissiveIntensity: 0.35,
-        ringColor: 0x10b981,
-        ringRadii: [1.391, 1.696].map((m) => m * PLANET_RADII.self),
-        tilt: -0.22,
-        haloColor: 0x34d399,
-      },
-      // 2. Planet Foundations (Bedrock Genesis & Algorithms) - r=64, Size=5.0
-      {
-        id: "foundations",
-        name: "Planet Foundations",
-        center: PLANET_CENTERS.foundations,
-        radius: PLANET_RADII.foundations,
-        texture: this.createCrystallineOceanTexture(),
-        emissive: 0x38bdf8,
-        emissiveIntensity: 0.35,
-        ringColor: 0x38bdf8,
-        ringRadii: [1.36, 1.68].map((m) => m * PLANET_RADII.foundations),
-        tilt: 0.25,
-        haloColor: 0x38bdf8,
-      },
-      // 3. Planet Products (PickleOps & Fintech Gas Giant) - r=96, Size=6.4 (Grandest Planet)
-      {
-        id: "products",
-        name: "Planet Products",
-        center: PLANET_CENTERS.products,
-        radius: PLANET_RADII.products,
-        texture: this.createGasGiantTexture(),
-        emissive: 0xf59e0b,
-        emissiveIntensity: 0.4,
-        ringColor: 0xf59e0b,
-        ringRadii: [1.375, 1.641, 1.906, 2.125].map((m) => m * PLANET_RADII.products),
-        tilt: 0.38,
-        haloColor: 0xfbbf24,
-      },
-      // 4. Planet Labs (Autonomous AI & Neural Runtimes) - r=129, Size=5.4
-      {
-        id: "labs",
-        name: "Planet Labs",
-        center: PLANET_CENTERS.labs,
-        radius: PLANET_RADII.labs,
-        texture: this.createCyberGridTexture(),
-        emissive: 0xa855f7,
-        emissiveIntensity: 0.4,
-        ringColor: 0xa855f7,
-        ringRadii: [1.407, 1.741, 2.037].map((m) => m * PLANET_RADII.labs),
-        tilt: -0.32,
-        haloColor: 0xc084fc,
-      },
-      // 5. Planet Creative (Knowledge Crucible & Obsidian Vault) - r=168, Size=4.2
-      {
-        id: "creative",
-        name: "Planet Creative",
-        center: PLANET_CENTERS.creative,
-        radius: PLANET_RADII.creative,
-        texture: this.createNebulaTexture(),
-        emissive: 0xf43f5e,
-        emissiveIntensity: 0.38,
-        ringColor: 0xf43f5e,
-        ringRadii: [1.476, 1.857].map((m) => m * PLANET_RADII.creative),
-        tilt: 0.35,
-        haloColor: 0xfb7185,
-      },
-    ];
+    const planets = derivePlanets(this.bodies);
+    const count = planets.length;
 
-    planetConfigs.forEach((cfg) => {
-      const planetGroup = new THREE.Group();
-      planetGroup.name = `planet-${cfg.id}`;
-      planetGroup.position.copy(cfg.center);
+    // Radius 1: the drawn size is the instance scale, so mass stays a property
+    // of the metadata rather than of the geometry.
+    const geometry = new THREE.SphereGeometry(1, 64, 48);
+    const material = createPlanetMaterial();
+    const mesh = new THREE.InstancedMesh(geometry, material, count);
+    mesh.name = "planet-surfaces";
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
-      // Smooth shaded spherical body with high-resolution procedural texture map
-      const geo = new THREE.SphereGeometry(cfg.radius, 64, 64);
-      const mat = new THREE.MeshStandardMaterial({
-        map: cfg.texture,
-        roughness: 0.3,
-        metalness: 0.15,
-        emissive: cfg.emissive,
-        emissiveIntensity: cfg.emissiveIntensity,
-      });
-      const sphere = new THREE.Mesh(geo, mat);
-      sphere.position.y = 1.0;
-      sphere.castShadow = true;
-      sphere.receiveShadow = true;
-      planetGroup.add(sphere);
-      this.planetarySpheres.push(sphere);
+    const pattern = new Float32Array(count);
+    const spin = new Float32Array(count);
+    const base = new Float32Array(count * 3);
+    const accent = new Float32Array(count * 3);
+    const matrix = new THREE.Matrix4();
+    const colour = new THREE.Color();
 
-      // Delicate Hairline Concentric Equatorial Rings
-      const eqGroup = new THREE.Group();
-      eqGroup.position.y = 1.0;
-      eqGroup.rotation.x = cfg.tilt;
-      eqGroup.rotation.z = cfg.tilt * 0.55;
+    planets.forEach((planet, i) => {
+      const family = SURFACE_FAMILIES[planet.arm];
+      if (!family) {
+        // Loud, not defaulted — the same rule an unassigned arm already follows.
+        throw new Error(`arm "${planet.arm}" has no surface family`);
+      }
 
-      cfg.ringRadii.forEach((r, idx) => {
-        const ringGeo = new THREE.RingGeometry(r - 0.06, r + 0.06, 128);
-        ringGeo.rotateX(-Math.PI / 2);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: cfg.ringColor,
-          transparent: true,
-          opacity: 0.55 - idx * 0.12,
-          side: THREE.DoubleSide,
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        eqGroup.add(ring);
-      });
+      const center = toScene(planet.center);
+      const radius = planet.radius * SCENE_SCALE;
+      matrix.makeScale(radius, radius, radius);
+      matrix.setPosition(center.x, PLANET_Y, center.z);
+      mesh.setMatrixAt(i, matrix);
 
-      planetGroup.add(eqGroup);
-      this.planetEquatorialRings.push(eqGroup);
-
-      // Soft Fresnel Atmospheric Glow Shell
-      const halo = createAtmosphericGlowMesh(cfg.radius * 1.15, cfg.haloColor, 2.5, 0.7);
-      halo.position.y = 1.0;
-      planetGroup.add(halo);
-      this.atmosphereGlows.push(halo);
+      pattern[i] = family.pattern;
+      spin[i] = family.rotationRate;
+      // .setStyle converts sRGB to the linear working space, which is what the
+      // shader must emit for OutputPass to convert it back to the authored hex.
+      colour.set(family.baseColor).toArray(base, i * 3);
+      colour.set(family.accentColor).toArray(accent, i * 3);
 
       this.hitObjects.push({
-        id: cfg.id,
-        name: cfg.name,
+        id: planet.arm,
+        name: `Planet ${planet.arm[0].toUpperCase()}${planet.arm.slice(1)}`,
         type: "planet",
-        mesh: sphere,
-        position: cfg.center.clone(),
+        mesh,
+        instanceId: i,
+        position: new THREE.Vector3(center.x, PLANET_Y, center.z),
       });
-
-      this.rootGroup.add(planetGroup);
     });
+
+    geometry.setAttribute(PLANET_ATTRIBUTES.pattern, new THREE.InstancedBufferAttribute(pattern, 1));
+    geometry.setAttribute(PLANET_ATTRIBUTES.spin, new THREE.InstancedBufferAttribute(spin, 1));
+    geometry.setAttribute(PLANET_ATTRIBUTES.base, new THREE.InstancedBufferAttribute(base, 3));
+    geometry.setAttribute(PLANET_ATTRIBUTES.accent, new THREE.InstancedBufferAttribute(accent, 3));
+    mesh.instanceMatrix.needsUpdate = true;
+
+    this.planetMaterial = material;
+    this.rootGroup.add(mesh);
   }
 
   /** 6. 🛰️ Satellites and Repositories orbiting their respective planets */
@@ -580,238 +523,19 @@ export class WorldSceneBuilder {
     return texture;
   }
 
-  /** 🪐 Planet Products: Gas Giant Banding Texture Generator */
-  private createGasGiantTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Base amber gold background
-    ctx.fillStyle = "#fffbeb";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Stratified atmospheric horizontal bands
-    const bandColors = [
-      "#fef3c7",
-      "#fde68a",
-      "#f59e0b",
-      "#d97706",
-      "#b45309",
-      "#fef3c7",
-      "#fcd34d",
-      "#fbbf24",
-      "#b45309",
-      "#d97706",
-      "#fef3c7",
-    ];
-
-    let y = 0;
-    while (y < canvas.height) {
-      const h = 6 + Math.random() * 24;
-      const col = bandColors[Math.floor(Math.random() * bandColors.length)];
-      ctx.fillStyle = col;
-      ctx.fillRect(0, y, canvas.width, h);
-
-      // Fine cloud filament
-      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.fillRect(0, y + h * 0.4, canvas.width, 2);
-
-      y += h;
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
-  }
-
-  /** 🤖 Planet Labs: Cyber Amethyst Neural Grid Texture Generator */
-  private createCyberGridTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Dark Amethyst space background
-    ctx.fillStyle = "#2e1065";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Subtle violet nebula wash
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grad.addColorStop(0, "#3b0764");
-    grad.addColorStop(0.5, "#581c87");
-    grad.addColorStop(1, "#2e1065");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Neural Grid Lines
-    ctx.strokeStyle = "rgba(168, 85, 247, 0.55)";
-    ctx.lineWidth = 1.5;
-
-    // Latitudes
-    for (let y = 16; y < canvas.height; y += 24) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-
-    // Longitudes
-    for (let x = 16; x < canvas.width; x += 32) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-
-    // Glowing Node Dots
-    ctx.fillStyle = "#c084fc";
-    for (let x = 16; x < canvas.width; x += 64) {
-      for (let y = 16; y < canvas.height; y += 48) {
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
-  }
-
-  /** 💎 Planet Foundations: Crystalline Aquamarine Ocean Texture Generator */
-  private createCrystallineOceanTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Deep cyan oceanic base
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, "#f0f9ff"); // Polar ice cap
-    grad.addColorStop(0.25, "#bae6fd");
-    grad.addColorStop(0.5, "#38bdf8");
-    grad.addColorStop(0.75, "#0284c7");
-    grad.addColorStop(1, "#f0f9ff"); // South ice cap
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Crystalline ice-shelf strata & algorithmic lines
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.lineWidth = 1;
-    for (let y = 30; y < canvas.height - 30; y += 28) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-    for (let i = 0; i < 20; i++) {
-      const x = Math.random() * canvas.width;
-      const y = 40 + Math.random() * (canvas.height - 80);
-      const w = 30 + Math.random() * 60;
-      const h = 8 + Math.random() * 16;
-      ctx.fillRect(x, y, w, h);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
-  }
-
-  /** 🌿 Planet Self: Sacred Emerald & Gold Marble Texture Generator */
-  private createMarbleGoldTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Rich Emerald base
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grad.addColorStop(0, "#064e3b");
-    grad.addColorStop(0.4, "#047857");
-    grad.addColorStop(0.7, "#10b981");
-    grad.addColorStop(1, "#065f46");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Golden marble veins
-    ctx.strokeStyle = "rgba(251, 191, 36, 0.65)";
-    ctx.lineWidth = 2.5;
-    for (let i = 0; i < 8; i++) {
-      ctx.beginPath();
-      const startX = (i / 8) * canvas.width;
-      ctx.moveTo(startX, 0);
-      ctx.bezierCurveTo(
-        startX + 40, canvas.height * 0.3,
-        startX - 40, canvas.height * 0.7,
-        startX + 20, canvas.height
-      );
-      ctx.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
-  }
-
-  /** 🔮 Planet Creative: Crimson Nebula Texture Generator */
-  private createNebulaTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Deep Ruby / Crimson Cosmos
-    const grad = ctx.createRadialGradient(
-      canvas.width * 0.5, canvas.height * 0.5, 20,
-      canvas.width * 0.5, canvas.height * 0.5, canvas.width * 0.6
-    );
-    grad.addColorStop(0, "#f43f5e");
-    grad.addColorStop(0.4, "#be123c");
-    grad.addColorStop(0.8, "#881337");
-    grad.addColorStop(1, "#4c0519");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Aurora gas clouds
-    ctx.fillStyle = "rgba(254, 205, 211, 0.35)";
-    for (let i = 0; i < 25; i++) {
-      const y = Math.random() * canvas.height;
-      const h = 5 + Math.random() * 18;
-      ctx.fillRect(0, y, canvas.width, h);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
-  }
-
   public update(elapsed: number, delta: number): void {
     // Rotate central corona rings
     this.centralCoronaRings.forEach((ring, idx) => {
       ring.rotation.z += delta * (0.07 + idx * 0.035);
     });
 
-    // Rotate planetary spheres smoothly
+    // The planets turn inside the shader, each at its family's own rate, so the
+    // whole set advances on one uniform. Only the core is a mesh that spins.
+    if (this.planetMaterial) {
+      this.planetMaterial.uniforms.uTime.value = elapsed;
+    }
     this.planetarySpheres.forEach((ps, idx) => {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
-    });
-
-    // Gently rotate equatorial astrolabe rings
-    this.planetEquatorialRings.forEach((eq, idx) => {
-      eq.rotation.y += delta * (0.12 + (idx % 3) * 0.04);
     });
 
   }
