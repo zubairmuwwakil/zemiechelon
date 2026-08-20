@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { History, Calendar, Sparkles } from "lucide-react";
+import { History, Sparkles } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface TimelineScrubberProps {

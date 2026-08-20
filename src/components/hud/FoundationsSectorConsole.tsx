@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Code2, X, Terminal, ChevronRight, Binary, Cpu, Sparkles } from "lucide-react";
+import { X, Binary, Sparkles } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface FoundationsSectorConsoleProps {
@@ -11,7 +10,6 @@ interface FoundationsSectorConsoleProps {
 }
 
 export function FoundationsSectorConsole({ isOpen, onClose, onSelectBody }: FoundationsSectorConsoleProps) {
-  const [selectedAlgo, setSelectedAlgo] = useState<string>("html_cat");
 
   if (!isOpen) return null;
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RotateCcw,
-  Trophy,
   CreditCard,
   Bot,
   Compass,
@@ -28,11 +27,10 @@ export function CleanPlanetLandingModal({
   cosmicMode,
   onClose,
   onOpenTerminal,
-  onSelectBody,
 }: CleanPlanetLandingModalProps) {
   // PickleOps State
   const [playerRating, setPlayerRating] = useState(1525);
-  const [ratingDeviation, setRatingDeviation] = useState(35);
+  const [ratingDeviation] = useState(35);
   const [teamAScore, setTeamAScore] = useState(10);
   const [teamBScore, setTeamBScore] = useState(8);
   const [gamesA, setGamesA] = useState(1);

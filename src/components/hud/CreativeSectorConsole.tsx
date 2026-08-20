@@ -1,7 +1,6 @@
 "use client";
 
-import { X, BookOpen, Sparkles, ChevronRight, PenTool } from "lucide-react";
-import { sound } from "@/lib/audio";
+import { X, BookOpen, Sparkles, PenTool } from "lucide-react";
 
 interface CreativeSectorConsoleProps {
   isOpen: boolean;

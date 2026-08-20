@@ -28,17 +28,17 @@ export function AISectorConsole({ isOpen, onClose, onOpenTerminal }: AISectorCon
     setActiveStep(1);
     sound.playTerminalKey();
 
-    const t1 = setTimeout(() => {
+    setTimeout(() => {
       setActiveStep(2);
       sound.playClick(600, 0.05);
     }, 1200);
 
-    const t2 = setTimeout(() => {
+    setTimeout(() => {
       setActiveStep(3);
       sound.playClick(750, 0.05);
     }, 2400);
 
-    const t3 = setTimeout(() => {
+    setTimeout(() => {
       setActiveStep(4);
       setIsRunning(false);
       sound.playChime(880, 0.3);

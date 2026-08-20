@@ -1,6 +1,6 @@
 "use client";
 
-import { X, ArrowUpRight, Compass, Layers, ShieldCheck, Mail } from "lucide-react";
+import { X, ArrowUpRight, Compass, Mail } from "lucide-react";
 import { ZemiMark } from "../icons/ZemiMark";
 
 interface FounderSectorConsoleProps {

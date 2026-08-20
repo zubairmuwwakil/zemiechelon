@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, X, ChevronRight, Zap, CheckCircle2, DollarSign, LineChart } from "lucide-react";
+import { CreditCard, X, ChevronRight, Zap, CheckCircle2 } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface PickMeSectorConsoleProps {
@@ -15,7 +15,7 @@ export function PickMeSectorConsole({ isOpen, onClose }: PickMeSectorConsoleProp
   // PickMe State
   const [centsPerPoint, setCentsPerPoint] = useState(1.8);
   const [purchaseType, setPurchaseType] = useState<"grocery" | "costco" | "travel">("grocery");
-  const [amount, setAmount] = useState(140);
+  const [amount] = useState(140);
 
   // Inunity Simulated Transaction State
   const [txnStatus, setTxnStatus] = useState<string | null>(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trophy, RefreshCw, X, Award, ChevronRight, Activity } from "lucide-react";
+import { Trophy, X, Award, ChevronRight, Activity } from "lucide-react";
 import { sound } from "@/lib/audio";
 
 interface PickleOpsSectorConsoleProps {
@@ -17,7 +17,7 @@ export function PickleOpsSectorConsole({ isOpen, onClose, onHitPaddle }: PickleO
 
   // Glicko-2 recalculator state
   const [playerRating, setPlayerRating] = useState(1500);
-  const [playerRD, setPlayerRD] = useState(200); // Rating Deviation
+  const [playerRD] = useState(200); // Rating Deviation
   const [opponentRating, setOpponentRating] = useState(1620);
   const [matchOutcome, setMatchOutcome] = useState<"win" | "loss">("win");
 
