@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { derivePlanets } from "@/lib/atlas/planets";
+import { loadBodies } from "@/lib/atlas/bodies";
 
 export type CameraTargetPreset =
   | "galaxy"
@@ -15,61 +17,34 @@ export interface CameraPose {
   target: THREE.Vector3;
 }
 
-// 5 Dedicated Planet Centers - Expanded Orbital Distance for dramatic depth
-export const PLANET_CENTERS = {
+const derived = derivePlanets(loadBodies());
+
+/** Derived from repository metadata. Nothing here is authored. */
+export const PLANET_CENTERS: Record<string, THREE.Vector3> = {
   sun: new THREE.Vector3(0, 0, 0),
-  self: new THREE.Vector3(0, 0, 36),
-  foundations: new THREE.Vector3(-52, 0, -38),
-  products: new THREE.Vector3(-68, 0, 68),
-  labs: new THREE.Vector3(105, 0, -75),
-  creative: new THREE.Vector3(120, 0, 118),
+  ...Object.fromEntries(
+    derived.map((p) => [p.arm, new THREE.Vector3(p.center.x, p.center.y, p.center.z)]),
+  ),
+};
+
+function orbitPose(center: THREE.Vector3, height: number, back: number): CameraPose {
+  return {
+    position: new THREE.Vector3(center.x, height, center.z + back),
+    target: new THREE.Vector3(center.x, 2, center.z),
+  };
+}
+
+const GALAXY_POSE: CameraPose = {
+  position: new THREE.Vector3(0, 185, 230),
+  target: new THREE.Vector3(0, 0, 0),
 };
 
 export const CAMERA_PRESETS: Record<string, CameraPose> = {
-  galaxy: {
-    position: new THREE.Vector3(0, 185, 230),
-    target: new THREE.Vector3(0, 0, 0),
-  },
-  overview: {
-    position: new THREE.Vector3(0, 185, 230),
-    target: new THREE.Vector3(0, 0, 0),
-  },
-  self: {
-    position: new THREE.Vector3(0, 22, 36 + 28),
-    target: new THREE.Vector3(0, 2, 36),
-  },
-  founder: {
-    position: new THREE.Vector3(0, 22, 36 + 28),
-    target: new THREE.Vector3(0, 2, 36),
-  },
-  foundations: {
-    position: new THREE.Vector3(-52, 24, -38 + 32),
-    target: new THREE.Vector3(-52, 2, -38),
-  },
-  products: {
-    position: new THREE.Vector3(-68, 28, 68 + 36),
-    target: new THREE.Vector3(-68, 2.5, 68),
-  },
-  pickleops: {
-    position: new THREE.Vector3(-68, 28, 68 + 36),
-    target: new THREE.Vector3(-68, 2.5, 68),
-  },
-  fintech: {
-    position: new THREE.Vector3(-68, 28, 68 + 36),
-    target: new THREE.Vector3(-68, 2.5, 68),
-  },
-  labs: {
-    position: new THREE.Vector3(105, 25, -75 + 34),
-    target: new THREE.Vector3(105, 2, -75),
-  },
-  ai: {
-    position: new THREE.Vector3(105, 25, -75 + 34),
-    target: new THREE.Vector3(105, 2, -75),
-  },
-  creative: {
-    position: new THREE.Vector3(120, 22, 118 + 30),
-    target: new THREE.Vector3(120, 2, 118),
-  },
+  galaxy: GALAXY_POSE,
+  overview: GALAXY_POSE,
+  ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(PLANET_CENTERS[p.arm], 24, 32)])),
+  // Retained alias: the HUD and page.tsx both still dispatch "founder".
+  founder: orbitPose(PLANET_CENTERS.self, 24, 32),
 };
 
 export class WorldCameraManager {
