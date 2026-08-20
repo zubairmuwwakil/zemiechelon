@@ -9,7 +9,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS } from "./WorldCameraManager";
-import { WorldSceneBuilder } from "./WorldSceneBuilder";
+import { WorldSceneBuilder, fieldDensityFor } from "./WorldSceneBuilder";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
@@ -170,7 +170,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
     // 5. Scene Builder
     const today = new Date().toISOString().slice(0, 10);
-    const sceneBuilder = new WorldSceneBuilder(scene, bodies, today);
+    const sceneBuilder = new WorldSceneBuilder(scene, bodies, today, fieldDensityFor(width));
     sceneBuilder.build();
     sceneBuilderRef.current = sceneBuilder;
 

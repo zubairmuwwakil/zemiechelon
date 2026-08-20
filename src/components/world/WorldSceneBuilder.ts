@@ -1,10 +1,119 @@
 import * as THREE from "three";
 import type { Body } from "@/lib/atlas/types";
 import { placeBodies } from "@/lib/atlas/position";
-import { GALAXY_ZEMI } from "@/lib/atlas/scopes";
+import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
+import { deriveWorldRadius } from "@/lib/atlas/planets";
+import { DIRECTION_A } from "@/lib/theme/directionA";
 import { PLANET_CENTERS, PLANET_RADII, SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { createAtmosphericGlowMesh } from "./AtmosphereShader";
+
+export const BACKGROUND_STAR_COUNT = 12_000;
+export const ARM_DUST_COUNT = 4_500;
+
+/** Mobile budget. Applied by WorldCanvas when the viewport is narrow. */
+export const MOBILE_FIELD_SCALE = 0.35;
+
+/** Below this CSS width the field draws at MOBILE_FIELD_SCALE. */
+export const NARROW_VIEWPORT = 768;
+
+export function fieldDensityFor(width: number): number {
+  return width < NARROW_VIEWPORT ? MOBILE_FIELD_SCALE : 1;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Pure, so density is testable without a GL context. Background stars fill a
+ * shell; dust follows the arms, which is what makes the spiral legible at rest.
+ *
+ * Everything here is in LAYOUT units — the same ones `placeBodies` produces —
+ * and `scale` is the single conversion to scene units, so the shell cannot
+ * drift out of step with the bodies it surrounds. The shell radius is a
+ * multiple of how far the galaxy actually reaches rather than a number typed
+ * when the world happened to be a particular size.
+ */
+export function buildFieldGeometry(
+  bodies: Body[],
+  seed: number,
+  scale = 1,
+  scope: Scope = GALAXY_ZEMI,
+): { positions: Float32Array } {
+  const rand = mulberry32(seed);
+  const positions = new Float32Array((BACKGROUND_STAR_COUNT + ARM_DUST_COUNT) * 3);
+  const reach = deriveWorldRadius(bodies, scope);
+  let i = 0;
+
+  for (let n = 0; n < BACKGROUND_STAR_COUNT; n++) {
+    const theta = rand() * Math.PI * 2;
+    const phi = Math.acos(2 * rand() - 1);
+    // Outside the outermost repository, so the field reads as sky rather than
+    // as more bodies. Depth comes from the shell being thick, not from haze.
+    const r = reach * (1.5 + rand() * 1.3);
+    positions[i++] = Math.sin(phi) * Math.cos(theta) * r * scale;
+    positions[i++] = Math.cos(phi) * r * scale;
+    positions[i++] = Math.sin(phi) * Math.sin(theta) * r * scale;
+  }
+
+  // Anchored on the real placements rather than re-deriving the spiral, so the
+  // dust cannot wander off the arm it is drawing — the failure b394093 fixed
+  // for the old haze, made structural here.
+  const placements = placeBodies(bodies, scope);
+  const armOf = new Map(bodies.map((b) => [b.id, b.arm]));
+
+  // Each arm's reach and how many bodies share it. The mean gap is the distance
+  // dust has to bridge for a run of repositories to read as one arm instead of
+  // as a string of separate puffs.
+  const spans = new Map<string, { min: number; max: number; n: number }>();
+  for (const p of placements) {
+    const arm = armOf.get(p.id);
+    if (arm === undefined) continue;
+    const r = Math.hypot(p.position.x, p.position.z);
+    const s = spans.get(arm) ?? { min: r, max: r, n: 0 };
+    spans.set(arm, { min: Math.min(s.min, r), max: Math.max(s.max, r), n: s.n + 1 });
+  }
+
+  for (let n = 0; n < ARM_DUST_COUNT; n++) {
+    const anchor = placements[Math.floor(rand() * placements.length)];
+    const arm = armOf.get(anchor.id)!;
+    const span = spans.get(arm)!;
+    const r0 = Math.hypot(anchor.position.x, anchor.position.z);
+    const theta0 = Math.atan2(anchor.position.z, anchor.position.x);
+
+    // Slide along the arm from the anchor, then follow the scope's own wind
+    // rate round to the new radius. Starting from the body's angle rather than
+    // the bare spine matters: `placeBodies` fans crowded runs off the spine, so
+    // spine dust would sit beside the very bodies it is meant to be tracing.
+    // Two thirds of the motes slide freely along the whole arm, from its first
+    // repository to its last, so the arm reads as one continuous curve; the
+    // rest stay near a body, so the dust is thickest where the work actually
+    // is. Uniform-only draws five clean but uninformative ribbons; anchored-only
+    // draws forty-five separate puffs with the arm missing between them.
+    const r = rand() < 0.66
+      ? span.min + rand() * (span.max - span.min)
+      : Math.max(0, r0 + (rand() - 0.5) * ((span.max - span.min) / Math.max(1, span.n)) * 2.2);
+    const theta = theta0 + scope.windRate * (Math.log(1 + r) - Math.log(1 + r0));
+
+    // Width is a fraction of radius, so an arm is narrow at the core and flares
+    // at the frontier the way an arm does — and stays in proportion if the
+    // galaxy grows. A fixed width wide enough to read at the rim is a quarter
+    // of the whole map at the core, which is a blob, not an arm.
+    const spread = 0.04 + r * 0.035;
+    positions[i++] = (Math.cos(theta) * r + (rand() - 0.5) * spread * 2) * scale;
+    positions[i++] = (rand() - 0.5) * spread * 0.6 * scale;
+    positions[i++] = (Math.sin(theta) * r + (rand() - 0.5) * spread * 2) * scale;
+  }
+
+  return { positions };
+}
 
 export interface InteractiveHitObject {
   id: string;
@@ -25,13 +134,14 @@ export class WorldSceneBuilder {
   private centralCoronaRings: THREE.Mesh[] = [];
   private astrolabeRings: THREE.Mesh[] = [];
   private constellationLines: THREE.LineSegments | null = null;
-  private stardustPoints: THREE.Points | null = null;
   private atmosphereGlows: THREE.Mesh[] = [];
 
   constructor(
     private scene: THREE.Scene,
     private bodies: Body[],
     private today: string,
+    /** Fraction of the field budget to draw. See `fieldDensityFor`. */
+    private fieldDensity = 1,
   ) {
     this.rootGroup.name = "world-scene-root";
   }
@@ -40,7 +150,7 @@ export class WorldSceneBuilder {
     this.scene.add(this.rootGroup);
 
     this.buildAstrolabeConcentricRings();
-    this.buildStardustHaze();
+    this.buildBackgroundField();
     this.buildConstellationGrid();
     this.buildCentralAnchorCore();
     this.buildPlanetarySpheres();
@@ -95,60 +205,65 @@ export class WorldSceneBuilder {
     this.rootGroup.add(tickLines);
   }
 
-  /** 2. 🌌 Deep Stardust Particle Cloud */
-  private buildStardustHaze(): void {
-    const dustCount = 4500;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(dustCount * 3);
-    const colors = new Float32Array(dustCount * 3);
+  /**
+   * 2. The deep field. Dark points on a light ground: engraved, not emitted.
+   *
+   * The old haze re-derived the spiral from `GALAXY_ZEMI.arms` and then rotated
+   * itself in `update()`, so within two minutes the drawn arms had slid off the
+   * repositories they were drawing. This one is anchored on the placements and
+   * does not move.
+   */
+  public buildBackgroundField(): void {
+    const { positions } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
 
-    const goldColor = new THREE.Color(0xd97706);
-    const emeraldColor = new THREE.Color(0x059669);
-    const pearlColor = new THREE.Color(0xa1a1aa);
-    const violetColor = new THREE.Color(0xa855f7);
+    // The shell reads as sky and the dust as ground, so they need different
+    // weights — but not different generation passes. Two geometries over
+    // subarray views of one buffer: `setDrawRange` lives on the geometry, so
+    // sharing one would give both layers the same range.
+    const layer = (
+      from: number,
+      count: number,
+      size: number,
+      opacity: number,
+      attenuate: boolean,
+      name: string,
+    ) => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions.subarray(from * 3, (from + count) * 3), 3),
+      );
+      const points = new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+          color: new THREE.Color(DIRECTION_A.dust),
+          size,
+          sizeAttenuation: attenuate,
+          // The shell is sky. Fading it into the paper would delete it, since
+          // the fog colour is the paper.
+          fog: attenuate,
+          transparent: true,
+          opacity,
+          depthWrite: false,
+        }),
+      );
+      points.name = name;
+      // The shell is larger than any frustum test three.js will infer cheaply,
+      // and a wrongly-culled sky is indistinguishable from a missing one.
+      points.frustumCulled = false;
+      this.rootGroup.add(points);
+    };
 
-    // The dust IS the arms, so it has to be the same spiral the bodies are laid
-    // out on. It used to carry its own wind rate (0.38 against the layout's
-    // 0.55) and its own radius range, which put every planet 25 degrees off the
-    // arm it belongs to — a third of the way to its neighbour.
-    const armNames = Object.keys(GALAXY_ZEMI.arms);
-    const reach = placeBodies(this.bodies).map((p) => Math.hypot(p.position.x, p.position.z));
-    const innerR = Math.min(...reach);
-    const outerR = Math.max(...reach);
-
-    for (let i = 0; i < dustCount; i++) {
-      const u = i / dustCount;
-      const arm = armNames[i % armNames.length];
-      // Layout units: theta is a function of the layout radius, so the curve is
-      // the arm's own curve. Only the drawn position is converted to the scene.
-      const radius = innerR + u * (outerR - innerR) + (Math.random() - 0.5) * 0.6;
-      const theta =
-        GALAXY_ZEMI.arms[arm] + GALAXY_ZEMI.windRate * Math.log(1 + radius) + (Math.random() - 0.5) * 0.3;
-
-      positions[i * 3] = Math.cos(theta) * radius * SCENE_SCALE;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 1.2;
-      positions[i * 3 + 2] = Math.sin(theta) * radius * SCENE_SCALE;
-
-      const r = Math.random();
-      const col = r > 0.65 ? goldColor : r > 0.4 ? emeraldColor : r > 0.2 ? violetColor : pearlColor;
-      colors[i * 3] = col.r;
-      colors[i * 3 + 1] = col.g;
-      colors[i * 3 + 2] = col.b;
-    }
-
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-    const material = new THREE.PointsMaterial({
-      size: 0.75,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.5,
-      sizeAttenuation: true,
-    });
-
-    this.stardustPoints = new THREE.Points(geometry, material);
-    this.rootGroup.add(this.stardustPoints);
+    // Stars do not attenuate: they sit 300-870 units out, where a world-space
+    // size of 0.9 rasterises to half a pixel and is dropped entirely. A fixed
+    // pixel size is also what a sky should do — it must not swell on zoom.
+    // The buffer is always generated whole — it is one cheap pass — and the
+    // narrow-viewport budget is taken as a prefix of each region. The generator
+    // draws in random order, so a prefix is a uniform sample of the same field
+    // rather than a different one.
+    const budget = (n: number) => Math.max(1, Math.round(n * this.fieldDensity));
+    layer(0, budget(BACKGROUND_STAR_COUNT), 1.6, 0.5, false, "background-field");
+    layer(BACKGROUND_STAR_COUNT, budget(ARM_DUST_COUNT), 1.2, 0.5, true, "arm-dust");
   }
 
   /** 3. 🕸️ Constellation Network across Expanded Cosmos */
@@ -699,9 +814,5 @@ export class WorldSceneBuilder {
       eq.rotation.y += delta * (0.12 + (idx % 3) * 0.04);
     });
 
-    // Slowly rotate stardust haze
-    if (this.stardustPoints) {
-      this.stardustPoints.rotation.y += delta * 0.015;
-    }
   }
 }

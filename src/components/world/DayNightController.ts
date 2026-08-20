@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ASTROLABE_OUTER } from "./WorldCameraManager";
 
 export type CosmicMode = "day" | "night";
 
@@ -28,8 +29,11 @@ export const DAY_PALETTE: DayNightPalette = {
   sunIntensity: 1.8,
   sunPosition: [30, 60, 30],
   fogColor: 0xf7f6f2,
-  fogNear: 100,
-  fogFar: 350,
+  // Derived from the drawn instrument, not typed. The old 100/350 predates the
+  // world being scaled to the astrolabe: it put the fog's far plane inside the
+  // galaxy, so every planet was 40-100% painted over with its own background.
+  fogNear: ASTROLABE_OUTER * 1.6,
+  fogFar: ASTROLABE_OUTER * 5,
   groundBaseColor: 0xe5e2db,
   groundGrassColor: 0x86efac,
   roadColor: 0xe5e2db,
@@ -46,8 +50,8 @@ export const NIGHT_PALETTE: DayNightPalette = {
   sunIntensity: 1.4,
   sunPosition: [-25, 45, -25],
   fogColor: 0x09090b,
-  fogNear: 110,
-  fogFar: 380,
+  fogNear: ASTROLABE_OUTER * 1.7,
+  fogFar: ASTROLABE_OUTER * 5.4,
   groundBaseColor: 0x18181b,
   groundGrassColor: 0x064e3b,
   roadColor: 0x27272a,
