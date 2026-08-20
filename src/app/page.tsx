@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { WorldCanvas, type WorldCanvasHandle } from "@/components/world/WorldCanvas";
 import type { CosmicMode } from "@/components/world/DayNightController";
 import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
-import { ShootingStarQuotes } from "@/components/world/ShootingStarQuotes";
+import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
 import { WorldHUD } from "@/components/hud/WorldHUD";
 import { CleanPlanetLandingModal } from "@/components/hud/CleanPlanetLandingModal";
 import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
@@ -26,6 +26,9 @@ export default function HomePage() {
   const [activePreset, setActivePreset] = useState<CameraTargetPreset>("galaxy");
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const [screenPoints, setScreenPoints] = useState<ScreenPoint[]>([]);
+  // The quote sky rides the same projection bridge as the planet pins, so the
+  // stars parallax with the scene instead of sitting on the viewport.
+  const [quotePoints, setQuotePoints] = useState<ScreenPoint[]>([]);
 
   // Planetary Landing Workspace state
   const [activeLandingPlanet, setActiveLandingPlanet] = useState<string | null>(null);
@@ -90,6 +93,8 @@ export default function HomePage() {
         onSelectSector={handleSelectSector}
         onSelectBody={handleSelectBody}
         onProjectPins={setScreenPoints}
+        anchors={QUOTE_STARS}
+        onProjectAnchors={setQuotePoints}
       />
 
       {/* 2. Tactile Swiss Paper Grain & Archival Noise Overlay */}
@@ -103,8 +108,8 @@ export default function HomePage() {
         onSelectPlanet={handleSelectSector}
       />
 
-      {/* 3. Shooting Star Mantras & Night Star Tooltips (Mockup Slides 1, 2, 4) */}
-      <ShootingStarQuotes cosmicMode={cosmicMode} />
+      {/* 3. Scene-space Quote Sky: pulsing stars at night, catchable comets by day */}
+      <QuoteSky cosmicMode={cosmicMode} points={quotePoints} />
 
       {/* 4. Top Segmented Capsule HUD (Mockup Slides 1, 2, 4) */}
       <WorldHUD

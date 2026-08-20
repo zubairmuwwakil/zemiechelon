@@ -92,6 +92,30 @@ body {
   animation: shootingStarGlide 11s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
+/* A quote-bearing star. Each carries its own animation-delay so the sky
+   pulses out of phase; synchronised pulsing reads as a loading state. */
+.quote-star {
+  animation: quoteStarPulse 4.2s ease-in-out infinite;
+}
+
+@keyframes quoteStarPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 7px currentColor);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-star {
+    animation: none;
+  }
+}
+
 /* Custom minimal scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

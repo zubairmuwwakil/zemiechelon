@@ -6,13 +6,19 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import type { Body, ScreenPoint } from "@/lib/atlas/types";
+import type { Body, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS } from "./WorldCameraManager";
-import { WorldSceneBuilder, type InteractiveHitObject } from "./WorldSceneBuilder";
+import { WorldSceneBuilder } from "./WorldSceneBuilder";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
+}
+
+/** Anything the canvas can carry for an HTML overlay: an id and a scene position. */
+export interface ProjectableAnchor {
+  id: string;
+  position: Vec3;
 }
 
 export interface WorldCanvasProps {
@@ -22,10 +28,50 @@ export interface WorldCanvasProps {
   onSelectSector: (sectorId: string) => void;
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
+  /**
+   * Scene-space anchors projected alongside the planet pins each frame. This is
+   * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
+   * it parallaxes when the camera orbits instead of being painted on the monitor.
+   */
+  anchors?: ProjectableAnchor[];
+  onProjectAnchors?: (points: ScreenPoint[]) => void;
+}
+
+/**
+ * Scene point -> viewport pixels. `visible` is false behind the camera and past
+ * a small off-screen margin, so the overlay never keeps DOM nodes for stars the
+ * camera has turned away from.
+ */
+function projectToScreen(
+  pos: THREE.Vector3,
+  camera: THREE.Camera,
+  width: number,
+  height: number,
+): { x: number; y: number; depth: number; visible: boolean } {
+  const v = pos.clone().project(camera);
+  const x = ((v.x + 1) * width) / 2;
+  const y = ((-v.y + 1) * height) / 2;
+  const inFront = pos.clone().applyMatrix4(camera.matrixWorldInverse).z < 0;
+  const margin = 0.08;
+  const onScreen =
+    x >= -margin * width &&
+    x <= width * (1 + margin) &&
+    y >= -margin * height &&
+    y <= height * (1 + margin);
+  return { x, y, depth: v.z, visible: inFront && onScreen };
 }
 
 export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(function WorldCanvas(
-  { bodies, cosmicMode, cameraPreset, onSelectSector, onSelectBody, onProjectPins },
+  {
+    bodies,
+    cosmicMode,
+    cameraPreset,
+    onSelectSector,
+    onSelectBody,
+    onProjectPins,
+    anchors,
+    onProjectAnchors,
+  },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -226,21 +272,29 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         ];
 
         planetPins.forEach((s) => {
-          const v = s.pos.clone().project(cam);
-          if (v.z < 1) {
-            const x = ((v.x + 1) * width) / 2;
-            const y = ((-v.y + 1) * height) / 2;
-            points.push({
-              id: s.id,
-              x,
-              y,
-              visible: true,
-              depth: v.z,
-            });
+          const p = projectToScreen(s.pos, cam, width, height);
+          if (p.depth < 1) {
+            points.push({ id: s.id, x: p.x, y: p.y, visible: true, depth: p.depth });
           }
         });
 
         onProjectPins(points);
+      }
+
+      // Project the scene-space overlay anchors (the quote sky) down the same path.
+      if (onProjectAnchors && anchors && anchors.length > 0) {
+        const cam = cameraManager.camera;
+        onProjectAnchors(
+          anchors.map((a) => {
+            const p = projectToScreen(
+              new THREE.Vector3(a.position.x, a.position.y, a.position.z),
+              cam,
+              width,
+              height,
+            );
+            return { id: a.id, x: p.x, y: p.y, visible: p.visible, depth: p.depth };
+          }),
+        );
       }
     };
 
@@ -256,7 +310,16 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       composer.dispose();
       renderer.dispose();
     };
-  }, [bodies, onSelectSector, onSelectBody, onProjectPins, cosmicMode, cameraPreset]);
+  }, [
+    bodies,
+    onSelectSector,
+    onSelectBody,
+    onProjectPins,
+    anchors,
+    onProjectAnchors,
+    cosmicMode,
+    cameraPreset,
+  ]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 size-full overflow-hidden touch-none">
