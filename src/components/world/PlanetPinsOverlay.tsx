@@ -3,46 +3,26 @@
 import React from "react";
 import type { ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
+import { ARM_META } from "@/data/arms";
+import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 
-interface PlanetPinData {
-  id: string;
-  label: string;
-  dotColor: string;
-}
+/**
+ * The pin is the only thing on screen a visitor can compare a planet against,
+ * so its dot has to be the planet's own colour. This used to hold a third copy
+ * of the palette — bg-sky-500, bg-purple-500, bg-rose-500 — which meant
+ * restating `ARM_META.themeColor` against Direction A changed nothing anyone
+ * could see. Labels come from `ARM_META` for the same reason.
+ *
+ * The core is not an arm, so it is the one entry here.
+ */
+const CORE_PIN = { label: "Nodes", color: DIRECTION_A.gold } as const;
 
-const PLANET_METADATA: Record<string, PlanetPinData> = {
-  galaxy: {
-    id: "galaxy",
-    label: "Nodes",
-    dotColor: "bg-amber-500",
-  },
-  self: {
-    id: "self",
-    label: "Self",
-    dotColor: "bg-emerald-500",
-  },
-  foundations: {
-    id: "foundations",
-    label: "Foundations",
-    dotColor: "bg-sky-500",
-  },
-  products: {
-    id: "products",
-    label: "Products",
-    dotColor: "bg-amber-500",
-  },
-  labs: {
-    id: "labs",
-    label: "Labs",
-    dotColor: "bg-purple-500",
-  },
-  creative: {
-    id: "creative",
-    label: "Creative",
-    dotColor: "bg-rose-500",
-  },
-};
+function pinFor(id: string): { label: string; color: string } | null {
+  if (id === "galaxy") return CORE_PIN;
+  const arm = ARM_META[id];
+  return arm ? { label: arm.shortName, color: arm.themeColor } : null;
+}
 
 interface PlanetPinsOverlayProps {
   points: ScreenPoint[];
@@ -66,8 +46,8 @@ export function PlanetPinsOverlay({
   return (
     <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none">
       {points.map((pt) => {
-        const meta = PLANET_METADATA[pt.id];
-        if (!meta) return null;
+        const pin = pinFor(pt.id);
+        if (!pin) return null;
 
         return (
           <div
@@ -91,8 +71,11 @@ export function PlanetPinsOverlay({
                   : "border-white/15 bg-zinc-900/85 text-zinc-100 shadow-black/50 hover:bg-zinc-800"
               }`}
             >
-              <span className="text-xs font-semibold tracking-tight">{meta.label}</span>
-              <span className={`size-1.5 rounded-full ${meta.dotColor}`} />
+              <span className="text-xs font-semibold tracking-tight">{pin.label}</span>
+              <span
+                className="size-1.5 rounded-full"
+                style={{ backgroundColor: pin.color }}
+              />
             </button>
           </div>
         );

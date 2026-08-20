@@ -179,7 +179,6 @@ export class WorldSceneBuilder {
   private readonly resolution = new THREE.Vector2(1, 1);
   private centralCoronaRings: THREE.Mesh[] = [];
   private astrolabeRings: THREE.Mesh[] = [];
-  private constellationLines: THREE.LineSegments | null = null;
   private atmosphereGlows: THREE.Mesh[] = [];
 
   constructor(
@@ -197,7 +196,6 @@ export class WorldSceneBuilder {
 
     this.buildAstrolabeConcentricRings();
     this.buildBackgroundField();
-    this.buildConstellationGrid();
     this.buildCentralAnchorCore();
     this.buildPlanetarySpheres();
     this.buildIdealRings();
@@ -311,51 +309,6 @@ export class WorldSceneBuilder {
     const budget = (n: number) => Math.max(1, Math.round(n * this.fieldDensity));
     layer(0, budget(BACKGROUND_STAR_COUNT), 1.6, 0.5, false, "background-field");
     layer(BACKGROUND_STAR_COUNT, budget(ARM_DUST_COUNT), 1.2, 0.5, true, "arm-dust");
-  }
-
-  /** 3. 🕸️ Constellation Network across Expanded Cosmos */
-  private buildConstellationGrid(): void {
-    const constellationPoints = [
-      new THREE.Vector3(-100, 20, -70),
-      new THREE.Vector3(-52, 18, -38),
-      new THREE.Vector3(-20, 26, -110),
-      new THREE.Vector3(45, 24, -120),
-      new THREE.Vector3(105, 20, -75),
-      new THREE.Vector3(135, 18, 20),
-      new THREE.Vector3(120, 22, 118),
-      new THREE.Vector3(50, 16, 125),
-      new THREE.Vector3(0, 18, 36),
-      new THREE.Vector3(-68, 22, 68),
-      new THREE.Vector3(-115, 20, 25),
-    ];
-
-    const linePositions: number[] = [];
-    for (let i = 0; i < constellationPoints.length; i++) {
-      const nextIdx = (i + 1) % constellationPoints.length;
-      linePositions.push(
-        constellationPoints[i].x, constellationPoints[i].y, constellationPoints[i].z,
-        constellationPoints[nextIdx].x, constellationPoints[nextIdx].y, constellationPoints[nextIdx].z
-      );
-
-      // Connect inward towards center astrolabe
-      if (i % 2 === 0) {
-        linePositions.push(
-          constellationPoints[i].x, constellationPoints[i].y, constellationPoints[i].z,
-          0, 6, 0
-        );
-      }
-    }
-
-    const constGeo = new THREE.BufferGeometry();
-    constGeo.setAttribute("position", new THREE.Float32BufferAttribute(linePositions, 3));
-    const constMat = new THREE.LineBasicMaterial({
-      color: 0xf59e0b,
-      transparent: true,
-      opacity: 0.22,
-    });
-
-    this.constellationLines = new THREE.LineSegments(constGeo, constMat);
-    this.rootGroup.add(this.constellationLines);
   }
 
   /** 4. ☀️ Central Ancestral Core Sphere ("Nodes" / Anchor Sun) */

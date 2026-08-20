@@ -84,14 +84,16 @@ export class WorldCameraManager {
   public camera: THREE.PerspectiveCamera;
   public target = new THREE.Vector3(0, 0, 0);
 
+  // Seeded from the derived galaxy pose rather than from a pair of numbers that
+  // happened to frame the world when it was a different size.
   private currentPose: CameraPose = {
-    position: new THREE.Vector3(0, 185, 230),
-    target: new THREE.Vector3(0, 0, 0),
+    position: GALAXY_POSE.position.clone(),
+    target: GALAXY_POSE.target.clone(),
   };
 
   private desiredPose: CameraPose = {
-    position: new THREE.Vector3(0, 185, 230),
-    target: new THREE.Vector3(0, 0, 0),
+    position: GALAXY_POSE.position.clone(),
+    target: GALAXY_POSE.target.clone(),
   };
 
   // Orbit state
