@@ -1,24 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { FOUNDER_QUOTES, type FounderQuote } from "@/data/quotes";
-import { createQuoteRotation } from "@/lib/quotes/rotation";
-import { deriveQuoteStars } from "@/lib/quotes/sky";
+import {
+  getServerStars,
+  getSessionRotation,
+  getSessionStars,
+  subscribeToQuoteSession,
+} from "@/lib/quotes/session";
 import type { ScreenPoint } from "@/lib/atlas/types";
 import type { CosmicMode } from "./DayNightController";
 import { QuoteCard } from "./QuoteCard";
 import { sound } from "@/lib/audio";
 
-export const QUOTE_STAR_COUNT = 14;
-
-/**
- * Scene units, just outside `ASTROLABE_OUTER` (205). The sky sits beyond the
- * drawn instrument so the stars read as behind the galaxy, not inside it.
- */
-export const QUOTE_SKY_RADIUS = 260;
-
-/** Scene-space star positions. Exported so WorldCanvas can project them. */
-export const QUOTE_STARS = deriveQuoteStars(FOUNDER_QUOTES, QUOTE_STAR_COUNT, QUOTE_SKY_RADIUS);
+export { QUOTE_STAR_COUNT, QUOTE_SKY_RADIUS, QUOTE_STARS } from "@/lib/quotes/session";
 
 /** Three in flight reads as weather; one every sixteen seconds reads as a thing you missed. */
 const MAX_COMETS = 3;
@@ -63,7 +58,13 @@ export function QuoteSky({ cosmicMode, points }: QuoteSkyProps) {
   const [comets, setComets] = useState<Comet[]>([]);
 
   const quoteById = useMemo(() => new Map(FOUNDER_QUOTES.map((q) => [q.id, q])), []);
-  const starById = useMemo(() => new Map(QUOTE_STARS.map((s) => [s.id, s])), []);
+
+  // Which quote hangs at which point is drawn per page load, so a second visit
+  // is not the same fourteen quotes. Positions are unaffected — they are what
+  // WorldCanvas projects. Read through a store rather than an effect so the
+  // server snapshot is a stated contract instead of a happy accident.
+  const stars = useSyncExternalStore(subscribeToQuoteSession, getSessionStars, getServerStars);
+  const starById = useMemo(() => new Map(stars.map((s) => [s.id, s])), [stars]);
 
   const setPaused = useCallback((key: number, paused: boolean) => {
     setComets((current) => current.map((c) => (c.key === key ? { ...c, paused } : c)));
@@ -79,10 +80,9 @@ export function QuoteSky({ cosmicMode, points }: QuoteSkyProps) {
   useEffect(() => {
     if (!isDay) return;
 
-    // Comets draw from the no-repeat bag, so a session never sees the same
-    // quote twice before it has seen the other eighty. Seeded in the effect
-    // rather than in a memo: `Date.now()` during render is not idempotent.
-    const rotation = createQuoteRotation(FOUNDER_QUOTES, Date.now() % 100_000);
+    // The same bag the stars drew from, so a comet never repeats a quote that
+    // is already hanging in the sky behind it.
+    const rotation = getSessionRotation();
     let key = 0;
     let lane = 0;
     const make = (): Comet => ({

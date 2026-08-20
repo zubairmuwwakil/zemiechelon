@@ -4,9 +4,17 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { FOUNDER_QUOTES } from "@/data/quotes";
 import { deriveQuoteStars } from "@/lib/quotes/sky";
+import { resetQuoteSession } from "@/lib/quotes/session";
 import { QuoteSky } from "../QuoteSky";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // Each case opens its own sky; the session is memoised for the page's life.
+  resetQuoteSession();
+});
+
+const QUOTE_TEXTS = new Set(FOUNDER_QUOTES.map((q) => q.text));
+const labels = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
 
 const points = deriveQuoteStars(FOUNDER_QUOTES, 14, 260).map((s, i) => ({
   id: s.id,
@@ -24,15 +32,56 @@ describe("QuoteSky", () => {
 
   it("names each star with its quote, so a screen reader hears the content", () => {
     render(<QuoteSky cosmicMode="night" points={points} />);
-    const first = screen.getAllByRole("button")[0];
-    expect(first).toHaveAccessibleName(FOUNDER_QUOTES[0].text);
+    for (const button of screen.getAllByRole("button")) {
+      expect(QUOTE_TEXTS.has(button.getAttribute("aria-label") ?? "")).toBe(true);
+    }
+  });
+
+  it("never hangs one quote on two stars", () => {
+    render(<QuoteSky cosmicMode="night" points={points} />);
+    const names = labels();
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("hangs a different sky on the next visit", () => {
+    // The gap this closes: an index assignment could only ever show the first
+    // fourteen of eighty-one quotes, identically on every visit.
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    resetQuoteSession();
+    render(<QuoteSky cosmicMode="night" points={points} />);
+    const firstVisit = labels();
+
+    cleanup();
+    vi.setSystemTime(64_000);
+    resetQuoteSession();
+    render(<QuoteSky cosmicMode="night" points={points} />);
+
+    expect(labels()).not.toEqual(firstVisit);
+    vi.useRealTimers();
+  });
+
+  it("reaches quotes past the first fourteen", () => {
+    vi.useFakeTimers();
+    const seen = new Set<string | null>();
+    for (const t of [1_000, 9_000, 23_000, 51_000, 88_000]) {
+      vi.setSystemTime(t);
+      resetQuoteSession();
+      render(<QuoteSky cosmicMode="night" points={points} />);
+      for (const name of labels()) seen.add(name);
+      cleanup();
+    }
+    expect(seen.size).toBeGreaterThan(points.length);
+    vi.useRealTimers();
   });
 
   it("opens the quote card when a star is activated", async () => {
     const user = userEvent.setup();
     render(<QuoteSky cosmicMode="night" points={points} />);
-    await user.click(screen.getAllByRole("button")[0]);
-    expect(screen.getByRole("dialog")).toHaveTextContent(FOUNDER_QUOTES[0].text);
+    const star = screen.getAllByRole("button")[0];
+    const quote = star.getAttribute("aria-label")!;
+    await user.click(star);
+    expect(screen.getByRole("dialog")).toHaveTextContent(quote);
   });
 
   it("opens the card from the keyboard as well as the pointer", async () => {

@@ -1,5 +1,6 @@
 import type { FounderQuote } from "@/data/quotes";
 import type { Vec3 } from "@/lib/atlas/types";
+import type { QuoteRotation } from "./rotation";
 
 export interface QuoteStar {
   id: string;
@@ -44,4 +45,22 @@ export function deriveQuoteStars(
   }
 
   return stars;
+}
+
+/**
+ * Re-points each star at a quote drawn from a rotation, leaving id, position
+ * and phase alone.
+ *
+ * Placement and selection are separate concerns and only one of them may vary.
+ * The positions are what `WorldCanvas` projects — the bridge keys on the
+ * positional `id` — and the guaranteed angular separation is a property of the
+ * Fibonacci sphere, so both have to stay deterministic. Which quote hangs at
+ * each point does not, and holding it fixed is what limited the night sky to
+ * `quotes[0..count-1]` on every visit.
+ *
+ * Drawing from a fresh rotation gives `count` distinct quotes, because the bag
+ * yields a full cycle before it reshuffles.
+ */
+export function assignQuotes(stars: QuoteStar[], rotation: QuoteRotation): QuoteStar[] {
+  return stars.map((star) => ({ ...star, quoteId: rotation.next().id }));
 }
