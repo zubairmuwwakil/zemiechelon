@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
+import { GALAXY_ZEMI } from "../scopes";
 import {
   ARM_ANGLES,
   daysSinceEpoch,
@@ -39,8 +40,8 @@ describe("derivePosition", () => {
   it("places every 2025 body inside every 2026-08 body", () => {
     const oldest = bodies.filter((b) => b.bornAt < "2026-01-01");
     const newest = bodies.filter((b) => b.bornAt >= "2026-08-01");
-    const innerMax = Math.max(...oldest.map((b) => r(derivePosition(b))));
-    const outerMin = Math.min(...newest.map((b) => r(derivePosition(b))));
+    const innerMax = Math.max(...oldest.map((b) => r(derivePosition(b, GALAXY_ZEMI))));
+    const outerMin = Math.min(...newest.map((b) => r(derivePosition(b, GALAXY_ZEMI))));
     expect(innerMax).toBeLessThan(outerMin);
   });
 

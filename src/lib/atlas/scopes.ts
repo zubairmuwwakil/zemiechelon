@@ -1,10 +1,42 @@
-import type { ScopeId } from "./types";
-import { GALAXY_ZEMI, type Scope } from "./galaxy";
+import type { Body, ScopeId } from "./types";
+import { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import { loadBodies } from "./bodies";
+import { ARM_META } from "@/data/arms";
 
 export { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
 
+/**
+ * A planet is a frame as soon as something shipped in its arm.
+ *
+ * Nothing is authored per planet. The epoch is the oldest child's birth, so
+ * `radiusScale` restarts cleanly inside the planet rather than inheriting a
+ * galaxy epoch that means nothing there. The single arm is named for the galaxy
+ * arm so a moon's own `arm` still resolves and `placeBodies` runs unchanged in
+ * the frame.
+ */
+export function derivePlanetScopes(bodies: Body[] = loadBodies()): Scope[] {
+  const byArm = new Map<string, Body[]>();
+  for (const body of bodies) {
+    if (body.kind !== "system") continue;
+    byArm.set(body.arm, [...(byArm.get(body.arm) ?? []), body]);
+  }
+
+  return [...byArm.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([arm, children]) => ({
+      id: planetScopeId(arm),
+      kind: "planet" as const,
+      parent: GALAXY_ZEMI.id,
+      label: ARM_META[arm]?.name ?? arm,
+      epoch: children.map((c) => c.bornAt).sort()[0],
+      arms: { [arm]: 0 },
+      windRate: GALAXY_ZEMI.windRate,
+    }));
+}
+
 export const SCOPES: Record<ScopeId, Scope> = {
   [GALAXY_ZEMI.id]: GALAXY_ZEMI,
+  ...Object.fromEntries(derivePlanetScopes().map((s) => [s.id, s])),
 };
 
 export function getScope(id: ScopeId): Scope {

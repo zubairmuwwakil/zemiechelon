@@ -25,8 +25,8 @@ describe("scope refactor is a coordinate no-op", () => {
   it("produces byte-identical derived positions and trail ends", () => {
     const derived = bodies.map((b) => ({
       id: b.id,
-      position: derivePosition(b),
-      trailEnd: trailEnd(b),
+      position: derivePosition(b, GALAXY_ZEMI),
+      trailEnd: trailEnd(b, GALAXY_ZEMI),
     }));
     expect(derived).toEqual(golden.derived);
   });
