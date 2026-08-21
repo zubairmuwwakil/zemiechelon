@@ -69,3 +69,26 @@ describe("derivePlanets", () => {
     for (const p of planets) expect(dist(p.center) + p.radius).toBeLessThan(world);
   });
 });
+
+describe("planet mass aggregates the subtree", () => {
+  const bodies = loadBodies();
+
+  it("keeps Products the largest planet after the systems reparent", () => {
+    const bySize = [...derivePlanets(bodies)].sort((a, b) => b.radius - a.radius);
+    expect(bySize[0].arm).toBe("products");
+  });
+
+  it("counts a planet's own children toward its mass", () => {
+    const products = derivePlanets(bodies).find((p) => p.arm === "products")!;
+    // Eleven bodies carry the Products arm: four shipped, seven not.
+    expect(products.bodyCount).toBe(11);
+  });
+
+  it("does not shrink when a body's parent moves off the galaxy", () => {
+    const asGalaxy = derivePlanets(bodies.map((b) => ({ ...b, parent: "galaxy:zemi" })));
+    expect(derivePlanets(bodies).map((p) => [p.arm, p.radius])).toEqual(
+      asGalaxy.map((p) => [p.arm, p.radius]),
+    );
+  });
+});
+

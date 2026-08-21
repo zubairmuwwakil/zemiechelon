@@ -41,6 +41,11 @@ export function derivePlanets(bodies: Body[], scope: Scope = GALAXY_ZEMI): Plane
   const byId = new Map(placements.map((p) => [p.id, p]));
 
   return Object.keys(scope.arms).map((arm) => {
+    // Filtered by arm, NOT by parent, and that is load-bearing. A planet's mass
+    // is its whole subtree: the four shipped systems are parented to
+    // planet:products, so filtering on parent would take Products' own mass away
+    // from it and it would stop being the largest planet — with nothing thrown
+    // and no test failing but the one in planets.test.ts.
     const inArm = bodies.filter((b) => b.arm === arm);
 
     // The planet sits at the centroid radius of its arm, on the arm spine — so
