@@ -107,7 +107,12 @@ export class WorldCameraManager {
   private minPolarAngle = 0.12;
   private maxPolarAngle = Math.PI / 2 - 0.04; // Stay above plane
 
-  constructor(width: number, height: number) {
+  constructor(
+    width: number,
+    height: number,
+    /** OS-level `prefers-reduced-motion`. Read once, at construction. */
+    private reducedMotion = false,
+  ) {
     this.camera = new THREE.PerspectiveCamera(42, width / height, 0.5, 2000);
     this.camera.position.copy(this.currentPose.position);
     this.camera.lookAt(this.currentPose.target);
@@ -130,6 +135,36 @@ export class WorldCameraManager {
     // Sync spherical from desired offset
     const offset = new THREE.Vector3().subVectors(this.desiredPose.position, this.desiredPose.target);
     this.sphericalTarget.setFromVector3(offset);
+  }
+
+  /**
+   * Frame any object in the scene graph. Takes the object and its size, not a
+   * scope id: the camera never needs to know what a scope is, only where a
+   * frame sits and how big it is. That is what lets a `universe` root use this
+   * unchanged.
+   *
+   * The world matrix is read rather than the local position, so a frame nested
+   * two deep is composed by Object3D rather than by arithmetic here.
+   */
+  public descend(target: THREE.Object3D, radius: number): void {
+    const center = target.getWorldPosition(new THREE.Vector3());
+    this.setPreset("", {
+      position: new THREE.Vector3(center.x, radius * 3.6, center.z + radius * 4.8),
+      target: new THREE.Vector3(center.x, radius * 0.3, center.z),
+    });
+    if (this.reducedMotion) this.snap();
+  }
+
+  public ascend(): void {
+    this.setPreset("galaxy");
+    if (this.reducedMotion) this.snap();
+  }
+
+  /** Travel removed, content kept. */
+  private snap(): void {
+    this.currentPose.target.copy(this.desiredPose.target);
+    this.target.copy(this.desiredPose.target);
+    this.spherical.copy(this.sphericalTarget);
   }
 
   public onPointerDrag(deltaX: number, deltaY: number): void {
