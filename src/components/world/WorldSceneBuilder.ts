@@ -10,6 +10,7 @@ import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
+import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
@@ -147,6 +148,28 @@ const RING_SEGMENTS = 192;
 const DAYS_PER_MONTH = 30;
 const ASTROLABE_TICKS = 120;
 
+/** Moon size and label, as fractions of the planet they belong to. */
+const MOON_SIZE = 0.34;
+const MOON_LABEL_SCALE = 0.022;
+const MOON_LABEL_REACH = 1.75;
+const MOON_LABEL_ASPECT = 4.6;
+
+/**
+ * A canvas label that repaints when the ground changes. Tinting cannot do this
+ * job: a sprite's `color` multiplies the whole map, so darkening the pill for
+ * night takes the ink down with it and the text vanishes. The canvas has to be
+ * drawn again with the two roles swapped.
+ */
+interface PaperLabel {
+  texture: THREE.CanvasTexture;
+  paint: (mode: CosmicMode) => void;
+}
+
+interface MoonOrbit {
+  pivot: THREE.Group;
+  rate: number;
+}
+
 /** The core is the epoch, so its size is the one thing here that is not a date. */
 const CORE_RADIUS = 7.5;
 
@@ -179,8 +202,10 @@ export class WorldSceneBuilder {
   private planetarySpheres: THREE.Mesh[] = [];
   private planetMaterial: THREE.ShaderMaterial | null = null;
   private idealRings: IdealRing[] = [];
+  private moons: MoonOrbit[] = [];
   private hoveredIdeal: string | null = null;
   private fieldMaterials: THREE.PointsMaterial[] = [];
+  private paperLabels: PaperLabel[] = [];
   /**
    * Drawing-buffer size, shared by every screen-space line. Line2 needs it to
    * turn a pixel width into clip space; a stale value scales every ring wrongly
@@ -207,6 +232,7 @@ export class WorldSceneBuilder {
     this.buildCentralAnchorCore();
     this.buildPlanetarySpheres();
     this.buildIdealRings();
+    this.buildMoons();
     this.buildSatellitesAndBodies();
   }
 
@@ -580,49 +606,76 @@ export class WorldSceneBuilder {
     }
   }
 
-  /** Ink on paper, drawn once. A sprite keeps the claim facing the camera. */
-  private createClaimLabel(claim: string, cited: string[]): THREE.Sprite {
+  /**
+   * A pill in the HUD's own idiom, so a label reads as part of the instrument
+   * rather than as something painted onto the sky. Direction A is ink on paper,
+   * so on the night ground the two swap: the pill becomes ink and the text
+   * becomes paper. Without that the pill is pure white against #09090b and the
+   * night bloom turns every label into a solid block.
+   */
+  private createPaperLabel(
+    aspect: number,
+    width: number,
+    draw: (ctx: CanvasRenderingContext2D, ink: string, canvas: HTMLCanvasElement) => void,
+  ): THREE.Sprite {
     const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = Math.round(1024 / CLAIM_LABEL_ASPECT);
+    canvas.width = width;
+    canvas.height = Math.round(width / aspect);
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      const pad = 18;
-      const radius = 44;
-      // The same glass pill the HUD uses, so a claim reads as part of the
-      // instrument rather than as something painted onto the sky.
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const paint = (mode: CosmicMode) => {
+      if (!ctx) return;
+      const day = mode === "day";
+      const ground = day ? DIRECTION_A.hud : DIRECTION_A.ink;
+      const ink = day ? DIRECTION_A.ink : DIRECTION_A.ground;
+      const pad = Math.round(canvas.height * 0.07);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
-      ctx.roundRect(pad, pad, canvas.width - pad * 2, canvas.height - pad * 2, radius);
-      ctx.fillStyle = "rgba(255,255,255,0.94)";
+      ctx.roundRect(pad, pad, canvas.width - pad * 2, canvas.height - pad * 2, canvas.height * 0.28);
+      ctx.globalAlpha = day ? 0.94 : 0.88;
+      ctx.fillStyle = ground;
       ctx.fill();
+      ctx.globalAlpha = 1;
       ctx.lineWidth = 3;
       ctx.strokeStyle = DIRECTION_A.rule;
       ctx.stroke();
 
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = DIRECTION_A.ink;
-      ctx.font = "600 82px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(claim, canvas.width / 2, canvas.height * 0.4, canvas.width - pad * 4);
-      ctx.fillStyle = DIRECTION_A.gold;
-      ctx.font = "400 58px ui-monospace, SFMono-Regular, monospace";
-      ctx.fillText(cited.join("   ·   "), canvas.width / 2, canvas.height * 0.68, canvas.width - pad * 4);
-    }
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
+      draw(ctx, ink, canvas);
+      texture.needsUpdate = true;
+    };
+
+    paint("day");
+    this.paperLabels.push({ texture, paint });
+
     const sprite = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
         depthWrite: false,
         depthTest: false,
-        // Constant screen size. With attenuation the label is four pixels tall
-        // at galaxy framing and fills the frame the moment you fly in.
+        // Constant screen size. With attenuation a label is four pixels tall at
+        // galaxy framing and fills the frame the moment you fly in.
         sizeAttenuation: false,
       }),
     );
     sprite.renderOrder = 3;
     return sprite;
+  }
+
+  private createClaimLabel(claim: string, cited: string[]): THREE.Sprite {
+    return this.createPaperLabel(CLAIM_LABEL_ASPECT, 1024, (ctx, ink, canvas) => {
+      ctx.fillStyle = ink;
+      ctx.font = "600 82px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(claim, canvas.width / 2, canvas.height * 0.4, canvas.width * 0.9);
+      ctx.fillStyle = DIRECTION_A.gold;
+      ctx.font = "400 58px ui-monospace, SFMono-Regular, monospace";
+      ctx.fillText(cited.join("   ·   "), canvas.width / 2, canvas.height * 0.68, canvas.width * 0.9);
+    });
   }
 
   /**
@@ -638,6 +691,7 @@ export class WorldSceneBuilder {
   public setCosmicMode(mode: CosmicMode): void {
     const mark = new THREE.Color(mode === "day" ? DIRECTION_A.dust : DIRECTION_A.ground);
     for (const material of this.fieldMaterials) material.color.copy(mark);
+    for (const label of this.paperLabels) label.paint(mode);
   }
 
   /** Called on mount and on every resize. See `resolution`. */
@@ -655,12 +709,100 @@ export class WorldSceneBuilder {
     }
   }
 
+  /**
+   * 5c. The shipped systems, in orbit around their own planet.
+   *
+   * §5.2 wants Products' four ventures readable as moons from orbit with zero
+   * clicks — the ecosystem is the argument, and a visitor should not have to
+   * click to find out there is one. They orbit rather than sitting on the arm
+   * because that is what they are: a planet's own bodies, not more of the
+   * field. Orbit radius is ordered by birth date, so `radius is time` survives
+   * the change of scale.
+   *
+   * `buildSatellitesAndBodies` skips these ids, so nothing is drawn twice.
+   */
+  private buildMoons(): void {
+    const centers = new Map(
+      derivePlanets(this.bodies).map((p) => [
+        p.arm,
+        { center: toScene(p.center), radius: p.radius * SCENE_SCALE },
+      ]),
+    );
+
+    for (const moon of deriveMoons(this.bodies)) {
+      const planet = centers.get(moon.arm);
+      if (!planet) continue;
+
+      const orbitRadius = planet.radius * moon.orbit;
+
+      const group = new THREE.Group();
+      group.name = `moon-orbit-${moon.id}`;
+      group.position.set(planet.center.x, PLANET_Y, planet.center.z);
+      // The orbit line is drawn flat and the moon rides it, so the path a
+      // visitor sees is the path the moon is actually on.
+      this.addHairlineRing(group, orbitRadius, 0.4, DIRECTION_A.rule);
+
+      const pivot = new THREE.Group();
+      pivot.rotation.y = moon.phase;
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(planet.radius * MOON_SIZE, 20, 20),
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color(DIRECTION_A.gold),
+          emissive: new THREE.Color(DIRECTION_A.gold),
+          emissiveIntensity: 0.15,
+          roughness: 0.45,
+          metalness: 0.2,
+        }),
+      );
+      body.position.set(orbitRadius, 0, 0);
+      pivot.add(body);
+      group.add(pivot);
+
+      // Labelled from orbit: constant screen size, so the ecosystem reads at
+      // galaxy framing rather than only once you have flown in.
+      //
+      // The label rides the pivot further out on the same radial rather than
+      // sitting above the moon. Four labels stacked over a planet a hundred
+      // pixels wide overlap each other; fanned outward they inherit the phase
+      // separation the moons already have.
+      const label = this.createMoonLabel(moon.label);
+      label.scale.set(MOON_LABEL_SCALE * MOON_LABEL_ASPECT, MOON_LABEL_SCALE, 1);
+      label.position.set(orbitRadius * MOON_LABEL_REACH, 0, 0);
+      pivot.add(label);
+
+      this.rootGroup.add(group);
+      this.bodySprites.set(moon.id, body);
+      this.moons.push({ pivot, rate: moon.rate });
+
+      this.hitObjects.push({
+        id: moon.id,
+        name: moon.label,
+        type: "body",
+        mesh: body,
+        position: new THREE.Vector3(planet.center.x, PLANET_Y, planet.center.z),
+      });
+    }
+  }
+
+  /** A venture's name, in the HUD's own pill so the map reads as one surface. */
+  private createMoonLabel(text: string): THREE.Sprite {
+    return this.createPaperLabel(MOON_LABEL_ASPECT, 512, (ctx, ink, canvas) => {
+      ctx.fillStyle = ink;
+      ctx.font = "600 52px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width * 0.86);
+    });
+  }
+
   /** 6. 🛰️ Satellites and Repositories orbiting their respective planets */
   private buildSatellitesAndBodies(): void {
     const placements = placeBodies(this.bodies);
     const placementMap = new Map(placements.map((p) => [p.id, p]));
+    // Drawn in orbit by buildMoons. `placeBodies` still lays all of them out —
+    // the layout is untouched — but a body belongs on screen exactly once.
+    const inOrbit = moonIds(this.bodies);
 
     for (const body of this.bodies) {
+      if (inOrbit.has(body.id)) continue;
       const placement = placementMap.get(body.id);
       if (!placement) continue;
 
@@ -719,6 +861,10 @@ export class WorldSceneBuilder {
     }
     this.planetarySpheres.forEach((ps, idx) => {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
+    });
+
+    this.moons.forEach((moon) => {
+      moon.pivot.rotation.y += delta * moon.rate;
     });
 
     // One bead per ring, so a ring reads as moving before it is touched.
