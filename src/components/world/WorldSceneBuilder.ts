@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Body } from "@/lib/atlas/types";
-import { placeBodies } from "@/lib/atlas/position";
+import { placeBodies, radiusScale } from "@/lib/atlas/position";
 import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
@@ -11,7 +13,6 @@ import { idealsFor } from "@/lib/atlas/ideals";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
-import { createAtmosphericGlowMesh } from "./AtmosphereShader";
 import { PLANET_ATTRIBUTES, SURFACE_FAMILIES, createPlanetMaterial } from "./PlanetSurfaces";
 
 export const BACKGROUND_STAR_COUNT = 12_000;
@@ -142,6 +143,13 @@ export const PLANET_Y = 1.0;
 
 const RING_SEGMENTS = 192;
 
+/** Astrolabe ring cadence. One ring a month, quarters drawn heavier. */
+const DAYS_PER_MONTH = 30;
+const ASTROLABE_TICKS = 120;
+
+/** The core is the epoch, so its size is the one thing here that is not a date. */
+const CORE_RADIUS = 7.5;
+
 /**
  * Sprite scale with `sizeAttenuation: false`, where scale is a fraction of the
  * frustum rather than a world length: 0.064 lands the pill at about 60 CSS px
@@ -179,9 +187,7 @@ export class WorldSceneBuilder {
    * after a resize.
    */
   private readonly resolution = new THREE.Vector2(1, 1);
-  private centralCoronaRings: THREE.Mesh[] = [];
-  private astrolabeRings: THREE.Mesh[] = [];
-  private atmosphereGlows: THREE.Mesh[] = [];
+  private centralCoronaRings: THREE.Object3D[] = [];
 
   constructor(
     private scene: THREE.Scene,
@@ -204,52 +210,94 @@ export class WorldSceneBuilder {
     this.buildSatellitesAndBodies();
   }
 
-  /** 1. 💫 Concentric Astrolabe Orbital Hairline Rings across Expanded Cosmos */
+  /**
+   * 1. The astrolabe: the drawn scale the whole map is measured against.
+   *
+   * The radii used to be six typed numbers, so only the outermost ring meant
+   * anything — `SCENE_SCALE` lands the newest repository exactly on it. The
+   * rest were decoration on an instrument whose whole claim is that it is not.
+   * They are now month boundaries pushed through the same `radiusScale` the
+   * bodies use, with the quarters drawn heavier: the rings crowd toward the rim
+   * because radius is the square root of days, which is the map's own thesis
+   * made visible rather than asserted.
+   */
   private buildAstrolabeConcentricRings(): void {
-    const ringRadii = [36, 65, 96, 130, 168, 205];
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xd97706, // Warm golden ink
-      transparent: true,
-      opacity: 0.32,
-      side: THREE.DoubleSide,
-    });
+    const reach = deriveWorldRadius(this.bodies);
 
-    ringRadii.forEach((r) => {
-      const ringGeo = new THREE.RingGeometry(r - 0.08, r + 0.08, 240);
-      ringGeo.rotateX(-Math.PI / 2);
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      this.rootGroup.add(ring);
-      this.astrolabeRings.push(ring);
-    });
-
-    // Subtle radial tick marks along the outer astrolabe boundary ring (r=205)
-    const ticksCount = 120;
-    const outerR = 205;
-    const lineGeo = new THREE.BufferGeometry();
-    const linePositions: number[] = [];
-
-    for (let i = 0; i < ticksCount; i++) {
-      const angle = (i / ticksCount) * Math.PI * 2;
-      const isMajor = i % 5 === 0;
-      const isSuper = i % 10 === 0;
-      const len = isSuper ? 3.5 : isMajor ? 2.0 : 0.9;
-      const r1 = outerR - len / 2;
-      const r2 = outerR + len / 2;
-
-      linePositions.push(
-        Math.cos(angle) * r1, 0, Math.sin(angle) * r1,
-        Math.cos(angle) * r2, 0, Math.sin(angle) * r2
+    for (let month = 1; ; month++) {
+      const layoutRadius = radiusScale(month * DAYS_PER_MONTH);
+      if (layoutRadius > reach) break;
+      this.addHairlineRing(
+        this.rootGroup,
+        layoutRadius * SCENE_SCALE,
+        // `rule` is already a light token; dividing it again by opacity is what
+        // made the old graticule invisible. Quiet, not absent.
+        month % 3 === 0 ? 0.95 : 0.55,
+        DIRECTION_A.rule,
       );
     }
+    // The frontier itself: the newest repository's own radius.
+    this.addHairlineRing(this.rootGroup, reach * SCENE_SCALE, 0.85, DIRECTION_A.gold, 1.4);
 
-    lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(linePositions, 3));
-    const tickMat = new THREE.LineBasicMaterial({
-      color: 0xd97706,
-      transparent: true,
-      opacity: 0.3,
-    });
-    const tickLines = new THREE.LineSegments(lineGeo, tickMat);
-    this.rootGroup.add(tickLines);
+    // Radial ticks along the frontier, quarter marks longest.
+    const ticks: number[] = [];
+    const outerR = reach * SCENE_SCALE;
+    for (let i = 0; i < ASTROLABE_TICKS; i++) {
+      const angle = (i / ASTROLABE_TICKS) * Math.PI * 2;
+      const len = i % 30 === 0 ? 3.5 : i % 5 === 0 ? 2.0 : 0.9;
+      ticks.push(
+        Math.cos(angle) * (outerR - len / 2), 0, Math.sin(angle) * (outerR - len / 2),
+        Math.cos(angle) * (outerR + len / 2), 0, Math.sin(angle) * (outerR + len / 2),
+      );
+    }
+    const tickGeometry = new LineSegmentsGeometry();
+    tickGeometry.setPositions(ticks);
+    this.rootGroup.add(
+      new LineSegments2(
+        tickGeometry,
+        new LineMaterial({
+          color: new THREE.Color(DIRECTION_A.rule).getHex(),
+          linewidth: 1.2,
+          transparent: true,
+          opacity: 0.55,
+          resolution: this.resolution,
+        }),
+      ),
+    );
+  }
+
+  /**
+   * A flat ring drawn as a screen-space line. Every ring in the scene goes
+   * through here: a RingGeometry band thin enough to read as a hairline is a
+   * fraction of a pixel and covers no sample centre, and a plain GL line is
+   * half a CSS pixel at devicePixelRatio 2. Line2 expands in screen space.
+   */
+  private addHairlineRing(
+    parent: THREE.Object3D,
+    radius: number,
+    opacity: number,
+    color: string,
+    linewidth = 1,
+  ): THREE.Object3D {
+    const points: number[] = [];
+    for (let seg = 0; seg <= RING_SEGMENTS; seg++) {
+      const a = (seg / RING_SEGMENTS) * Math.PI * 2;
+      points.push(Math.cos(a) * radius, 0, Math.sin(a) * radius);
+    }
+    const geometry = new LineGeometry();
+    geometry.setPositions(points);
+    const line = new Line2(
+      geometry,
+      new LineMaterial({
+        color: new THREE.Color(color).getHex(),
+        linewidth,
+        transparent: true,
+        opacity,
+        resolution: this.resolution,
+      }),
+    );
+    parent.add(line);
+    return line;
   }
 
   /**
@@ -314,48 +362,38 @@ export class WorldSceneBuilder {
     layer(BACKGROUND_STAR_COUNT, budget(ARM_DUST_COUNT), 1.2, 0.5, true, "arm-dust");
   }
 
-  /** 4. ☀️ Central Ancestral Core Sphere ("Nodes" / Anchor Sun) */
+  /**
+   * 4. The core: the epoch itself, radius zero, where every arm starts.
+   *
+   * It used to be an emissive plasma sun in ambers that are not in the palette.
+   * Direction A is engraved, not emitted, so the origin is gold leaf on paper —
+   * the densest mark on the map rather than the brightest light on it. The
+   * Fresnel halo went with the emission for the same reason the planets' did.
+   */
   private buildCentralAnchorCore(): void {
     const sunGroup = new THREE.Group();
     sunGroup.name = "central-anchor-core";
     sunGroup.position.set(0, 0, 0);
 
-    const texture = this.createSolarPlasmaTexture();
-
-    // Smooth shaded pearl/gold central anchor core
-    const coreGeo = new THREE.SphereGeometry(7.5, 64, 64);
-    const coreMat = new THREE.MeshStandardMaterial({
-      map: texture,
-      roughness: 0.2,
-      metalness: 0.1,
-      emissive: 0xfbbf24,
-      emissiveIntensity: 0.45,
-      emissiveMap: texture,
-    });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    const coreMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(CORE_RADIUS, 64, 64),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(DIRECTION_A.gold),
+        roughness: 0.55,
+        metalness: 0.25,
+        emissive: new THREE.Color(DIRECTION_A.gold),
+        emissiveIntensity: 0.12,
+      }),
+    );
     coreMesh.castShadow = true;
     sunGroup.add(coreMesh);
     this.planetarySpheres.push(coreMesh);
 
-    // Multi-layer glowing golden plasma corona rings
-    [9.8, 12.5, 15.5].forEach((radius, idx) => {
-      const ringGeo = new THREE.RingGeometry(radius - 0.08, radius + 0.08, 160);
-      ringGeo.rotateX(-Math.PI / 2);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: 0xf59e0b,
-        transparent: true,
-        opacity: 0.5 - idx * 0.14,
-        side: THREE.DoubleSide,
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      sunGroup.add(ring);
-      this.centralCoronaRings.push(ring);
+    [1.3, 1.67, 2.07].forEach((multiple, idx) => {
+      this.centralCoronaRings.push(
+        this.addHairlineRing(sunGroup, CORE_RADIUS * multiple, 0.5 - idx * 0.13, DIRECTION_A.gold),
+      );
     });
-
-    // Soft Fresnel Atmospheric Aura Halo
-    const halo = createAtmosphericGlowMesh(8.6, 0xfbbf24, 2.2, 0.75);
-    sunGroup.add(halo);
-    this.atmosphereGlows.push(halo);
 
     this.hitObjects.push({
       id: "galaxy",
@@ -627,7 +665,12 @@ export class WorldSceneBuilder {
       if (!placement) continue;
 
       const mag = magnitude(body);
-      const col = body.kind === "system" ? 0xd97706 : 0x059669;
+      // Gold for what shipped, verdigris for what was learned. A direct token
+      // substitution: the amber and emerald here were the pre-atlas palette,
+      // and the two-kind distinction they carried is kept.
+      const col = new THREE.Color(
+        body.kind === "system" ? DIRECTION_A.gold : DIRECTION_A.verdigris,
+      );
 
       const bodyGroup = new THREE.Group();
       bodyGroup.name = `body-${body.id}`;
@@ -643,8 +686,9 @@ export class WorldSceneBuilder {
       const sphereMat = new THREE.MeshStandardMaterial({
         color: col,
         emissive: col,
-        emissiveIntensity: 0.5,
-        roughness: 0.35,
+        // Low, not off: engraved on paper, but night still has to show them.
+        emissiveIntensity: 0.15,
+        roughness: 0.45,
       });
       const sphere = new THREE.Mesh(sphereGeo, sphereMat);
       bodyGroup.add(sphere);
@@ -660,40 +704,6 @@ export class WorldSceneBuilder {
         position: bodyGroup.position.clone(),
       });
     }
-  }
-
-  // ================= PROCEDURAL TEXTURE GENERATORS =================
-
-  /** ☀️ Solar Core Plasma Texture Generator */
-  private createSolarPlasmaTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    // Warm radiant gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, "#fffbeb");
-    grad.addColorStop(0.3, "#fef3c7");
-    grad.addColorStop(0.6, "#fde68a");
-    grad.addColorStop(0.85, "#fbbf24");
-    grad.addColorStop(1, "#f59e0b");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Plasma swirls
-    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-    for (let i = 0; i < 40; i++) {
-      const y = Math.random() * canvas.height;
-      const h = 4 + Math.random() * 12;
-      ctx.fillRect(0, y, canvas.width, h);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    return texture;
   }
 
   public update(elapsed: number, delta: number): void {

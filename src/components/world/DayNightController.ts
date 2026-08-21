@@ -3,6 +3,11 @@ import { ASTROLABE_OUTER } from "./WorldCameraManager";
 
 export type CosmicMode = "day" | "night";
 
+/**
+ * Ground, grass and road went with the island build the spec cut, and the two
+ * accents had no reader once the canvas moved to Direction A tokens. What is
+ * left is what the controller actually applies.
+ */
 export interface DayNightPalette {
   background: number;
   ambientLight: number;
@@ -13,12 +18,6 @@ export interface DayNightPalette {
   fogColor: number;
   fogNear: number;
   fogFar: number;
-  groundBaseColor: number;
-  groundGrassColor: number;
-  roadColor: number;
-  accentGold: number;
-  accentEmerald: number;
-  emissiveIntensity: number;
 }
 
 export const DAY_PALETTE: DayNightPalette = {
@@ -34,12 +33,6 @@ export const DAY_PALETTE: DayNightPalette = {
   // galaxy, so every planet was 40-100% painted over with its own background.
   fogNear: ASTROLABE_OUTER * 1.6,
   fogFar: ASTROLABE_OUTER * 5,
-  groundBaseColor: 0xe5e2db,
-  groundGrassColor: 0x86efac,
-  roadColor: 0xe5e2db,
-  accentGold: 0xd97706,
-  accentEmerald: 0x059669,
-  emissiveIntensity: 0.1,
 };
 
 export const NIGHT_PALETTE: DayNightPalette = {
@@ -52,12 +45,6 @@ export const NIGHT_PALETTE: DayNightPalette = {
   fogColor: 0x09090b,
   fogNear: ASTROLABE_OUTER * 1.7,
   fogFar: ASTROLABE_OUTER * 5.4,
-  groundBaseColor: 0x18181b,
-  groundGrassColor: 0x064e3b,
-  roadColor: 0x27272a,
-  accentGold: 0xfbbf24,
-  accentEmerald: 0x10b981,
-  emissiveIntensity: 0.85,
 };
 
 export class DayNightController {
