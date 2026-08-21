@@ -4,9 +4,9 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
-import type { Body } from "@/lib/atlas/types";
+import type { Body, ScopeId } from "@/lib/atlas/types";
 import { placeBodies, radiusScale } from "@/lib/atlas/position";
-import { GALAXY_ZEMI, type Scope } from "@/lib/atlas/scopes";
+import { GALAXY_ZEMI, derivePlanetScopes, planetScopeId, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
@@ -195,6 +195,13 @@ interface IdealRing {
 
 export class WorldSceneBuilder {
   public readonly rootGroup = new THREE.Group();
+  /**
+   * The scene graph mirrors the scope tree. `rootGroup` is the galaxy's own
+   * group; each planet scope gets a child group at that planet's centre.
+   * Descent is then moving the camera into a group's local space, and the
+   * transform composition is Object3D's job rather than ours.
+   */
+  public readonly scopeGroups = new Map<ScopeId, THREE.Group>();
   public readonly hitObjects: InteractiveHitObject[] = [];
   public readonly bodySprites: Map<string, THREE.Object3D> = new Map();
 
@@ -220,12 +227,11 @@ export class WorldSceneBuilder {
     private today: string,
     /** Fraction of the field budget to draw. See `fieldDensityFor`. */
     private fieldDensity = 1,
-  ) {
-    this.rootGroup.name = "world-scene-root";
-  }
+  ) {}
 
   public build(): void {
     this.scene.add(this.rootGroup);
+    this.registerScopeGroups();
 
     this.buildAstrolabeConcentricRings();
     this.buildBackgroundField();
@@ -234,6 +240,42 @@ export class WorldSceneBuilder {
     this.buildIdealRings();
     this.buildMoons();
     this.buildSatellitesAndBodies();
+  }
+
+  public groupFor(scopeId: ScopeId): THREE.Group {
+    const group = this.scopeGroups.get(scopeId);
+    if (!group) {
+      // Loud, not defaulted — the same rule an unknown scope already follows.
+      throw new Error(`no group built for scope "${scopeId}"`);
+    }
+    return group;
+  }
+
+  /**
+   * One group per scope, built before any builder runs so a builder can ask
+   * for the frame it is drawing into rather than re-deriving the planet's
+   * centre and expressing everything in galaxy coordinates.
+   *
+   * The planet groups are deliberately axis-aligned: they are coordinate
+   * frames the camera will descend into, not a place to hide a tilt. The
+   * ideals' lean stays on the ring group inside.
+   */
+  private registerScopeGroups(): void {
+    this.rootGroup.name = GALAXY_ZEMI.id;
+    this.scopeGroups.set(GALAXY_ZEMI.id, this.rootGroup);
+
+    const centers = new Map(
+      derivePlanets(this.bodies).map((p) => [p.arm, toScene(p.center)]),
+    );
+    for (const scope of derivePlanetScopes(this.bodies)) {
+      const center = centers.get(scope.id.replace("planet:", ""));
+      if (!center) continue;
+      const group = new THREE.Group();
+      group.name = scope.id;
+      group.position.set(center.x, PLANET_Y, center.z);
+      this.rootGroup.add(group);
+      this.scopeGroups.set(scope.id, group);
+    }
   }
 
   /**
@@ -520,9 +562,12 @@ export class WorldSceneBuilder {
       const radius = planet.radius * SCENE_SCALE;
       const family = SURFACE_FAMILIES[planet.arm];
 
+      const planetGroup = this.groupFor(planetScopeId(planet.arm));
+      // The lean stays here rather than on the planet's own group: that group
+      // is the frame the camera descends into, and a tilted frame would take
+      // the whole descent with it.
       const group = new THREE.Group();
       group.name = `ideals-${planet.arm}`;
-      group.position.set(center.x, PLANET_Y, center.z);
       // Derived, not authored: the old per-planet `tilt` was a typed table.
       // Reading the arm's own base angle gives every planet a different plane,
       // and a sixth arm gets one without anybody choosing a number.
@@ -578,10 +623,13 @@ export class WorldSceneBuilder {
         // not. Constant screen size, so it is legible from orbit — which is the
         // only place a claim about the whole ecosystem is worth reading.
         const label = this.createClaimLabel(ideal.claim, ideal.evidence.map((id) => labels.get(id) ?? id));
-        label.position.set(center.x, PLANET_Y + r * 1.5 + ideal.ordinal * radius * 0.5, center.z);
+        // In the planet's frame, so the horizontal offsets the world-space
+        // version carried are the frame's own — and PLANET_Y with them. Only
+        // the height above the planet is this label's to state.
+        label.position.set(0, r * 1.5 + ideal.ordinal * radius * 0.5, 0);
         label.scale.set(CLAIM_LABEL_SCALE * CLAIM_LABEL_ASPECT, CLAIM_LABEL_SCALE, 1);
         label.material.opacity = 0;
-        this.rootGroup.add(label);
+        planetGroup.add(label);
 
         this.idealRings.push({
           id: ideal.id,
@@ -602,7 +650,7 @@ export class WorldSceneBuilder {
         });
       }
 
-      this.rootGroup.add(group);
+      planetGroup.add(group);
     }
   }
 
@@ -735,9 +783,11 @@ export class WorldSceneBuilder {
 
       const orbitRadius = planet.radius * moon.orbit;
 
-      const group = new THREE.Group();
-      group.name = `moon-orbit-${moon.id}`;
-      group.position.set(planet.center.x, PLANET_Y, planet.center.z);
+      // This builder used to make an anonymous group at the planet's centre
+      // and hang the moons inside it — a planet scope without a name. It now
+      // asks for the registered one, so the moons' local coordinates, which
+      // were already relative to the planet, mean what they say.
+      const group = this.groupFor(planetScopeId(moon.arm));
       // The orbit line is drawn flat and the moon rides it, so the path a
       // visitor sees is the path the moon is actually on.
       this.addHairlineRing(group, orbitRadius, 0.4, DIRECTION_A.rule);
@@ -770,7 +820,6 @@ export class WorldSceneBuilder {
       label.position.set(orbitRadius * MOON_LABEL_REACH, 0, 0);
       pivot.add(label);
 
-      this.rootGroup.add(group);
       this.bodySprites.set(moon.id, body);
       this.moons.push({ pivot, rate: moon.rate });
 
