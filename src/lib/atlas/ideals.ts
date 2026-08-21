@@ -1,5 +1,6 @@
 import type { Body, ScopeId } from "./types";
 import { loadBodies } from "./bodies";
+import { planetScopeId } from "./galaxy";
 
 export interface Ideal {
   id: string;
@@ -44,13 +45,8 @@ export function validateIdeals(ideals: Ideal[], bodies: Body[] = loadBodies()): 
   }
 }
 
-/**
- * String-matched rather than resolved through `getScope`, because planet scopes
- * are not registered until Plan 2. An arm with no ideals returns [] and draws
- * no rings.
- */
 export function idealsFor(arm: string): Ideal[] {
-  return IDEALS.filter((i) => i.scope === `planet:${arm}`).sort((a, b) => a.ordinal - b.ordinal);
+  return IDEALS.filter((i) => i.scope === planetScopeId(arm)).sort((a, b) => a.ordinal - b.ordinal);
 }
 
 // Fail the build, not the render. An unresolved citation must surface the way an

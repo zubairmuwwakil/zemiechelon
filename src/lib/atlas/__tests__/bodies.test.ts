@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { loadBodies, EPOCH } from "../bodies";
 import generated from "@/data/bodies.generated.json";
+import { loadBodies, EPOCH } from "../bodies";
+import { moonIds } from "../moons";
+import { planetScopeId } from "../galaxy";
 
 const bodies = loadBodies();
 
@@ -57,3 +59,29 @@ describe("loadBodies", () => {
     }
   });
 });
+
+describe("body parentage", () => {
+  const bodies = loadBodies();
+
+  it("parents every shipped system to its own planet", () => {
+    for (const body of bodies.filter((b) => b.kind === "system")) {
+      expect(body.parent, `${body.id} is not on its planet`).toBe(planetScopeId(body.arm));
+    }
+  });
+
+  it("leaves everything else on the galaxy", () => {
+    for (const body of bodies.filter((b) => b.kind !== "system")) {
+      expect(body.parent, `${body.id} left the galaxy`).toBe("galaxy:zemi");
+    }
+  });
+
+  it("moves exactly five bodies, so the arms keep their density", () => {
+    expect(bodies.filter((b) => b.parent !== "galaxy:zemi")).toHaveLength(5);
+  });
+
+  it("agrees with deriveMoons, so the two rules cannot drift apart", () => {
+    const parented = new Set(bodies.filter((b) => b.parent !== "galaxy:zemi").map((b) => b.id));
+    expect(parented).toEqual(moonIds(bodies));
+  });
+});
+
