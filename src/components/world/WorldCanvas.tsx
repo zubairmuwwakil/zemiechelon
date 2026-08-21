@@ -6,9 +6,9 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import type { Body, ScreenPoint, Vec3 } from "@/lib/atlas/types";
+import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
-import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS } from "./WorldCameraManager";
+import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
 import { WorldSceneBuilder, fieldDensityFor } from "./WorldSceneBuilder";
 
 export interface WorldCanvasHandle {
@@ -28,6 +28,11 @@ export interface WorldCanvasProps {
   onSelectSector: (sectorId: string) => void;
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
+  /**
+   * The scope the camera should be inside, or null for the galaxy. Landing is a
+   * camera move rather than an overlay: the scene stays live underneath.
+   */
+  landedScope?: ScopeId | null;
   /**
    * Scene-space anchors projected alongside the planet pins each frame. This is
    * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
@@ -86,6 +91,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onSelectSector,
     onSelectBody,
     onProjectPins,
+    landedScope = null,
     anchors,
     onProjectAnchors,
   },
@@ -113,11 +119,6 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       bloomPassRef.current.threshold = BLOOM[cosmicMode].threshold;
     }
   }, [cosmicMode]);
-
-  // Sync Camera preset
-  useEffect(() => {
-    cameraManagerRef.current?.setPreset(cameraPreset);
-  }, [cameraPreset]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -147,8 +148,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     dayNightRef.current = dayNight;
 
     // 3. Camera Manager
-    const cameraManager = new WorldCameraManager(width, height);
-    cameraManager.setPreset(cameraPreset);
+    // Read once, here: prefers-reduced-motion decides whether the camera flies
+    // or arrives, and nothing downstream needs to ask again.
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const cameraManager = new WorldCameraManager(width, height, reduced);
     cameraManagerRef.current = cameraManager;
 
     // 4. Post-Processing Effect Composer (Selective Bloom & ACES Output)
@@ -176,6 +179,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     sceneBuilder.setResolution(width, height);
     sceneBuilder.setCosmicMode(cosmicMode);
     sceneBuilderRef.current = sceneBuilder;
+
+    // Both refs are live now, so the framing owner can seed the initial pose —
+    // and re-seed it whenever this effect rebuilds the scene.
+    frameRef.current();
 
     // 6. Raycasting and pointer interaction
     const raycaster = new THREE.Raycaster();
@@ -361,8 +368,36 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     anchors,
     onProjectAnchors,
     cosmicMode,
-    cameraPreset,
   ]);
+
+  /**
+   * Re-apply the current framing. Called by the effect below and by scene
+   * construction, so a rebuild (a day/night toggle, a resize of the body set)
+   * lands the camera where the app already thinks it is instead of at the
+   * galaxy.
+   *
+   * A planet whose arm has shipped nothing has no scope and therefore no group;
+   * `scopeGroups.has` makes that a no-op rather than a throw, and the preset
+   * table still frames the planet as it did before.
+   */
+  const frameRef = useRef<() => void>(() => {});
+  frameRef.current = () => {
+    const builder = sceneBuilderRef.current;
+    const camera = cameraManagerRef.current;
+    if (!builder || !camera) return;
+    if (landedScope && builder.scopeGroups.has(landedScope)) {
+      const arm = landedScope.replace("planet:", "");
+      camera.descend(builder.groupFor(landedScope), PLANET_RADII[arm] ?? 6);
+    } else if (cameraPreset === "galaxy" || cameraPreset === "overview") {
+      camera.ascend();
+    } else {
+      camera.setPreset(cameraPreset);
+    }
+  };
+
+  useEffect(() => {
+    frameRef.current();
+  }, [landedScope, cameraPreset]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 size-full overflow-hidden touch-none">

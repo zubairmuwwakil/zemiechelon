@@ -6,15 +6,16 @@ import type { CosmicMode } from "@/components/world/DayNightController";
 import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
 import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
 import { WorldHUD } from "@/components/hud/WorldHUD";
-import { CleanPlanetLandingModal } from "@/components/hud/CleanPlanetLandingModal";
+import { LandedConsolePanel } from "@/components/hud/LandedConsolePanel";
 import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
 import { PlanetPinsOverlay } from "@/components/world/PlanetPinsOverlay";
 import { NoiseOverlay } from "@/components/world/NoiseOverlay";
-import type { ScreenPoint } from "@/lib/atlas/types";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
 import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
+import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
+import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 
 export default function HomePage() {
@@ -30,38 +31,45 @@ export default function HomePage() {
   // stars parallax with the scene instead of sitting on the viewport.
   const [quotePoints, setQuotePoints] = useState<ScreenPoint[]>([]);
 
-  // Planetary Landing Workspace state
-  const [activeLandingPlanet, setActiveLandingPlanet] = useState<string | null>(null);
+  /**
+   * The scopes there are to land in. Derived, not listed: a scope exists when an
+   * arm has shipped something, so Products and Labs have one and the other three
+   * do not. Clicking those stays a quiet no-op rather than an error.
+   */
+  const landableScopes = useMemo(
+    () => new Set(derivePlanetScopes(bodies).map((s) => s.id)),
+    [bodies],
+  );
+
+  // The scope the camera has descended into, or null for the galaxy.
+  const [activeLandingPlanet, setActiveLandingPlanet] = useState<ScopeId | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
   // Sector & Planet Landing Selection Handler
-  const handleSelectSector = useCallback((sectorId: string) => {
-    sound.playClick(600, 0.05);
+  const handleSelectSector = useCallback(
+    (sectorId: string) => {
+      sound.playClick(600, 0.05);
 
-    if (sectorId === "galaxy" || sectorId === "overview") {
-      setActivePreset("galaxy");
-      setActiveLandingPlanet(null);
-    } else if (sectorId === "products" || sectorId === "planet-products") {
-      setActivePreset("products");
-      setActiveLandingPlanet("products");
-    } else if (sectorId === "labs" || sectorId === "planet-labs") {
-      setActivePreset("labs");
-      setActiveLandingPlanet("labs");
-    } else if (sectorId === "foundations" || sectorId === "planet-foundations") {
-      setActivePreset("foundations");
-      setActiveLandingPlanet("foundations");
-    } else if (sectorId === "self" || sectorId === "planet-self" || sectorId === "founder") {
-      setActivePreset("self");
-      setActiveLandingPlanet("self");
-    } else if (sectorId === "creative" || sectorId === "planet-creative") {
-      setActivePreset("creative");
-      setActiveLandingPlanet("creative");
-    } else {
-      setActivePreset("galaxy");
-      setActiveLandingPlanet(null);
-    }
-  }, []);
+      // "planet-products", "products" and "founder" all name the same arm.
+      const arm = sectorId.replace(/^planet-/, "") === "founder"
+        ? "self"
+        : sectorId.replace(/^planet-/, "");
+
+      if (arm === "galaxy" || arm === "overview") {
+        setActivePreset("galaxy");
+        setActiveLandingPlanet(null);
+        return;
+      }
+
+      setActivePreset(arm);
+      // Land only where there is a scope to land in; otherwise the preset still
+      // frames the planet, which is what clicking it has always done.
+      const scopeId = planetScopeId(arm);
+      setActiveLandingPlanet(landableScopes.has(scopeId) ? scopeId : null);
+    },
+    [landableScopes],
+  );
 
   // Celestial Body Selection Handler
   const handleSelectBody = useCallback((bodyId: string) => {
@@ -93,6 +101,7 @@ export default function HomePage() {
         onSelectSector={handleSelectSector}
         onSelectBody={handleSelectBody}
         onProjectPins={setScreenPoints}
+        landedScope={activeLandingPlanet}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
       />
@@ -130,16 +139,16 @@ export default function HomePage() {
         <InteractionHintsPill cosmicMode={cosmicMode} />
       )}
 
-      {/* 6. Clean Planetary Landing Glass Workstation Modal ("Descent Mode" - Mockup Slide 3) */}
-      <CleanPlanetLandingModal
-        planetId={activeLandingPlanet}
+      {/* 6. Landed consoles. The descent is the camera's; this annotates it. */}
+      <LandedConsolePanel
+        scopeId={activeLandingPlanet}
         cosmicMode={cosmicMode}
         onClose={() => {
           setActiveLandingPlanet(null);
           setActivePreset("galaxy");
         }}
         onOpenTerminal={() => setIsTerminalOpen(true)}
-        onSelectBody={handleSelectBody}
+        escapeEnabled={!isTerminalOpen && !isDossierOpen && !selectedBodyId}
       />
 
       {/* 7. Global Dossier Search Modal (44 Repositories) */}

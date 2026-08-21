@@ -135,6 +135,11 @@ export class WorldCameraManager {
     // Sync spherical from desired offset
     const offset = new THREE.Vector3().subVectors(this.desiredPose.position, this.desiredPose.target);
     this.sphericalTarget.setFromVector3(offset);
+
+    // Travel removed, content kept — and removed for every camera move, not
+    // only for descent, since the preference is about motion rather than about
+    // which control started it.
+    if (this.reducedMotion) this.snap();
   }
 
   /**
@@ -152,15 +157,14 @@ export class WorldCameraManager {
       position: new THREE.Vector3(center.x, radius * 3.6, center.z + radius * 4.8),
       target: new THREE.Vector3(center.x, radius * 0.3, center.z),
     });
-    if (this.reducedMotion) this.snap();
   }
 
+  /** The named inverse of descend: back to the frame the scope sits in. */
   public ascend(): void {
     this.setPreset("galaxy");
-    if (this.reducedMotion) this.snap();
   }
 
-  /** Travel removed, content kept. */
+  /** Arrive rather than fly. Every pose the lerps were heading for, taken now. */
   private snap(): void {
     this.currentPose.target.copy(this.desiredPose.target);
     this.target.copy(this.desiredPose.target);
