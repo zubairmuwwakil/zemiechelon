@@ -6,6 +6,7 @@ import { RotateCcw, Bot, ExternalLink, Terminal } from "lucide-react";
 import { sound } from "@/lib/audio";
 import type { ScopeId } from "@/lib/atlas/types";
 import type { CosmicMode } from "../world/DayNightController";
+import { PickMeConsole } from "./PickMeConsole";
 
 interface LandedConsolePanelProps {
   /** The scope the camera has descended into, or null when in orbit. */
@@ -46,9 +47,6 @@ export function LandedConsolePanel({
   const [gamesA, setGamesA] = useState(1);
   const [gamesB, setGamesB] = useState(0);
 
-  // PickMe state
-  const [centsPerPoint, setCentsPerPoint] = useState(1.8);
-
   const isOpen = Boolean(scopeId);
   const arm = scopeId?.replace("planet:", "") ?? null;
 
@@ -62,14 +60,6 @@ export function LandedConsolePanel({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, escapeEnabled, onClose]);
-
-  // Dynamic optimal card based on valuation
-  const optimalCard =
-    centsPerPoint >= 1.6
-      ? { name: "Sapphire Reserve", rate: "3x / 1.8cpp", badge: "Max Flight ROI" }
-      : centsPerPoint >= 1.2
-      ? { name: "Amex Cobalt", rate: "5x Points", badge: "Max Multiplier" }
-      : { name: "Scotia Momentum", rate: "4% Cash Back", badge: "Pure Cash" };
 
   const handleScoreAdjust = (team: "A" | "B", delta: number) => {
     sound.playClick(600 + delta * 50, 0.04);
@@ -109,11 +99,6 @@ export function LandedConsolePanel({
       : "border-white/10 bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
     track: isDay ? "bg-zinc-300" : "bg-zinc-700",
     amber: isDay ? "text-amber-700" : "text-amber-400",
-    sky: isDay ? "text-sky-700" : "text-sky-300",
-    skyChip: isDay
-      ? "border-sky-300/60 bg-sky-50 text-sky-800"
-      : "border-sky-400/30 bg-sky-950/50 text-sky-300",
-    tile: isDay ? "bg-zinc-100" : "bg-zinc-800/80",
     labCard: isDay
       ? "border-purple-200 bg-purple-50/50 text-purple-950"
       : "border-purple-900/50 bg-purple-950/30 text-purple-200",
@@ -296,114 +281,8 @@ export function LandedConsolePanel({
                   </div>
                 </div>
 
-                {/* 💳 PickMe */}
-                <div
-                  className={`space-y-5 rounded-2xl border p-4 ${c.well}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">💳</span>
-                      <div>
-                        <h3 className="text-base font-bold tracking-tight">PickMe</h3>
-                        <p className={`text-xs font-medium ${c.muted}`}>iOS Card Copilot</p>
-                      </div>
-                    </div>
-                    <span className={`rounded-md border px-2 py-0.5 font-mono text-xs ${c.skyChip}`}>
-                      Engine v2.4
-                    </span>
-                  </div>
-
-                  {/* 1. Credit Card Reward Valuation Slider */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-xs font-semibold ${c.muted}`}>Reward Valuation</span>
-                      <div className={`rounded-xl border px-2.5 py-1 font-mono text-[11px] font-bold shadow-xs ${c.skyChip}`}>
-                        Optimal: {optimalCard.name}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="2.5"
-                        step="0.1"
-                        value={centsPerPoint}
-                        aria-label="Cents per point"
-                        onChange={(e) => {
-                          setCentsPerPoint(Number(e.target.value));
-                          sound.playClick(400 + Number(e.target.value) * 120, 0.02);
-                        }}
-                        className={`h-1.5 w-full cursor-pointer rounded-lg accent-sky-600 ${c.track}`}
-                      />
-                      <div className={`flex justify-between font-mono text-[11px] ${c.dim}`}>
-                        <span>0.5cpp</span>
-                        <span className={`font-bold ${c.sky}`}>
-                          current: {centsPerPoint.toFixed(1)}cpp
-                        </span>
-                        <span>2.5cpp</span>
-                      </div>
-                      <div className={`font-mono text-[10px] ${c.muted}`}>
-                        {optimalCard.rate} · {optimalCard.badge}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2. Earn Rate Breakdown Cards */}
-                  <div className={`space-y-2.5 border-t pt-2 ${c.divider}`}>
-                    <div className={`text-xs font-semibold ${c.muted}`}>Earn Rate Breakdown</div>
-                    {[
-                      {
-                        card: "Sapphire Reserve",
-                        tag: "Premium Travel",
-                        tagClass: isDay ? "text-emerald-700" : "text-emerald-400",
-                        rows: [
-                          { label: "Dining", value: "3x", accent: false },
-                          { label: "Travel", value: "3x", accent: false },
-                          { label: "Other", value: "1x", accent: false },
-                        ],
-                      },
-                      {
-                        card: "Amex Gold",
-                        tag: "Everyday Spender",
-                        tagClass: isDay ? "text-amber-700" : "text-amber-400",
-                        rows: [
-                          { label: "Groceries", value: "4x", accent: true },
-                          { label: "Dining", value: "4x", accent: true },
-                          { label: "Flights", value: "3x", accent: false },
-                        ],
-                      },
-                    ].map((card) => (
-                      <div
-                        key={card.card}
-                        className={`space-y-2 rounded-xl border p-3.5 ${c.card}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-bold">{card.card}</span>
-                          <span className={`font-mono text-[10px] font-semibold ${card.tagClass}`}>
-                            {card.tag}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 font-mono text-xs">
-                          {card.rows.map((r) => (
-                            <div
-                              key={r.label}
-                              className={`rounded-lg p-2 text-center ${c.tile}`}
-                            >
-                              <div className={`text-[10px] ${c.dim}`}>{r.label}</div>
-                              <div
-                                className={`text-sm font-extrabold ${
-                                  r.accent ? c.amber : c.strong
-                                }`}
-                              >
-                                {r.value}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* 💳 PickMe — recommend() against the real catalogue, per surface design §3.7 */}
+                <PickMeConsole isDay={isDay} />
               </>
             )}
 
