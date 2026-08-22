@@ -162,9 +162,9 @@ export class WorldCameraManager {
    *
    * 0.06 rather than something smaller. The binding constraint is the ground at
    * a standing pose, `0.202 * radius` away, so 0.06 clears it more than three
-   * times over — while keeping the far/near ratio around 11,000 at surface
-   * scale. That matters: banding was observed at a ratio of 40,000, and a
-   * needlessly tiny near plane buys nothing and spends depth precision.
+   * times over. Going smaller buys nothing and spends depth precision for it —
+   * the far plane has to reach the whole world from anywhere in it, so near is
+   * the only end of the range there is any slack at.
    *
    * `far` is deliberately NOT a multiple of `near`. A ratio rule would put the
    * far plane 240 units out from a surface and clip the far side of the galaxy

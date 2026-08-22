@@ -13,6 +13,7 @@ import { WorldSceneBuilder, fieldDensityFor } from "./WorldSceneBuilder";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
+  setHoveredPlanet?: (id: string | null) => void;
 }
 
 /** Anything the canvas can carry for an HTML overlay: an id and a scene position. */
@@ -108,6 +109,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // Expose handle methods
   useImperativeHandle(ref, () => ({
     triggerPaddleHit: () => {},
+    setHoveredPlanet: (id: string | null) => {
+      const builder = sceneBuilderRef.current;
+      if (!builder) return;
+      builder.setHoveredTarget(id ? { type: "planet", id } : null);
+    },
   }));
 
   // Sync Day/Night mode & bloom parameters
@@ -197,19 +203,66 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       previousPointer = { x: e.clientX, y: e.clientY };
     };
 
-    /** Hover only resolves ideal rings; nothing else in the scene reacts to it. */
+    /** Hover resolves ideal rings, astrolabe month rings, planets, and arms. */
     const onPointerHover = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, cameraManager.camera);
 
-      const rings = sceneBuilder.hitObjects.filter((h) => h.type === "ideal");
-      if (rings.length === 0) return;
-      const hit = raycaster.intersectObjects(rings.map((h) => h.mesh), false)[0];
-      sceneBuilder.setHoveredIdeal(
-        hit ? (rings.find((h) => h.mesh === hit.object)?.id ?? null) : null,
-      );
+      const hoverTypes = new Set(["ideal", "planet", "ring", "arm"]);
+      const candidates = sceneBuilder.hitObjects.filter((h) => hoverTypes.has(h.type));
+      if (candidates.length === 0) return;
+
+      const meshes = candidates.map((h) => h.mesh);
+      const intersects = raycaster.intersectObjects(meshes, true);
+
+      if (intersects.length === 0) {
+        sceneBuilder.setHoveredTarget(null);
+        return;
+      }
+
+      // Prioritize specific foreground objects (ideals, planets, astrolabe rings) over the broad arm dust background
+      const typePriority: Record<string, number> = {
+        ideal: 4,
+        planet: 3,
+        ring: 2,
+        arm: 1,
+      };
+
+      const resolvedHits = intersects
+        .map((hit) => {
+          const hitObj = candidates.find((h) => {
+            if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
+            let curr: THREE.Object3D | null = hit.object;
+            while (curr) {
+              if (curr === h.mesh) return true;
+              curr = curr.parent;
+            }
+            return false;
+          });
+          return hitObj ? { hitObj, hit } : null;
+        })
+        .filter((item): item is { hitObj: (typeof candidates)[0]; hit: THREE.Intersection } => item !== null);
+
+      if (resolvedHits.length === 0) {
+        sceneBuilder.setHoveredTarget(null);
+        return;
+      }
+
+      resolvedHits.sort((a, b) => {
+        const prioA = typePriority[a.hitObj.type] ?? 0;
+        const prioB = typePriority[b.hitObj.type] ?? 0;
+        if (prioA !== prioB) return prioB - prioA;
+        return a.hit.distance - b.hit.distance;
+      });
+
+      const best = resolvedHits[0];
+      sceneBuilder.setHoveredTarget({
+        type: best.hitObj.type as "ideal" | "planet" | "ring" | "arm",
+        id: best.hitObj.id,
+        instanceId: best.hit.instanceId,
+      });
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -235,7 +288,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, cameraManager.camera);
-        const meshesToTest = sceneBuilder.hitObjects.map((h) => h.mesh);
+        const clickable = sceneBuilder.hitObjects.filter(
+          (h) => h.type === "planet" || h.type === "sector" || h.type === "body",
+        );
+        const meshesToTest = clickable.map((h) => h.mesh);
         const intersects = raycaster.intersectObjects(meshesToTest, true);
 
         if (intersects.length > 0) {
@@ -243,7 +299,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
           // The five planets are one InstancedMesh, so the mesh alone no longer
           // says which was clicked — without the instance check every planet
           // resolves to whichever registered first.
-          const hitObj = sceneBuilder.hitObjects.find((h) => {
+          const hitObj = clickable.find((h) => {
             if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
             let curr: THREE.Object3D | null = hit.object;
             while (curr) {
@@ -264,12 +320,17 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       }
     };
 
+    const onPointerLeave = () => {
+      sceneBuilder.setHoveredTarget(null);
+    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       cameraManager.onWheelZoom(e.deltaY);
     };
 
     canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerleave", onPointerLeave);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("wheel", onWheel, { passive: false });

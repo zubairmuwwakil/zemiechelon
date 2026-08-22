@@ -5,12 +5,17 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Body, ScopeId } from "@/lib/atlas/types";
-import { placeBodies, radiusScale } from "@/lib/atlas/position";
-import { GALAXY_ZEMI, derivePlanetScopes, planetScopeId, type Scope } from "@/lib/atlas/scopes";
+import { BULGE, placeBodies, radiusScale } from "@/lib/atlas/position";
+import { GALAXY_ZEMI, derivePlanetScopes, planetScopeId, scopeChain, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
+import {
+  deriveArmAnnotation,
+  derivePlanetAnnotation,
+  deriveRingAnnotation,
+} from "@/lib/atlas/derivedFigures";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
@@ -126,7 +131,7 @@ export function buildFieldGeometry(
 export interface InteractiveHitObject {
   id: string;
   name: string;
-  type: "planet" | "sector" | "body" | "ideal";
+  type: "planet" | "sector" | "body" | "ideal" | "ring" | "arm";
   mesh: THREE.Object3D;
   /**
    * Set when `mesh` is shared. The five planets are one InstancedMesh, so the
@@ -134,6 +139,19 @@ export interface InteractiveHitObject {
    */
   instanceId?: number;
   position: THREE.Vector3;
+}
+
+export interface HoverTarget {
+  type: "ideal" | "planet" | "ring" | "arm";
+  id: string;
+  instanceId?: number;
+}
+
+interface AnnotatedRing {
+  id: string;
+  lineMaterial: LineMaterial;
+  baseOpacity: number;
+  label: THREE.Sprite;
 }
 
 /**
@@ -153,6 +171,10 @@ const MOON_SIZE = 0.34;
 const MOON_LABEL_SCALE = 0.022;
 const MOON_LABEL_REACH = 1.75;
 const MOON_LABEL_ASPECT = 4.6;
+
+/** Annotation HUD pill scaling. */
+const ANNOTATION_LABEL_SCALE = 0.056;
+const ANNOTATION_LABEL_ASPECT = 4.2;
 
 /**
  * A canvas label that repaints when the ground changes. Tinting cannot do this
@@ -203,12 +225,22 @@ export class WorldSceneBuilder {
    */
   public readonly scopeGroups = new Map<ScopeId, THREE.Group>();
   public readonly hitObjects: InteractiveHitObject[] = [];
+  /** Arm -> its row in the planet InstancedMesh, so one planet can be culled. */
+  private readonly planetInstanceIndices = new Map<string, number>();
+  /** The instance matrices as built, so a cull can be released rather than recomputed. */
+  private readonly planetInstanceMatrices: THREE.Matrix4[] = [];
+  private planetMesh: THREE.InstancedMesh | null = null;
+  /** Root children hidden by the current cull, so releasing it restores exactly those. */
+  private culled: THREE.Object3D[] = [];
   public readonly bodySprites: Map<string, THREE.Object3D> = new Map();
 
   // Animated celestial elements
   private planetarySpheres: THREE.Mesh[] = [];
   private planetMaterial: THREE.ShaderMaterial | null = null;
   private idealRings: IdealRing[] = [];
+  private annotatedRings: AnnotatedRing[] = [];
+  private planetAnnotations: Map<string, THREE.Sprite> = new Map();
+  private armAnnotations: Map<string, THREE.Sprite> = new Map();
   private moons: MoonOrbit[] = [];
   private hoveredIdeal: string | null = null;
   private fieldMaterials: THREE.PointsMaterial[] = [];
@@ -235,6 +267,7 @@ export class WorldSceneBuilder {
 
     this.buildAstrolabeConcentricRings();
     this.buildBackgroundField();
+    this.buildArmDustPickTargets();
     this.buildCentralAnchorCore();
     this.buildPlanetarySpheres();
     this.buildIdealRings();
@@ -295,17 +328,107 @@ export class WorldSceneBuilder {
     for (let month = 1; ; month++) {
       const layoutRadius = radiusScale(month * DAYS_PER_MONTH);
       if (layoutRadius > reach) break;
-      this.addHairlineRing(
+      const rScene = layoutRadius * SCENE_SCALE;
+      const baseOpacity = month % 3 === 0 ? 0.95 : 0.55;
+
+      const line = this.addHairlineRing(
         this.rootGroup,
-        layoutRadius * SCENE_SCALE,
-        // `rule` is already a light token; dividing it again by opacity is what
-        // made the old graticule invisible. Quiet, not absent.
-        month % 3 === 0 ? 0.95 : 0.55,
+        rScene,
+        baseOpacity,
         DIRECTION_A.rule,
+      ) as Line2;
+
+      // Generous invisible pick ring so thin hairline can be hovered reliably
+      const bandHalf = Math.max(1.8, rScene * 0.045);
+      const pickGeo = new THREE.RingGeometry(
+        Math.max(0.1, rScene - bandHalf),
+        rScene + bandHalf,
+        96,
       );
+      const pick = new THREE.Mesh(
+        pickGeo,
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      pick.rotation.x = -Math.PI / 2;
+      this.rootGroup.add(pick);
+
+      const ann = deriveRingAnnotation(month, this.bodies, GALAXY_ZEMI, DAYS_PER_MONTH);
+      const label = this.createAnnotationLabel(ann.title, ann.subtitle);
+      label.position.set(0, 0.8, -rScene);
+      label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
+      label.material.opacity = 0;
+      this.rootGroup.add(label);
+
+      this.annotatedRings.push({
+        id: ann.id,
+        lineMaterial: line.material as LineMaterial,
+        baseOpacity,
+        label,
+      });
+
+      this.hitObjects.push({
+        id: ann.id,
+        name: ann.title,
+        type: "ring",
+        mesh: pick,
+        position: new THREE.Vector3(0, 0.8, -rScene),
+      });
     }
+
     // The frontier itself: the newest repository's own radius.
-    this.addHairlineRing(this.rootGroup, reach * SCENE_SCALE, 0.85, DIRECTION_A.gold, 1.4);
+    const frontierR = reach * SCENE_SCALE;
+    const frontierLine = this.addHairlineRing(
+      this.rootGroup,
+      frontierR,
+      0.85,
+      DIRECTION_A.gold,
+      1.4,
+    ) as Line2;
+
+    const frontierBandHalf = Math.max(2.0, frontierR * 0.045);
+    const frontierPickGeo = new THREE.RingGeometry(
+      Math.max(0.1, frontierR - frontierBandHalf),
+      frontierR + frontierBandHalf,
+      96,
+    );
+    const frontierPick = new THREE.Mesh(
+      frontierPickGeo,
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    frontierPick.rotation.x = -Math.PI / 2;
+    this.rootGroup.add(frontierPick);
+
+    const frontierAnn = deriveRingAnnotation("frontier", this.bodies, GALAXY_ZEMI);
+    const frontierLabel = this.createAnnotationLabel(frontierAnn.title, frontierAnn.subtitle);
+    frontierLabel.position.set(0, 0.8, -frontierR);
+    frontierLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
+    frontierLabel.material.opacity = 0;
+    this.rootGroup.add(frontierLabel);
+
+    this.annotatedRings.push({
+      id: frontierAnn.id,
+      lineMaterial: frontierLine.material as LineMaterial,
+      baseOpacity: 0.85,
+      label: frontierLabel,
+    });
+
+    this.hitObjects.push({
+      id: frontierAnn.id,
+      name: frontierAnn.title,
+      type: "ring",
+      mesh: frontierPick,
+      position: new THREE.Vector3(0, 0.8, -frontierR),
+    });
 
     // Radial ticks along the frontier, quarter marks longest.
     const ticks: number[] = [];
@@ -463,11 +586,31 @@ export class WorldSceneBuilder {
       );
     });
 
+    const corePick = new THREE.Mesh(
+      new THREE.SphereGeometry(CORE_RADIUS * 1.25, 16, 16),
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }),
+    );
+    corePick.position.set(0, 0, 0);
+    sunGroup.add(corePick);
+
+    const coreAnn = derivePlanetAnnotation("galaxy", this.bodies, GALAXY_ZEMI);
+    const coreLabel = this.createAnnotationLabel(coreAnn.title, coreAnn.subtitle);
+    coreLabel.position.set(0, 1.2, CORE_RADIUS + 4.2);
+    coreLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
+    coreLabel.material.opacity = 0;
+    this.rootGroup.add(coreLabel);
+    this.planetAnnotations.set("galaxy", coreLabel);
+    this.planetAnnotations.set(coreAnn.id, coreLabel);
+
     this.hitObjects.push({
       id: "galaxy",
       name: "Ancestral Anchor Core",
       type: "planet",
-      mesh: coreMesh,
+      mesh: corePick,
       position: sunGroup.position.clone(),
     });
 
@@ -513,6 +656,8 @@ export class WorldSceneBuilder {
       matrix.makeScale(radius, radius, radius);
       matrix.setPosition(center.x, PLANET_Y, center.z);
       mesh.setMatrixAt(i, matrix);
+      this.planetInstanceIndices.set(planet.arm, i);
+      this.planetInstanceMatrices[i] = matrix.clone();
 
       pattern[i] = family.pattern;
       spin[i] = family.rotationRate;
@@ -521,12 +666,33 @@ export class WorldSceneBuilder {
       colour.set(family.baseColor).toArray(base, i * 3);
       colour.set(family.accentColor).toArray(accent, i * 3);
 
+      // Generous pick sphere for hovering and picking each individual planet
+      const pickSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(radius * 1.2, 16, 16),
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }),
+      );
+      pickSphere.position.set(center.x, PLANET_Y, center.z);
+      this.rootGroup.add(pickSphere);
+
+      const ann = derivePlanetAnnotation(planet.arm, this.bodies, GALAXY_ZEMI);
+      const label = this.createAnnotationLabel(ann.title, ann.subtitle);
+      label.position.set(center.x, PLANET_Y, center.z + radius + 4.5);
+      label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
+      label.material.opacity = 0;
+      this.rootGroup.add(label);
+
+      this.planetAnnotations.set(planet.arm, label);
+      this.planetAnnotations.set(ann.id, label);
+
       this.hitObjects.push({
         id: planet.arm,
         name: `Planet ${planet.arm[0].toUpperCase()}${planet.arm.slice(1)}`,
         type: "planet",
-        mesh,
-        instanceId: i,
+        mesh: pickSphere,
         position: new THREE.Vector3(center.x, PLANET_Y, center.z),
       });
     });
@@ -538,6 +704,7 @@ export class WorldSceneBuilder {
     mesh.instanceMatrix.needsUpdate = true;
 
     this.planetMaterial = material;
+    this.planetMesh = mesh;
     this.rootGroup.add(mesh);
   }
 
@@ -726,6 +893,108 @@ export class WorldSceneBuilder {
     });
   }
 
+  private createAnnotationLabel(title: string, subtitle: string): THREE.Sprite {
+    return this.createPaperLabel(ANNOTATION_LABEL_ASPECT, 1024, (ctx, ink, canvas) => {
+      ctx.fillStyle = ink;
+      ctx.font = "600 70px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(title, canvas.width / 2, canvas.height * 0.38, canvas.width * 0.9);
+      ctx.fillStyle = DIRECTION_A.gold;
+      ctx.font = "500 50px ui-monospace, SFMono-Regular, monospace";
+      ctx.fillText(subtitle, canvas.width / 2, canvas.height * 0.70, canvas.width * 0.9);
+    });
+  }
+
+  /**
+   * Generates generous invisible ribbon pick meshes and constant screen-size labels for all galactic arms.
+   */
+  private buildArmDustPickTargets(): void {
+    const placements = placeBodies(this.bodies);
+    const armOf = new Map(this.bodies.map((b) => [b.id, b.arm]));
+    const spans = new Map<string, { min: number; max: number; count: number }>();
+
+    for (const p of placements) {
+      const arm = armOf.get(p.id);
+      if (arm === undefined) continue;
+      const r = Math.hypot(p.position.x, p.position.z);
+      const s = spans.get(arm) ?? { min: r, max: r, count: 0 };
+      spans.set(arm, { min: Math.min(s.min, r), max: Math.max(s.max, r), count: s.count + 1 });
+    }
+
+    const segments = 36;
+    for (const [arm, span] of spans.entries()) {
+      const ann = deriveArmAnnotation(arm, this.bodies);
+      const baseAngle = GALAXY_ZEMI.arms[arm];
+      if (baseAngle === undefined) continue;
+
+      const rMin = Math.max(BULGE, span.min * 0.85);
+      const rMax = span.max * 1.15;
+      const positions: number[] = [];
+      const indices: number[] = [];
+
+      for (let s = 0; s <= segments; s++) {
+        const t = s / segments;
+        const r = rMin + t * (rMax - rMin);
+        const theta = baseAngle + GALAXY_ZEMI.windRate * Math.log(1 + r);
+        const dTheta = 0.35 + r * 0.012;
+
+        const rScene = r * SCENE_SCALE;
+        positions.push(Math.cos(theta - dTheta) * rScene, 0, Math.sin(theta - dTheta) * rScene);
+        positions.push(Math.cos(theta + dTheta) * rScene, 0, Math.sin(theta + dTheta) * rScene);
+
+        if (s < segments) {
+          const v0 = s * 2;
+          const v1 = s * 2 + 1;
+          const v2 = (s + 1) * 2;
+          const v3 = (s + 1) * 2 + 1;
+          indices.push(v0, v1, v2);
+          indices.push(v1, v3, v2);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+
+      const pickMesh = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      pickMesh.name = `pick-arm-${arm}`;
+      this.rootGroup.add(pickMesh);
+
+      const rMid = (rMin + rMax) / 2;
+      const thetaMid = baseAngle + GALAXY_ZEMI.windRate * Math.log(1 + rMid);
+      const labelPos = new THREE.Vector3(
+        Math.cos(thetaMid) * rMid * SCENE_SCALE,
+        1.2,
+        Math.sin(thetaMid) * rMid * SCENE_SCALE,
+      );
+
+      const label = this.createAnnotationLabel(ann.title, ann.subtitle);
+      label.position.copy(labelPos);
+      label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
+      label.material.opacity = 0;
+      this.rootGroup.add(label);
+
+      this.armAnnotations.set(arm, label);
+      this.armAnnotations.set(ann.id, label);
+
+      this.hitObjects.push({
+        id: ann.id,
+        name: ann.title,
+        type: "arm",
+        mesh: pickMesh,
+        position: labelPos.clone(),
+      });
+    }
+  }
+
   /**
    * Illuminate one ring and dim its siblings. Hovering is what turns a ring
    * from decoration into an instrument: the claim and the repositories behind
@@ -754,6 +1023,86 @@ export class WorldSceneBuilder {
       const state = id === null ? "rest" : ring.id === id ? "lit" : "dimmed";
       ring.ringMaterial.opacity = RING_OPACITY[state];
       ring.label.material.opacity = state === "lit" ? 1 : 0;
+    }
+  }
+
+  /**
+   * Universal hover handler for element annotations (rings, planets, arms, ideals).
+   */
+  public setHoveredTarget(target: HoverTarget | null): void {
+    if (!target) {
+      this.setHoveredIdeal(null);
+      for (const ring of this.annotatedRings) {
+        ring.lineMaterial.opacity = ring.baseOpacity;
+        ring.label.material.opacity = 0;
+      }
+      for (const label of this.planetAnnotations.values()) {
+        label.material.opacity = 0;
+      }
+      for (const label of this.armAnnotations.values()) {
+        label.material.opacity = 0;
+      }
+      return;
+    }
+
+    if (target.type === "ideal") {
+      this.setHoveredIdeal(target.id);
+      for (const ring of this.annotatedRings) {
+        ring.lineMaterial.opacity = ring.baseOpacity;
+        ring.label.material.opacity = 0;
+      }
+      for (const label of this.planetAnnotations.values()) label.material.opacity = 0;
+      for (const label of this.armAnnotations.values()) label.material.opacity = 0;
+      return;
+    }
+
+    this.setHoveredIdeal(null);
+
+    if (target.type === "ring") {
+      for (const ring of this.annotatedRings) {
+        const isHit = ring.id === target.id;
+        ring.lineMaterial.opacity = isHit ? 1.0 : ring.baseOpacity * 0.35;
+        ring.label.material.opacity = isHit ? 1 : 0;
+      }
+      for (const label of this.planetAnnotations.values()) label.material.opacity = 0;
+      for (const label of this.armAnnotations.values()) label.material.opacity = 0;
+      return;
+    }
+
+    if (target.type === "planet") {
+      for (const ring of this.annotatedRings) {
+        ring.lineMaterial.opacity = ring.baseOpacity;
+        ring.label.material.opacity = 0;
+      }
+      for (const label of this.planetAnnotations.values()) label.material.opacity = 0;
+      for (const label of this.armAnnotations.values()) label.material.opacity = 0;
+
+      const activeLabel =
+        this.planetAnnotations.get(target.id) ??
+        this.planetAnnotations.get(target.id.replace("planet-", "")) ??
+        this.planetAnnotations.get(`planet-${target.id}`);
+      if (activeLabel) {
+        activeLabel.material.opacity = 1;
+      }
+      return;
+    }
+
+    if (target.type === "arm") {
+      for (const ring of this.annotatedRings) {
+        ring.lineMaterial.opacity = ring.baseOpacity;
+        ring.label.material.opacity = 0;
+      }
+      for (const label of this.planetAnnotations.values()) label.material.opacity = 0;
+      for (const label of this.armAnnotations.values()) label.material.opacity = 0;
+
+      const activeLabel =
+        this.armAnnotations.get(target.id) ??
+        this.armAnnotations.get(target.id.replace("arm-", "")) ??
+        this.armAnnotations.get(`arm-${target.id}`);
+      if (activeLabel) {
+        activeLabel.material.opacity = 1;
+      }
+      return;
     }
   }
 
@@ -921,5 +1270,81 @@ export class WorldSceneBuilder {
       ring.pivot.rotation.z += delta * ring.orbitRate;
     });
 
+  }
+
+  /** Which row of the planet InstancedMesh an arm occupies. */
+  public planetInstanceIndex(arm: string): number {
+    const index = this.planetInstanceIndices.get(arm);
+    if (index === undefined) {
+      // Loud, not defaulted — the same rule an unassigned arm already follows.
+      throw new Error(`arm "${arm}" has no planet instance`);
+    }
+    return index;
+  }
+
+  /**
+   * Thin the sky to one scope. `null` restores everything.
+   *
+   * The field goes because at surface altitude arm dust reads as grey speckle
+   * smeared across the horizon, not because it costs frame time — measured at
+   * 120.2 fps with it and 120.1 without, with 1,543 of 16,500 points inside the
+   * frustum. Spec §7 risk 4 files this under frame budget; it is a treatment
+   * problem, and optimising draw calls here would be effort spent on the wrong
+   * thing.
+   *
+   * The planets need per-instance culling rather than a visibility toggle.
+   * They are one InstancedMesh by design, so the parent that has to stay in
+   * frame shares a mesh with the four that must not — hiding the object hides
+   * all five, which is exactly the trap this method exists to avoid.
+   */
+  public setScopeCull(keep: ScopeId | null): void {
+    for (const object of this.culled) object.visible = true;
+    this.culled = [];
+    this.restorePlanetInstances();
+    if (!keep) return;
+
+    const kept = this.scopeGroups.get(keep);
+    for (const child of this.rootGroup.children) {
+      // The planet mesh is never hidden wholesale; it is culled per instance
+      // below, because the kept scope's own planet lives inside it.
+      if (child === this.planetMesh) continue;
+      if (kept && (child === kept || this.contains(child, kept))) continue;
+      if (!child.visible) continue;
+      child.visible = false;
+      this.culled.push(child);
+    }
+
+    // The arm the kept scope sits in, whether that scope is a planet or a moon
+    // inside one. `scopeChain` resolves both without a second code path.
+    const planetScope = scopeChain(keep).find((scope) => scope.id.startsWith("planet:"));
+    if (planetScope) this.hidePlanetInstancesExcept(planetScope.id.replace("planet:", ""));
+  }
+
+  private contains(root: THREE.Object3D, node: THREE.Object3D): boolean {
+    let cursor: THREE.Object3D | null = node;
+    while (cursor) {
+      if (cursor === root) return true;
+      cursor = cursor.parent;
+    }
+    return false;
+  }
+
+  private hidePlanetInstancesExcept(arm: string): void {
+    const mesh = this.planetMesh;
+    if (!mesh) return;
+    const keepIndex = this.planetInstanceIndices.get(arm);
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    this.planetInstanceMatrices.forEach((_, i) => {
+      if (i === keepIndex) return;
+      mesh.setMatrixAt(i, zero);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  private restorePlanetInstances(): void {
+    const mesh = this.planetMesh;
+    if (!mesh) return;
+    this.planetInstanceMatrices.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
+    mesh.instanceMatrix.needsUpdate = true;
   }
 }

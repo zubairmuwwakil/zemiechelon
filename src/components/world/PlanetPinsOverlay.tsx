@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import type { ScreenPoint } from "@/lib/atlas/types";
+import type { Body, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 import { ARM_META } from "@/data/arms";
+import { loadBodies } from "@/lib/atlas/bodies";
+import { derivePlanetAnnotation } from "@/lib/atlas/derivedFigures";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 
@@ -28,14 +30,18 @@ interface PlanetPinsOverlayProps {
   points: ScreenPoint[];
   activePreset: string;
   cosmicMode?: CosmicMode;
+  bodies?: Body[];
   onSelectPlanet: (id: string) => void;
+  onHoverPlanet?: (id: string | null) => void;
 }
 
 export function PlanetPinsOverlay({
   points,
   activePreset,
   cosmicMode = "day",
+  bodies = loadBodies(),
   onSelectPlanet,
+  onHoverPlanet,
 }: PlanetPinsOverlayProps) {
   // Only show planetary labels in Macro Galaxy / Overview view
   const isGalaxyView = activePreset === "galaxy" || activePreset === "overview";
@@ -48,6 +54,9 @@ export function PlanetPinsOverlay({
       {points.map((pt) => {
         const pin = pinFor(pt.id);
         if (!pin) return null;
+
+        const annotation = derivePlanetAnnotation(pt.id, bodies);
+        const accessibleName = `${annotation.title}: ${annotation.subtitle}`;
 
         return (
           <div
@@ -65,7 +74,13 @@ export function PlanetPinsOverlay({
                 sound.playClick(600, 0.05);
                 onSelectPlanet(pt.id);
               }}
-              className={`group flex items-center gap-1.5 rounded-full px-3 py-1 shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-108 active:scale-95 border ${
+              onMouseEnter={() => onHoverPlanet?.(pt.id)}
+              onMouseLeave={() => onHoverPlanet?.(null)}
+              onFocus={() => onHoverPlanet?.(pt.id)}
+              onBlur={() => onHoverPlanet?.(null)}
+              aria-label={accessibleName}
+              title={accessibleName}
+              className={`group flex items-center gap-1.5 rounded-full px-3 py-1 shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-108 active:scale-95 border focus-visible:outline focus-visible:outline-2 ${
                 isDay
                   ? "border-zinc-200/80 bg-white/92 text-zinc-900 shadow-zinc-900/5 hover:bg-white"
                   : "border-white/15 bg-zinc-900/85 text-zinc-100 shadow-black/50 hover:bg-zinc-800"
@@ -83,3 +98,4 @@ export function PlanetPinsOverlay({
     </div>
   );
 }
+
