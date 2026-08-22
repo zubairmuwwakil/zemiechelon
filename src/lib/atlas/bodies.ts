@@ -50,6 +50,7 @@ export function loadBodies(): Body[] {
       },
       satellites: o.satellites,
       consoleId: o.consoleId,
+      milestone: o.milestone,
     };
   });
 }

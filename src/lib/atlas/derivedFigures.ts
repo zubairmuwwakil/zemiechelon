@@ -3,7 +3,7 @@ import { GALAXY_ZEMI, planetScopeId, type Scope } from "./scopes";
 import { loadBodies } from "./bodies";
 import { deriveWorldRadius, derivePlanets, type PlanetPlacement } from "./planets";
 import { deriveMoons, type MoonPlacement } from "./moons";
-import { radiusScale } from "./position";
+import { daysSinceEpoch, radiusScale } from "./position";
 import { IDEALS, type Ideal } from "./ideals";
 import { ARMS, ARM_META } from "@/data/arms";
 
@@ -256,4 +256,41 @@ export function deriveLegendFigures(
       planetRadius: productsArm.planetRadius,
     },
   };
+}
+
+export interface TimelineMilestone {
+  /** The repository that names this moment. */
+  id: string;
+  /** Editorial caption, from `bodies.overrides.ts`. */
+  title: string;
+  /** Days since the galaxy epoch, derived from the body's own `bornAt`. */
+  day: number;
+  /** The body's own `bornAt`, unchanged. */
+  date: string;
+  /** How many repositories existed at or before this moment. */
+  bodyCount: number;
+}
+
+/**
+ * The timeline transport's own figures, per §3.8: a repository may name the
+ * moment it represents, but the day, date and count behind that name are
+ * always derived from the body set — never typed, per §3.6.
+ */
+export function deriveTimelineMilestones(
+  bodies: Body[] = loadBodies(),
+  scope: Scope = GALAXY_ZEMI,
+): TimelineMilestone[] {
+  return bodies
+    .filter((b): b is Body & { milestone: string } => Boolean(b.milestone))
+    .map((b) => {
+      const day = daysSinceEpoch(b.bornAt, scope.epoch);
+      return {
+        id: b.id,
+        title: b.milestone,
+        day,
+        date: b.bornAt,
+        bodyCount: bodies.filter((x) => daysSinceEpoch(x.bornAt, scope.epoch) <= day).length,
+      };
+    })
+    .sort((a, b) => a.day - b.day || a.id.localeCompare(b.id));
 }

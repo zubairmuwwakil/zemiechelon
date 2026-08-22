@@ -58,6 +58,15 @@ describe("loadBodies", () => {
       expect(b.lastTouchedAt >= b.bornAt, `${b.id} was touched before birth`).toBe(true);
     }
   });
+
+  it("threads the editorial milestone caption through from overrides", () => {
+    const withMilestones = bodies.filter((b) => b.milestone);
+    // Every milestone-bearing body actually exists and carries no numeric literal.
+    expect(withMilestones.length).toBeGreaterThan(0);
+    for (const b of withMilestones) {
+      expect(b.milestone).not.toMatch(/\d/);
+    }
+  });
 });
 
 describe("body parentage", () => {

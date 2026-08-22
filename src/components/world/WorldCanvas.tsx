@@ -29,6 +29,13 @@ export interface WorldCanvasProps {
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
   /**
+   * The timeline transport's clock, in days since the galaxy epoch. Drives only
+   * what the scene shows — see `WorldSceneBuilder.setClockDay` — never a
+   * rebuild: applied through a dedicated effect, not the scene's own deps, so
+   * scrubbing never tears down and reconstructs the map underneath it.
+   */
+  clockDay?: number;
+  /**
    * The scope the camera should be inside, or null for the galaxy. Landing is a
    * camera move rather than an overlay: the scene stays live underneath.
    */
@@ -91,6 +98,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onSelectSector,
     onSelectBody,
     onProjectPins,
+    clockDay = Infinity,
     landedScope = null,
     anchors,
     onProjectAnchors,
@@ -104,11 +112,24 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   const dayNightRef = useRef<DayNightController | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
   const composerRef = useRef<EffectComposer | null>(null);
+  // Read at construction time only — see the mount effect below. Kept fresh by
+  // its own effect so a scene rebuild (day/night, a resized body set) always
+  // reads the clock the transport is actually on, not the one from first mount.
+  const clockDayRef = useRef(clockDay);
+  clockDayRef.current = clockDay;
 
   // Expose handle methods
   useImperativeHandle(ref, () => ({
     triggerPaddleHit: () => {},
   }));
+
+  // Sync the timeline transport's clock. A dedicated effect, not a dependency
+  // of the scene-construction effect below: that effect rebuilds the whole
+  // THREE scene on every dependency change, and a scrub drag can fire many
+  // times a second — this only ever touches the already-built scene.
+  useEffect(() => {
+    sceneBuilderRef.current?.setClockDay(clockDay);
+  }, [clockDay]);
 
   // Sync Day/Night mode & bloom parameters
   useEffect(() => {
@@ -178,6 +199,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     sceneBuilder.build();
     sceneBuilder.setResolution(width, height);
     sceneBuilder.setCosmicMode(cosmicMode);
+    // Not a dependency (see the dedicated clock effect above) — read fresh at
+    // construction time only, via the ref.
+    sceneBuilder.setClockDay(clockDayRef.current);
     sceneBuilderRef.current = sceneBuilder;
 
     // Both refs are live now, so the framing owner can seed the initial pose —
@@ -204,7 +228,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, cameraManager.camera);
 
-      const rings = sceneBuilder.hitObjects.filter((h) => h.type === "ideal");
+      const rings = sceneBuilder.hitObjects.filter(
+        (h) => h.type === "ideal" && sceneBuilder.isHitVisible(h),
+      );
       if (rings.length === 0) return;
       const hit = raycaster.intersectObjects(rings.map((h) => h.mesh), false)[0];
       sceneBuilder.setHoveredIdeal(
@@ -235,7 +261,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, cameraManager.camera);
-        const meshesToTest = sceneBuilder.hitObjects.map((h) => h.mesh);
+        // Raycasting ignores `Object3D.visible`, so a body the timeline
+        // transport hasn't drawn yet must be excluded here explicitly rather
+        // than relying on it being hidden.
+        const visibleHits = sceneBuilder.hitObjects.filter((h) => sceneBuilder.isHitVisible(h));
+        const meshesToTest = visibleHits.map((h) => h.mesh);
         const intersects = raycaster.intersectObjects(meshesToTest, true);
 
         if (intersects.length > 0) {
@@ -243,7 +273,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
           // The five planets are one InstancedMesh, so the mesh alone no longer
           // says which was clicked — without the instance check every planet
           // resolves to whichever registered first.
-          const hitObj = sceneBuilder.hitObjects.find((h) => {
+          const hitObj = visibleHits.find((h) => {
             if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
             let curr: THREE.Object3D | null = hit.object;
             while (curr) {

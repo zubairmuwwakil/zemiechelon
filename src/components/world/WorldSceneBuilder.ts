@@ -5,10 +5,10 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Body, ScopeId } from "@/lib/atlas/types";
-import { placeBodies, radiusScale } from "@/lib/atlas/position";
+import { daysSinceEpoch, placeBodies, radiusScale } from "@/lib/atlas/position";
 import { GALAXY_ZEMI, derivePlanetScopes, planetScopeId, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
-import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
+import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { DIRECTION_A } from "@/lib/theme/directionA";
@@ -54,9 +54,14 @@ export function buildFieldGeometry(
   seed: number,
   scale = 1,
   scope: Scope = GALAXY_ZEMI,
-): { positions: Float32Array } {
+): { positions: Float32Array; armDustDays: Float32Array } {
   const rand = mulberry32(seed);
   const positions = new Float32Array((BACKGROUND_STAR_COUNT + ARM_DUST_COUNT) * 3);
+  // Arm dust follows its anchor bodies (§3.8): each dust point is tagged with
+  // its own anchor's birth day, in generation order, so the timeline transport
+  // can gate it without touching where any point is drawn.
+  const armDustDays = new Float32Array(ARM_DUST_COUNT);
+  const bornDayOf = new Map(bodies.map((b) => [b.id, daysSinceEpoch(b.bornAt, scope.epoch)]));
   const reach = deriveWorldRadius(bodies, scope);
   let i = 0;
 
@@ -93,6 +98,7 @@ export function buildFieldGeometry(
     const anchor = placements[Math.floor(rand() * placements.length)];
     const arm = armOf.get(anchor.id)!;
     const span = spans.get(arm)!;
+    armDustDays[n] = bornDayOf.get(anchor.id) ?? 0;
     const r0 = Math.hypot(anchor.position.x, anchor.position.z);
     const theta0 = Math.atan2(anchor.position.z, anchor.position.x);
 
@@ -120,7 +126,7 @@ export function buildFieldGeometry(
     positions[i++] = (Math.sin(theta) * r + (rand() - 0.5) * spread * 2) * scale;
   }
 
-  return { positions };
+  return { positions, armDustDays };
 }
 
 export interface InteractiveHitObject {
@@ -221,13 +227,42 @@ export class WorldSceneBuilder {
   private readonly resolution = new THREE.Vector2(1, 1);
   private centralCoronaRings: THREE.Object3D[] = [];
 
+  // --- Timeline transport gating -------------------------------------------
+  //
+  // Positions are laid out once, in the builders above, over the full body
+  // set — never touched again. The clock only ever toggles what is drawn and,
+  // for planets alone, how big they are. See `setClockDay` and §3.8 of the
+  // surface design spec.
+
+  /** No `setClockDay` call yet means "show everything" — the pre-transport behaviour. */
+  private clockDay = Infinity;
+  /** Every drawn body/moon: the day it exists from, and what to show or hide. */
+  private readonly bodyGates: Array<{ id: string; day: number; objects: THREE.Object3D[] }> = [];
+  /** Ids currently shown, kept because raycasting ignores `Object3D.visible`. */
+  private readonly visibleBodyIds = new Set<string>();
+  /** Every ideal ring: the day its last citation is born, and what to show or hide. */
+  private readonly idealGates: Array<{ id: string; day: number; objects: THREE.Object3D[] }> = [];
+  private readonly visibleIdealIds = new Set<string>();
+  /** The shared planet InstancedMesh and each arm's frozen centre + instance index. */
+  private planetInstanceMesh: THREE.InstancedMesh | null = null;
+  private readonly planetInstances: Array<{ arm: string; index: number; center: THREE.Vector3 }> = [];
+  private readonly visiblePlanetArms = new Set<string>();
+  /** Arm dust, sorted by its anchor's birth day so a draw range can gate it without reordering. */
+  private armDustGeometry: THREE.BufferGeometry | null = null;
+  private armDustSortedDays: Float32Array = new Float32Array(0);
+
+  /** Every body's own birth day, since the galaxy epoch. Computed once; gating reads it many times. */
+  private readonly bornDayById = new Map<string, number>();
+
   constructor(
     private scene: THREE.Scene,
     private bodies: Body[],
     private today: string,
     /** Fraction of the field budget to draw. See `fieldDensityFor`. */
     private fieldDensity = 1,
-  ) {}
+  ) {
+    for (const body of bodies) this.bornDayById.set(body.id, daysSinceEpoch(body.bornAt));
+  }
 
   public build(): void {
     this.scene.add(this.rootGroup);
@@ -240,6 +275,10 @@ export class WorldSceneBuilder {
     this.buildIdealRings();
     this.buildMoons();
     this.buildSatellitesAndBodies();
+
+    // One code path decides what is drawn, whatever day it runs at — so the
+    // freshly-built scene and a later `setClockDay` call can never disagree.
+    this.setClockDay(this.clockDay);
   }
 
   public groupFor(scopeId: ScopeId): THREE.Group {
@@ -377,7 +416,7 @@ export class WorldSceneBuilder {
    * does not move.
    */
   public buildBackgroundField(): void {
-    const { positions } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
+    const { positions, armDustDays } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
 
     // The shell reads as sky and the dust as ground, so they need different
     // weights — but not different generation passes. Two geometries over
@@ -427,7 +466,50 @@ export class WorldSceneBuilder {
     // rather than a different one.
     const budget = (n: number) => Math.max(1, Math.round(n * this.fieldDensity));
     layer(0, budget(BACKGROUND_STAR_COUNT), 1.6, 0.5, false, "background-field");
-    layer(BACKGROUND_STAR_COUNT, budget(ARM_DUST_COUNT), 1.2, 0.5, true, "arm-dust");
+
+    // Arm dust follows its anchor bodies (§3.8): the buffer is re-ordered by
+    // each point's anchor birth day so a plain `setDrawRange` prefix is exactly
+    // "every dust point whose anchor already exists" — no point ever moves,
+    // the drawn count only grows. The mobile budget is taken as a prefix of
+    // the ORIGINAL random order first, preserving the uniform-sample property
+    // `layer` above relies on, and only that budgeted subset is then sorted.
+    const dustBudget = budget(ARM_DUST_COUNT);
+    const dustBase = BACKGROUND_STAR_COUNT * 3;
+    const order = Array.from({ length: dustBudget }, (_, k) => k);
+    order.sort((a, b) => armDustDays[a] - armDustDays[b]);
+
+    const dustPositions = new Float32Array(dustBudget * 3);
+    const dustDays = new Float32Array(dustBudget);
+    order.forEach((srcIndex, sortedIndex) => {
+      const src = dustBase + srcIndex * 3;
+      const dst = sortedIndex * 3;
+      dustPositions[dst] = positions[src];
+      dustPositions[dst + 1] = positions[src + 1];
+      dustPositions[dst + 2] = positions[src + 2];
+      dustDays[sortedIndex] = armDustDays[srcIndex];
+    });
+
+    const dustGeometry = new THREE.BufferGeometry();
+    dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dustPoints = new THREE.Points(
+      dustGeometry,
+      new THREE.PointsMaterial({
+        color: new THREE.Color(DIRECTION_A.dust),
+        size: 1.2,
+        sizeAttenuation: true,
+        fog: true,
+        transparent: true,
+        opacity: 0.5,
+        depthWrite: false,
+      }),
+    );
+    dustPoints.name = "arm-dust";
+    this.fieldMaterials.push(dustPoints.material as THREE.PointsMaterial);
+    dustPoints.frustumCulled = false;
+    this.rootGroup.add(dustPoints);
+
+    this.armDustGeometry = dustGeometry;
+    this.armDustSortedDays = dustDays;
   }
 
   /**
@@ -529,6 +611,10 @@ export class WorldSceneBuilder {
         instanceId: i,
         position: new THREE.Vector3(center.x, PLANET_Y, center.z),
       });
+
+      // The centre is frozen here, from the full-set derivation. `setClockDay`
+      // only ever rewrites this instance's scale, never its position.
+      this.planetInstances.push({ arm: planet.arm, index: i, center: new THREE.Vector3(center.x, PLANET_Y, center.z) });
     });
 
     geometry.setAttribute(PLANET_ATTRIBUTES.pattern, new THREE.InstancedBufferAttribute(pattern, 1));
@@ -538,6 +624,7 @@ export class WorldSceneBuilder {
     mesh.instanceMatrix.needsUpdate = true;
 
     this.planetMaterial = material;
+    this.planetInstanceMesh = mesh;
     this.rootGroup.add(mesh);
   }
 
@@ -578,6 +665,13 @@ export class WorldSceneBuilder {
         const r = radius * (1.6 + ideal.ordinal * 0.36);
         const gold = new THREE.Color(DIRECTION_A.gold);
 
+        // Everything this one ideal draws, so `setClockDay` can show or hide
+        // the whole claim — ring, hover target and orbiting bead — in one
+        // assignment rather than three.
+        const idealGroup = new THREE.Group();
+        idealGroup.name = `ideal-${ideal.id}`;
+        group.add(idealGroup);
+
         // Line2, not LineLoop and not RingGeometry, and both alternatives fail
         // for the same reason. A band thin enough to read as a hairline is a
         // third of a pixel at galaxy distance, and a triangle that thin covers
@@ -599,7 +693,7 @@ export class WorldSceneBuilder {
         }
         const ringGeometry = new LineGeometry();
         ringGeometry.setPositions(points);
-        group.add(new Line2(ringGeometry, ringMaterial));
+        idealGroup.add(new Line2(ringGeometry, ringMaterial));
 
         // A hairline is about a pixel wide at galaxy distance, which nothing can
         // hover. The raycaster skips `visible: false` but hits a fully
@@ -608,7 +702,7 @@ export class WorldSceneBuilder {
           new THREE.RingGeometry(r - radius * 0.3, r + radius * 0.3, 64),
           new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }),
         );
-        group.add(pick);
+        idealGroup.add(pick);
 
         const pivot = new THREE.Group();
         const bead = new THREE.Mesh(
@@ -617,7 +711,7 @@ export class WorldSceneBuilder {
         );
         bead.position.set(r, 0, 0);
         pivot.add(bead);
-        group.add(pivot);
+        idealGroup.add(pivot);
 
         // World-up and outside the tilted group: the ring leans, the label must
         // not. Constant screen size, so it is legible from orbit — which is the
@@ -629,6 +723,11 @@ export class WorldSceneBuilder {
         label.position.set(0, r * 1.5 + ideal.ordinal * radius * 0.5, 0);
         label.scale.set(CLAIM_LABEL_SCALE * CLAIM_LABEL_ASPECT, CLAIM_LABEL_SCALE, 1);
         label.material.opacity = 0;
+
+        // A claim's evidence visibly accumulates: the ring appears only once
+        // every repository it cites exists (§3.8).
+        const unlockDay = Math.max(...ideal.evidence.map((id) => this.bornDayById.get(id) ?? 0));
+        this.idealGates.push({ id: ideal.id, day: unlockDay, objects: [idealGroup, label] });
         planetGroup.add(label);
 
         this.idealRings.push({
@@ -758,6 +857,78 @@ export class WorldSceneBuilder {
   }
 
   /**
+   * The timeline transport's clock. Per §3.8 of the surface design spec,
+   * positions were laid out once, above, over the full body set — this method
+   * never touches a position. It only decides what is currently drawn (bodies,
+   * moons, ideal rings) and, for planets alone, how much mass they show.
+   *
+   * Safe to call before `bornDayById` and the gate lists are populated: `build()`
+   * calls it once at the end, at whatever `clockDay` the builder was given, so
+   * the freshly-built scene and a later call agree by construction.
+   */
+  public setClockDay(day: number): void {
+    this.clockDay = day;
+
+    this.visibleBodyIds.clear();
+    for (const gate of this.bodyGates) {
+      const visible = gate.day <= day;
+      for (const object of gate.objects) object.visible = visible;
+      if (visible) this.visibleBodyIds.add(gate.id);
+    }
+
+    this.visibleIdealIds.clear();
+    for (const gate of this.idealGates) {
+      const visible = gate.day <= day;
+      for (const object of gate.objects) object.visible = visible;
+      if (visible) this.visibleIdealIds.add(gate.id);
+    }
+
+    if (this.planetInstanceMesh) {
+      const growthByArm = new Map(planetGrowthAt(this.bodies, day).map((p) => [p.arm, p]));
+      this.visiblePlanetArms.clear();
+      const matrix = new THREE.Matrix4();
+      for (const instance of this.planetInstances) {
+        const growth = growthByArm.get(instance.arm);
+        const radius = growth?.visible ? growth.radius * SCENE_SCALE : 0;
+        matrix.makeScale(radius, radius, radius);
+        matrix.setPosition(instance.center);
+        this.planetInstanceMesh.setMatrixAt(instance.index, matrix);
+        if (growth?.visible) this.visiblePlanetArms.add(instance.arm);
+      }
+      this.planetInstanceMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    if (this.armDustGeometry) {
+      // `armDustSortedDays` is sorted ascending, so the count of unlocked dust
+      // points is the insertion point of `day` — everything before it exists.
+      let lo = 0;
+      let hi = this.armDustSortedDays.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (this.armDustSortedDays[mid] <= day) lo = mid + 1;
+        else hi = mid;
+      }
+      this.armDustGeometry.setDrawRange(0, lo);
+    }
+  }
+
+  /**
+   * Whether a hit-test target is currently part of the drawn map. Needed
+   * because three.js raycasting does not consult `Object3D.visible` — an
+   * un-born body's mesh is still geometrically present, so a click on empty
+   * space where it *will* appear must be rejected explicitly rather than by
+   * hiding it and hoping.
+   */
+  public isHitVisible(hit: InteractiveHitObject): boolean {
+    if (hit.type === "planet") {
+      return hit.id === "galaxy" || this.visiblePlanetArms.has(hit.id);
+    }
+    if (hit.type === "ideal") return this.visibleIdealIds.has(hit.id);
+    if (hit.type === "body") return this.visibleBodyIds.has(hit.id);
+    return true;
+  }
+
+  /**
    * 5c. The shipped systems, in orbit around their own planet.
    *
    * §5.2 wants Products' four ventures readable as moons from orbit with zero
@@ -790,7 +961,7 @@ export class WorldSceneBuilder {
       const group = this.groupFor(planetScopeId(moon.arm));
       // The orbit line is drawn flat and the moon rides it, so the path a
       // visitor sees is the path the moon is actually on.
-      this.addHairlineRing(group, orbitRadius, 0.4, DIRECTION_A.rule);
+      const orbitRing = this.addHairlineRing(group, orbitRadius, 0.4, DIRECTION_A.rule);
 
       const pivot = new THREE.Group();
       pivot.rotation.y = moon.phase;
@@ -829,6 +1000,14 @@ export class WorldSceneBuilder {
         type: "body",
         mesh: body,
         position: new THREE.Vector3(planet.center.x, PLANET_Y, planet.center.z),
+      });
+
+      // A moon appears when its system is born (§3.8) — orbit line, pivot and
+      // sphere together, so nothing is left ringing an empty point.
+      this.bodyGates.push({
+        id: moon.id,
+        day: this.bornDayById.get(moon.id) ?? 0,
+        objects: [orbitRing, pivot, body],
       });
     }
   }
@@ -893,6 +1072,13 @@ export class WorldSceneBuilder {
         type: "body",
         mesh: sphere,
         position: bodyGroup.position.clone(),
+      });
+
+      // A body is drawn once its own bornAt has passed the clock (§3.8).
+      this.bodyGates.push({
+        id: body.id,
+        day: this.bornDayById.get(body.id) ?? 0,
+        objects: [bodyGroup],
       });
     }
   }

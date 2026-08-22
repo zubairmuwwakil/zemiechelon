@@ -13,6 +13,7 @@ import { NoiseOverlay } from "@/components/world/NoiseOverlay";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
 import { LegendModal } from "@/components/hud/LegendModal";
 import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
+import { TimelineTransport } from "@/components/hud/TimelineTransport";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
@@ -47,6 +48,10 @@ export default function HomePage() {
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  // The timeline transport's clock, in days since the galaxy epoch. Infinity
+  // until the transport reports its own default (the full span) — same "show
+  // everything" state either way, so there is no flash of an empty galaxy.
+  const [clockDay, setClockDay] = useState(Infinity);
 
   // Sector & Planet Landing Selection Handler
   const handleSelectSector = useCallback(
@@ -103,6 +108,7 @@ export default function HomePage() {
         onSelectSector={handleSelectSector}
         onSelectBody={handleSelectBody}
         onProjectPins={setScreenPoints}
+        clockDay={clockDay}
         landedScope={activeLandingPlanet}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
@@ -141,6 +147,11 @@ export default function HomePage() {
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
       {!activeLandingPlanet && !isDossierOpen && !isLegendOpen && !isTerminalOpen && !selectedBodyId && (
         <InteractionHintsPill cosmicMode={cosmicMode} />
+      )}
+
+      {/* 5b. Timeline transport: play, pause, scrub and speed the galaxy's own clock */}
+      {!activeLandingPlanet && !isDossierOpen && !isLegendOpen && !isTerminalOpen && !selectedBodyId && (
+        <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDayChange={setClockDay} />
       )}
 
       {/* 6. Landed consoles. The descent is the camera's; this annotates it. */}

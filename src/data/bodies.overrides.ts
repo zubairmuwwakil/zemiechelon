@@ -10,6 +10,8 @@ export interface BodyOverride {
   appStore?: string;
   satellites?: Satellite[];
   consoleId?: string;
+  /** Caption for the timeline transport, when this repository names a moment. */
+  milestone?: string;
 }
 
 export const OVERRIDES: Record<string, BodyOverride> = {
@@ -19,6 +21,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
     label: "Inunity",
     kind: "system",
     consoleId: "inunity",
+    milestone: "Inunity goes live",
     blurb:
       "Personal finance command centre. Zero-bank-login Apple Pay capture, multi-currency ledger, 12-month bill forecasting, 24 statutory compliance engines.",
     stack: ["Next.js 16", "TypeScript", "Prisma", "Neon"],
@@ -35,6 +38,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
     label: "PickMe",
     kind: "system",
     consoleId: "pickme",
+    milestone: "PickMe joins the console",
     blurb: "Offline iOS copilot that names the right card at checkout. Deterministic engine, entirely on-device.",
     stack: ["Swift 6", "SwiftUI", "SwiftData"],
     satellites: [
@@ -47,6 +51,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
     arm: "products",
     label: "MarketLens",
     kind: "system",
+    milestone: "MarketLens reaches production",
     blurb:
       "Enterprise market data pipeline with idempotent ingestion runs, row-level quarantine for malformed upstream payloads, daily OHLCV closing candles, and BYOK routing.",
     stack: ["Java 21", "Spring Boot", "PostgreSQL", "Flyway"],
@@ -60,6 +65,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
     arm: "products",
     label: "PickleOps",
     kind: "system",
+    milestone: "PickleOps ships to the App Store",
     blurb:
       "Full-stack tournament management, dynamic Glicko-2 / DUPR rating sync, round-robin court rotation scheduling, member check-ins, and live bracket displays.",
     stack: ["Swift", "SwiftUI", "Next.js", "PostgreSQL", "Tailwind CSS"],
@@ -253,6 +259,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
     arm: "foundations",
     label: "JS Cash Register",
     kind: "star",
+    milestone: "The first commit",
   },
   JS_Cipher: {
     arm: "foundations",

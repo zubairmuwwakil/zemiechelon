@@ -8,8 +8,10 @@ import {
   deriveAstrolabeRings,
   deriveDaySpan,
   deriveLegendFigures,
+  deriveTimelineMilestones,
   radiusToDays,
 } from "../derivedFigures";
+import { daysSinceEpoch } from "../position";
 import type { Body } from "../types";
 
 const bodies = loadBodies();
@@ -165,5 +167,42 @@ describe("deriveLegendFigures", () => {
     expect(mockFigures.shippedSystemsCount).toBe(1);
     expect(mockFigures.learnedStarsCount).toBe(1);
     expect(mockFigures.totalMoons).toBe(1);
+  });
+});
+
+describe("deriveTimelineMilestones", () => {
+  const milestones = deriveTimelineMilestones(bodies);
+
+  it("only includes bodies with an authored milestone caption", () => {
+    const captioned = bodies.filter((b) => b.milestone);
+    expect(milestones).toHaveLength(captioned.length);
+    expect(milestones.length).toBeGreaterThan(0);
+  });
+
+  it("derives day and date from the body's own bornAt, never a literal", () => {
+    for (const m of milestones) {
+      const body = bodies.find((b) => b.id === m.id)!;
+      expect(m.day).toBe(daysSinceEpoch(body.bornAt));
+      expect(m.date).toBe(body.bornAt);
+      expect(m.title).toBe(body.milestone);
+    }
+  });
+
+  it("derives each milestone's cumulative body count from the set itself", () => {
+    for (const m of milestones) {
+      const expected = bodies.filter((b) => daysSinceEpoch(b.bornAt) <= m.day).length;
+      expect(m.bodyCount).toBe(expected);
+    }
+  });
+
+  it("orders milestones chronologically", () => {
+    const days = milestones.map((m) => m.day);
+    expect(days).toEqual([...days].sort((a, b) => a - b));
+  });
+
+  it("grows the cumulative count monotonically across milestones", () => {
+    for (let i = 1; i < milestones.length; i++) {
+      expect(milestones[i].bodyCount).toBeGreaterThanOrEqual(milestones[i - 1].bodyCount);
+    }
   });
 });
