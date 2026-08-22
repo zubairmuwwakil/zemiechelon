@@ -1,0 +1,98 @@
+// @vitest-environment jsdom
+import * as THREE from "three";
+import { describe, expect, it } from "vitest";
+import { WorldSceneBuilder } from "../WorldSceneBuilder";
+import { loadBodies } from "@/lib/atlas/bodies";
+import { planetScopeId } from "@/lib/atlas/scopes";
+import { daysSinceEpoch } from "@/lib/atlas/position";
+
+/**
+ * The clock and the scope cull both decide what is drawn, and they decide it by
+ * writing the same flag. Neither feature's own tests exercise the other, so the
+ * order they run in is untested surface between two tracks that landed a day
+ * apart. These cases pin the interaction rather than the features.
+ */
+
+const bodies = loadBodies();
+
+function built() {
+  const scene = new THREE.Scene();
+  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  builder.build();
+  return { scene, builder };
+}
+
+/** The newest body, and the clock day it is born on. */
+const LATE = bodies.reduce((latest, b) => (b.bornAt > latest.bornAt ? b : latest), bodies[0]);
+const LATE_DAY = daysSinceEpoch(LATE.bornAt);
+const FULL_SPAN = Math.max(...bodies.map((b) => daysSinceEpoch(b.bornAt)));
+
+function objectsFor(scene: THREE.Scene, id: string): THREE.Object3D[] {
+  const found: THREE.Object3D[] = [];
+  scene.traverse((o) => {
+    if (o.name === `body-${id}` || o.name === id) found.push(o);
+  });
+  return found;
+}
+
+function anyVisible(objects: THREE.Object3D[]): boolean {
+  return objects.some((o) => {
+    let cursor: THREE.Object3D | null = o;
+    while (cursor) {
+      if (!cursor.visible) return false;
+      cursor = cursor.parent;
+    }
+    return true;
+  });
+}
+
+describe("scope cull and the timeline clock", () => {
+  // Guard against a vacuous suite: every "is not visible" case below would also
+  // pass if the lookup found nothing at all. This one fails loudly in that case.
+  it("finds the body it is about to assert on", () => {
+    const { scene, builder } = built();
+    builder.setClockDay(FULL_SPAN);
+    expect(objectsFor(scene, LATE.id).length).toBeGreaterThan(0);
+    expect(anyVisible(objectsFor(scene, LATE.id))).toBe(true);
+  });
+
+  it("does not resurrect an unborn body when the clock advances under a cull", () => {
+    const { scene, builder } = built();
+    // Rewind so the newest body is not born yet, then land.
+    builder.setClockDay(LATE_DAY - 1);
+    builder.setScopeCull(planetScopeId("products"));
+    // The clock ticks while landed — the transport keeps running underneath.
+    builder.setClockDay(LATE_DAY - 1);
+    expect(anyVisible(objectsFor(scene, LATE.id))).toBe(false);
+  });
+
+  it("does not resurrect an unborn body when the cull is released", () => {
+    const { scene, builder } = built();
+    builder.setClockDay(LATE_DAY - 1);
+    builder.setScopeCull(planetScopeId("products"));
+    builder.setScopeCull(null);
+    expect(anyVisible(objectsFor(scene, LATE.id))).toBe(false);
+  });
+
+  it("restores a planet to the clock's radius, not its full-grown one", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("labs");
+    builder.setClockDay(Math.floor(FULL_SPAN * 0.5));
+    const atHalf = instanceScale(scene, index);
+    builder.setScopeCull(planetScopeId("products"));
+    builder.setScopeCull(null);
+    expect(instanceScale(scene, index)).toBeCloseTo(atHalf, 5);
+  });
+});
+
+function instanceScale(scene: THREE.Scene, index: number): number {
+  let scale = Number.NaN;
+  scene.traverse((o) => {
+    const mesh = o as THREE.InstancedMesh;
+    if (!mesh.isInstancedMesh || mesh.name !== "planet-surfaces") return;
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(index, matrix);
+    scale = new THREE.Vector3().setFromMatrixScale(matrix).x;
+  });
+  return scale;
+}
