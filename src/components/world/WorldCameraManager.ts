@@ -101,9 +101,18 @@ export class WorldCameraManager {
   private sphericalTarget = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
   private isUserInteracting = false;
 
-  // Limits
-  private minDistance = 15;
-  private maxDistance = 480;
+  /**
+   * Clipping and orbit limits, as functions of the frame being looked at.
+   *
+   * These used to be four constants sized for the galaxy. That works while the
+   * galaxy is the only scale; one level down, `near = 0.5` clips the ground out
+   * from under a surface camera — the nearest ground a standing pose can see is
+   * only `0.202 * shardRadius` away — and `minDistance = 15` makes it
+   * impossible to approach anything smaller than a planet at all. Deriving them
+   * from the framed radius is what lets one camera serve every depth, which is
+   * the rule `descend()` already follows for framing.
+   */
+  public depth = { near: 0.5, far: 2000, minDistance: 15, maxDistance: 480 };
   private minPolarAngle = 0.12;
   private maxPolarAngle = Math.PI / 2 - 0.04; // Stay above plane
 
@@ -114,6 +123,7 @@ export class WorldCameraManager {
     private reducedMotion = false,
   ) {
     this.camera = new THREE.PerspectiveCamera(42, width / height, 0.5, 2000);
+    this.setFrameScale(ASTROLABE_OUTER);
     this.camera.position.copy(this.currentPose.position);
     this.camera.lookAt(this.currentPose.target);
   }
@@ -143,6 +153,47 @@ export class WorldCameraManager {
   }
 
   /**
+   * Size the camera's depth range to the frame it is looking at.
+   *
+   * `near` is a fraction of the framed radius rather than a constant, because
+   * what has to stay inside it is the nearest surface the camera can see. It is
+   * clamped at the top so galaxy framing keeps exactly the near plane it has
+   * today: this must not be a visible change at the scale that already works.
+   *
+   * 0.06 rather than something smaller. The binding constraint is the ground at
+   * a standing pose, `0.202 * radius` away, so 0.06 clears it more than three
+   * times over — while keeping the far/near ratio around 11,000 at surface
+   * scale. That matters: banding was observed at a ratio of 40,000, and a
+   * needlessly tiny near plane buys nothing and spends depth precision.
+   *
+   * `far` is deliberately NOT a multiple of `near`. A ratio rule would put the
+   * far plane 240 units out from a surface and clip the far side of the galaxy
+   * out of the sky — and standing on a moon, the core and the opposite arm are
+   * exactly what you see when you turn away from the parent. What `far` has to
+   * reach is the world, not the frame.
+   */
+  public setFrameScale(radius: number): void {
+    const near = THREE.MathUtils.clamp(radius * 0.06, 0.02, 0.5);
+    this.depth = {
+      near,
+      far: Math.max(2000, radius * 10),
+      minDistance: radius * 0.12,
+      maxDistance: Math.max(480, radius * 2.4),
+    };
+    this.camera.near = this.depth.near;
+    this.camera.far = this.depth.far;
+    this.camera.updateProjectionMatrix();
+    // An orbit already outside the new band is pulled in rather than left
+    // stranded: a preset that arrived before the scale was set would otherwise
+    // keep a radius the limits now forbid, and the first wheel event would jump.
+    this.sphericalTarget.radius = THREE.MathUtils.clamp(
+      this.sphericalTarget.radius,
+      this.depth.minDistance,
+      this.depth.maxDistance,
+    );
+  }
+
+  /**
    * Frame any object in the scene graph. Takes the object and its size, not a
    * scope id: the camera never needs to know what a scope is, only where a
    * frame sits and how big it is. That is what lets a `universe` root use this
@@ -152,6 +203,7 @@ export class WorldCameraManager {
    * two deep is composed by Object3D rather than by arithmetic here.
    */
   public descend(target: THREE.Object3D, radius: number): void {
+    this.setFrameScale(radius);
     const center = target.getWorldPosition(new THREE.Vector3());
     this.setPreset("", {
       position: new THREE.Vector3(center.x, radius * 3.6, center.z + radius * 4.8),
@@ -161,6 +213,7 @@ export class WorldCameraManager {
 
   /** The named inverse of descend: back to the frame the scope sits in. */
   public ascend(): void {
+    this.setFrameScale(ASTROLABE_OUTER);
     this.setPreset("galaxy");
   }
 
@@ -185,9 +238,9 @@ export class WorldCameraManager {
   public onWheelZoom(deltaY: number): void {
     const zoomFactor = 1 + Math.abs(deltaY) * 0.0012;
     if (deltaY > 0) {
-      this.sphericalTarget.radius = Math.min(this.maxDistance, this.sphericalTarget.radius * zoomFactor);
+      this.sphericalTarget.radius = Math.min(this.depth.maxDistance, this.sphericalTarget.radius * zoomFactor);
     } else {
-      this.sphericalTarget.radius = Math.max(this.minDistance, this.sphericalTarget.radius / zoomFactor);
+      this.sphericalTarget.radius = Math.max(this.depth.minDistance, this.sphericalTarget.radius / zoomFactor);
     }
   }
 
