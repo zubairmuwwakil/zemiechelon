@@ -1,6 +1,7 @@
 import type { Body, ScopeId } from "./types";
 import { loadBodies } from "./bodies";
-import { planetScopeId } from "./galaxy";
+import { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import { daysSinceEpoch } from "./position";
 
 export interface Ideal {
   id: string;
@@ -47,6 +48,24 @@ export function validateIdeals(ideals: Ideal[], bodies: Body[] = loadBodies()): 
 
 export function idealsFor(arm: string): Ideal[] {
   return IDEALS.filter((i) => i.scope === planetScopeId(arm)).sort((a, b) => a.ordinal - b.ordinal);
+}
+
+/**
+ * An ideal ring appears only once every repository it cites exists, so a
+ * claim's evidence visibly accumulates rather than being asserted from the
+ * start (§3.8). Visibility only; the ring's own geometry is unaffected.
+ */
+export function idealVisibleAt(
+  ideal: Ideal,
+  bodies: Body[],
+  clockDay: number,
+  scope: Scope = GALAXY_ZEMI,
+): boolean {
+  const byId = new Map(bodies.map((b) => [b.id, b]));
+  return ideal.evidence.every((id) => {
+    const body = byId.get(id);
+    return body != null && daysSinceEpoch(body.bornAt, scope.epoch) <= clockDay;
+  });
 }
 
 // Fail the build, not the render. An unresolved citation must surface the way an

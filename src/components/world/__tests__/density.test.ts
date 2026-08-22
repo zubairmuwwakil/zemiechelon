@@ -8,6 +8,7 @@ import {
   fieldDensityFor,
 } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
+import { daysSinceEpoch } from "@/lib/atlas/position";
 
 describe("field density", () => {
   it("budgets a real background field, not a token one", () => {
@@ -41,6 +42,18 @@ describe("field density", () => {
       if (r > 2 && r < 30) onArm++;
     }
     expect(onArm).toBeGreaterThan(ARM_DUST_COUNT * 0.5);
+  });
+
+  it("tags each dust point with its anchor's own birth day, for the timeline transport", () => {
+    const bodies = loadBodies();
+    const { armDustDays } = buildFieldGeometry(bodies, 3);
+    const maxDay = Math.max(...bodies.map((b) => daysSinceEpoch(b.bornAt)));
+
+    expect(armDustDays).toHaveLength(ARM_DUST_COUNT);
+    for (const day of armDustDays) {
+      expect(day).toBeGreaterThanOrEqual(0);
+      expect(day).toBeLessThanOrEqual(maxDay);
+    }
   });
 });
 

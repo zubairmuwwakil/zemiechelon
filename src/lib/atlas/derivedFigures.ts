@@ -3,7 +3,7 @@ import { GALAXY_ZEMI, planetScopeId, type Scope } from "./scopes";
 import { loadBodies } from "./bodies";
 import { deriveWorldRadius, derivePlanets, type PlanetPlacement } from "./planets";
 import { deriveMoons, type MoonPlacement } from "./moons";
-import { radiusScale } from "./position";
+import { daysSinceEpoch, radiusScale } from "./position";
 import { IDEALS, type Ideal } from "./ideals";
 import { ARMS, ARM_META } from "@/data/arms";
 
@@ -256,4 +256,121 @@ export function deriveLegendFigures(
       planetRadius: productsArm.planetRadius,
     },
   };
+}
+
+export interface ElementAnnotation {
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
+/**
+ * Derives the annotation figure for an astrolabe month ring or frontier boundary.
+ */
+export function deriveRingAnnotation(
+  month: number | "frontier",
+  bodies: Body[] = loadBodies(),
+  scope: Scope = GALAXY_ZEMI,
+  daysPerMonth: number = DAYS_PER_MONTH,
+): ElementAnnotation {
+  const daySpan = deriveDaySpan(bodies, scope);
+  if (month === "frontier") {
+    return {
+      id: "ring-frontier",
+      title: "Galactic Frontier",
+      subtitle: `${daySpan} days out`,
+    };
+  }
+  const days = month * daysPerMonth;
+  return {
+    id: `ring-month-${month}`,
+    title: `Month ${month}`,
+    subtitle: `${days} days out`,
+  };
+}
+
+/**
+ * Derives what a planet is made of: its shipped systems count and learning repositories count.
+ */
+export function derivePlanetAnnotation(
+  arm: string,
+  bodies: Body[] = loadBodies(),
+  scope: Scope = GALAXY_ZEMI,
+): ElementAnnotation {
+  if (arm === "galaxy") {
+    return {
+      id: "planet-galaxy",
+      title: "Ancestral Anchor Core",
+      subtitle: `Epoch ${scope.epoch} · Origin of time`,
+    };
+  }
+  const meta = ARM_META[arm];
+  const armBodies = bodies.filter((b) => b.arm === arm);
+  const systemCount = armBodies.filter((b) => b.kind === "system").length;
+  const starCount = armBodies.length - systemCount;
+  const sysUnit = systemCount === 1 ? "system" : "systems";
+  const starUnit = starCount === 1 ? "learning repository" : "learning repositories";
+
+  return {
+    id: `planet-${arm}`,
+    title: `Planet ${meta?.name ?? arm}`,
+    subtitle: `${systemCount} shipped ${sysUnit} · ${starCount} ${starUnit}`,
+  };
+}
+
+/**
+ * Derives the arm identity and composition for hovering an arm's dust.
+ */
+export function deriveArmAnnotation(
+  arm: string,
+  bodies: Body[] = loadBodies(),
+): ElementAnnotation {
+  const meta = ARM_META[arm];
+  const armBodies = bodies.filter((b) => b.arm === arm);
+  const systemCount = armBodies.filter((b) => b.kind === "system").length;
+  const starCount = armBodies.length - systemCount;
+  const total = armBodies.length;
+
+  return {
+    id: `arm-${arm}`,
+    title: `${meta?.name ?? arm} Arm`,
+    subtitle: `${meta?.tagline ?? ""} (${total} repos · ${systemCount} shipped, ${starCount} learned)`.trim(),
+  };
+}
+
+export interface TimelineMilestone {
+  /** The repository that names this moment. */
+  id: string;
+  /** Editorial caption, from `bodies.overrides.ts`. */
+  title: string;
+  /** Days since the galaxy epoch, derived from the body's own `bornAt`. */
+  day: number;
+  /** The body's own `bornAt`, unchanged. */
+  date: string;
+  /** How many repositories existed at or before this moment. */
+  bodyCount: number;
+}
+
+/**
+ * The timeline transport's own figures, per §3.8: a repository may name the
+ * moment it represents, but the day, date and count behind that name are
+ * always derived from the body set — never typed, per §3.6.
+ */
+export function deriveTimelineMilestones(
+  bodies: Body[] = loadBodies(),
+  scope: Scope = GALAXY_ZEMI,
+): TimelineMilestone[] {
+  return bodies
+    .filter((b): b is Body & { milestone: string } => Boolean(b.milestone))
+    .map((b) => {
+      const day = daysSinceEpoch(b.bornAt, scope.epoch);
+      return {
+        id: b.id,
+        title: b.milestone,
+        day,
+        date: b.bornAt,
+        bodyCount: bodies.filter((x) => daysSinceEpoch(x.bornAt, scope.epoch) <= day).length,
+      };
+    })
+    .sort((a, b) => a.day - b.day || a.id.localeCompare(b.id));
 }

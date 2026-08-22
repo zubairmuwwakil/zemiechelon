@@ -24,6 +24,8 @@ export interface Body {
   links: { github?: string; live?: string; appStore?: string };
   satellites?: Satellite[];
   consoleId?: string;
+  /** Editorial caption for a moment the timeline transport marks. Never a date or a count. */
+  milestone?: string;
 }
 
 export interface Vec3 {

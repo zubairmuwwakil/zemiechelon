@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
-import { IDEALS, idealsFor, validateIdeals, type Ideal } from "../ideals";
+import { daysSinceEpoch } from "../position";
+import { IDEALS, idealsFor, idealVisibleAt, validateIdeals, type Ideal } from "../ideals";
 
 const bodies = loadBodies();
 
@@ -42,5 +43,29 @@ describe("ideals", () => {
       expect(ordinals).toEqual([...ordinals].sort((a, b) => a - b));
       expect(new Set(ordinals).size).toBe(ordinals.length);
     }
+  });
+});
+
+describe("idealVisibleAt", () => {
+  const ideal = IDEALS[0]; // deterministic-systems, evidence: PickMe, pickleops
+  const evidenceDays = ideal.evidence.map(
+    (id) => daysSinceEpoch(bodies.find((b) => b.id === id)!.bornAt),
+  );
+  const lastDay = Math.max(...evidenceDays);
+
+  it("is hidden until every cited repository exists", () => {
+    expect(idealVisibleAt(ideal, bodies, lastDay - 1)).toBe(false);
+  });
+
+  it("appears the moment the last citation is born", () => {
+    expect(idealVisibleAt(ideal, bodies, lastDay)).toBe(true);
+  });
+
+  it("stays visible afterward", () => {
+    expect(idealVisibleAt(ideal, bodies, lastDay + 10)).toBe(true);
+  });
+
+  it("is hidden at the very start", () => {
+    expect(idealVisibleAt(ideal, bodies, 0)).toBe(false);
   });
 });

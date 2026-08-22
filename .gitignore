@@ -34,3 +34,6 @@ next-env.d.ts
 
 # atlas design-review frames (script is committed, output is not)
 /preview
+
+# git worktrees
+/.worktrees

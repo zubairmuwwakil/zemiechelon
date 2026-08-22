@@ -30,6 +30,13 @@ export interface WorldCanvasProps {
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
   /**
+   * The timeline transport's clock, in days since the galaxy epoch. Drives only
+   * what the scene shows — see `WorldSceneBuilder.setClockDay` — never a
+   * rebuild: applied through a dedicated effect, not the scene's own deps, so
+   * scrubbing never tears down and reconstructs the map underneath it.
+   */
+  clockDay?: number;
+  /**
    * The scope the camera should be inside, or null for the galaxy. Landing is a
    * camera move rather than an overlay: the scene stays live underneath.
    */
@@ -92,6 +99,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onSelectSector,
     onSelectBody,
     onProjectPins,
+    clockDay = Infinity,
     landedScope = null,
     anchors,
     onProjectAnchors,
@@ -105,6 +113,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   const dayNightRef = useRef<DayNightController | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
   const composerRef = useRef<EffectComposer | null>(null);
+  // Read at construction time only — see the mount effect below. Kept fresh by
+  // its own effect so a scene rebuild (day/night, a resized body set) always
+  // reads the clock the transport is actually on, not the one from first mount.
+  const clockDayRef = useRef(clockDay);
+  clockDayRef.current = clockDay;
 
   // Expose handle methods
   useImperativeHandle(ref, () => ({
@@ -115,6 +128,14 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       builder.setHoveredTarget(id ? { type: "planet", id } : null);
     },
   }));
+
+  // Sync the timeline transport's clock. A dedicated effect, not a dependency
+  // of the scene-construction effect below: that effect rebuilds the whole
+  // THREE scene on every dependency change, and a scrub drag can fire many
+  // times a second — this only ever touches the already-built scene.
+  useEffect(() => {
+    sceneBuilderRef.current?.setClockDay(clockDay);
+  }, [clockDay]);
 
   // Sync Day/Night mode & bloom parameters
   useEffect(() => {
@@ -184,6 +205,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     sceneBuilder.build();
     sceneBuilder.setResolution(width, height);
     sceneBuilder.setCosmicMode(cosmicMode);
+    // Not a dependency (see the dedicated clock effect above) — read fresh at
+    // construction time only, via the ref.
+    sceneBuilder.setClockDay(clockDayRef.current);
     sceneBuilderRef.current = sceneBuilder;
 
     // Both refs are live now, so the framing owner can seed the initial pose —
@@ -211,7 +235,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       raycaster.setFromCamera(mouse, cameraManager.camera);
 
       const hoverTypes = new Set(["ideal", "planet", "ring", "arm"]);
-      const candidates = sceneBuilder.hitObjects.filter((h) => hoverTypes.has(h.type));
+      // isHitVisible is a no-op for ring/arm (always true) and only actually
+      // filters ideal/planet — an un-born one must not be hoverable either.
+      const candidates = sceneBuilder.hitObjects.filter(
+        (h) => hoverTypes.has(h.type) && sceneBuilder.isHitVisible(h),
+      );
       if (candidates.length === 0) return;
 
       const meshes = candidates.map((h) => h.mesh);
@@ -288,8 +316,13 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, cameraManager.camera);
+        // Raycasting ignores `Object3D.visible`, so a body the timeline
+        // transport hasn't drawn yet must be excluded here explicitly rather
+        // than relying on it being hidden.
         const clickable = sceneBuilder.hitObjects.filter(
-          (h) => h.type === "planet" || h.type === "sector" || h.type === "body",
+          (h) =>
+            (h.type === "planet" || h.type === "sector" || h.type === "body") &&
+            sceneBuilder.isHitVisible(h),
         );
         const meshesToTest = clickable.map((h) => h.mesh);
         const intersects = raycaster.intersectObjects(meshesToTest, true);

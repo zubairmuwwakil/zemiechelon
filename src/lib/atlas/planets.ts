@@ -1,6 +1,6 @@
 import type { Body, Vec3 } from "./types";
 import { GALAXY_ZEMI, type Scope } from "./scopes";
-import { placeBodies, polar } from "./position";
+import { daysSinceEpoch, placeBodies, polar } from "./position";
 
 export interface PlanetPlacement {
   arm: string;
@@ -65,6 +65,46 @@ export function derivePlanets(bodies: Body[], scope: Scope = GALAXY_ZEMI): Plane
       center: polar(arm, meanRadius, scope),
       radius: Math.min(SIZE.max, SIZE.base + systems * SIZE.perSystem + stars * SIZE.perStar),
       bodyCount: inArm.length,
+    };
+  });
+}
+
+export interface PlanetGrowth extends PlanetPlacement {
+  /** False until the arm's first repository is born; the map draws nothing there. */
+  visible: boolean;
+}
+
+/**
+ * A planet's mass at a moment in the galaxy's history, per §3.8 of the surface
+ * design spec: positions come from the full set, and only mass and visibility
+ * come from the clock. `center` is read once from `derivePlanets` over the
+ * FULL body set and never recomputed here — a planet is a landmark, and a
+ * landmark that drifts as later repositories are born is unreadable. Only
+ * `radius`, `bodyCount` and `visible` are time-filtered, and radius is
+ * monotonic in the born count, so it can never shrink as the clock advances.
+ */
+export function planetGrowthAt(
+  bodies: Body[],
+  clockDay: number,
+  scope: Scope = GALAXY_ZEMI,
+): PlanetGrowth[] {
+  const frozen = derivePlanets(bodies, scope);
+
+  return frozen.map((planet) => {
+    const born = bodies.filter(
+      (b) => b.arm === planet.arm && daysSinceEpoch(b.bornAt, scope.epoch) <= clockDay,
+    );
+    const systems = born.filter((b) => b.kind === "system").length;
+    const stars = born.length - systems;
+
+    return {
+      ...planet,
+      bodyCount: born.length,
+      radius:
+        born.length === 0
+          ? 0
+          : Math.min(SIZE.max, SIZE.base + systems * SIZE.perSystem + stars * SIZE.perStar),
+      visible: born.length > 0,
     };
   });
 }

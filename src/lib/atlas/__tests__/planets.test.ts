@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { GALAXY_ZEMI } from "../scopes";
-import { derivePlanets, deriveWorldRadius } from "../planets";
+import { daysSinceEpoch } from "../position";
+import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "../planets";
 
 const bodies = loadBodies();
 const planets = derivePlanets(bodies);
@@ -89,6 +90,55 @@ describe("planet mass aggregates the subtree", () => {
     expect(derivePlanets(bodies).map((p) => [p.arm, p.radius])).toEqual(
       asGalaxy.map((p) => [p.arm, p.radius]),
     );
+  });
+});
+
+describe("planetGrowthAt", () => {
+  const fullSpan = Math.max(...bodies.map((b) => daysSinceEpoch(b.bornAt)));
+
+  it("is absent before its arm's first repository is born", () => {
+    // Every day-zero body is in Foundations (per bodies.overrides.ts), so the
+    // other four arms have nothing born yet.
+    const growth = planetGrowthAt(bodies, 0);
+    const absent = growth.filter((p) => p.arm !== "foundations");
+    expect(absent.length).toBeGreaterThan(0);
+    for (const p of absent) {
+      expect(p.visible).toBe(false);
+      expect(p.radius).toBe(0);
+      expect(p.bodyCount).toBe(0);
+    }
+    const foundations = growth.find((p) => p.arm === "foundations")!;
+    expect(foundations.visible).toBe(true);
+    expect(foundations.radius).toBeGreaterThan(0);
+  });
+
+  it("freezes every planet's centre to the full-set derivation, at every clock day", () => {
+    const frozen = derivePlanets(bodies);
+    for (const day of [0, 50, 150, fullSpan]) {
+      const growth = planetGrowthAt(bodies, day);
+      expect(growth.map((p) => [p.arm, p.center])).toEqual(frozen.map((p) => [p.arm, p.center]));
+    }
+  });
+
+  it("never decreases a planet's radius as the clock advances", () => {
+    const days = [0, 20, 40, 60, 80, 100, 150, 200, 250, fullSpan];
+    const byArm = new Map<string, number[]>();
+    for (const day of days) {
+      for (const p of planetGrowthAt(bodies, day)) {
+        byArm.set(p.arm, [...(byArm.get(p.arm) ?? []), p.radius]);
+      }
+    }
+    for (const [arm, radii] of byArm) {
+      for (let i = 1; i < radii.length; i++) {
+        expect(radii[i], `${arm} shrank between clock steps`).toBeGreaterThanOrEqual(radii[i - 1]);
+      }
+    }
+  });
+
+  it("reaches the full-set radius once the clock reaches the full span", () => {
+    const frozen = derivePlanets(bodies);
+    const grown = planetGrowthAt(bodies, fullSpan);
+    expect(grown.map((p) => [p.arm, p.radius])).toEqual(frozen.map((p) => [p.arm, p.radius]));
   });
 });
 
