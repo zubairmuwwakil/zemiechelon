@@ -11,6 +11,7 @@ import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
 import { PlanetPinsOverlay } from "@/components/world/PlanetPinsOverlay";
 import { NoiseOverlay } from "@/components/world/NoiseOverlay";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
+import { LegendModal } from "@/components/hud/LegendModal";
 import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
@@ -44,6 +45,7 @@ export default function HomePage() {
   // The scope the camera has descended into, or null for the galaxy.
   const [activeLandingPlanet, setActiveLandingPlanet] = useState<ScopeId | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
   // Sector & Planet Landing Selection Handler
@@ -131,11 +133,13 @@ export default function HomePage() {
         onResetView={resetView}
         isDossierOpen={isDossierOpen}
         onToggleDossier={() => setIsDossierOpen((prev) => !prev)}
+        isLegendOpen={isLegendOpen}
+        onToggleLegend={() => setIsLegendOpen((prev) => !prev)}
         onOpenTerminal={() => setIsTerminalOpen(true)}
       />
 
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
-      {!activeLandingPlanet && !isDossierOpen && !isTerminalOpen && !selectedBodyId && (
+      {!activeLandingPlanet && !isDossierOpen && !isLegendOpen && !isTerminalOpen && !selectedBodyId && (
         <InteractionHintsPill cosmicMode={cosmicMode} />
       )}
 
@@ -148,7 +152,7 @@ export default function HomePage() {
           setActivePreset("galaxy");
         }}
         onOpenTerminal={() => setIsTerminalOpen(true)}
-        escapeEnabled={!isTerminalOpen && !isDossierOpen && !selectedBodyId}
+        escapeEnabled={!isTerminalOpen && !isDossierOpen && !isLegendOpen && !selectedBodyId}
       />
 
       {/* 7. Global Dossier Search Modal (44 Repositories) */}
@@ -159,13 +163,21 @@ export default function HomePage() {
         onSelectBody={handleSelectBody}
       />
 
-      {/* 8. Retro Command Quest CRT Terminal */}
+      {/* 8. Celestial Atlas Grammar & Legend Modal */}
+      <LegendModal
+        isOpen={isLegendOpen}
+        onClose={() => setIsLegendOpen(false)}
+        cosmicMode={cosmicMode}
+        bodies={bodies}
+      />
+
+      {/* 9. Retro Command Quest CRT Terminal */}
       <MiniTerminalModal
         isOpen={isTerminalOpen}
         onClose={() => setIsTerminalOpen(false)}
       />
 
-      {/* 9. Selected Celestial Body Card Modal */}
+      {/* 10. Selected Celestial Body Card Modal */}
       {selectedBody && (
         <BodyCard body={selectedBody} onClose={() => setSelectedBodyId(null)} />
       )}

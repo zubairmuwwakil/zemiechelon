@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   Search,
+  Compass,
 } from "lucide-react";
 import type { CosmicMode } from "../world/DayNightController";
 import type { CameraTargetPreset } from "../world/WorldCameraManager";
@@ -25,6 +26,8 @@ interface WorldHUDProps {
   onResetView: () => void;
   isDossierOpen: boolean;
   onToggleDossier: () => void;
+  isLegendOpen?: boolean;
+  onToggleLegend?: () => void;
   onOpenTerminal: () => void;
 }
 
@@ -36,6 +39,8 @@ export function WorldHUD({
   onResetView,
   isDossierOpen,
   onToggleDossier,
+  isLegendOpen = false,
+  onToggleLegend,
   onOpenTerminal,
 }: WorldHUDProps) {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
@@ -156,7 +161,7 @@ export function WorldHUD({
             {isDay ? <Sun className="size-4 text-amber-600" /> : <Moon className="size-4 text-amber-300" />}
           </motion.button>
 
-          {/* Quick Dossier (44 Repos) */}
+          {/* Quick Dossier */}
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
@@ -171,10 +176,34 @@ export function WorldHUD({
                 ? "glass-pill-day text-zinc-700 hover:text-zinc-900"
                 : "glass-pill-night text-zinc-300 hover:text-white"
             }`}
-            title="Dossier & Repo Search (44 Repositories)"
+            title="Dossier & Repo Search"
+            aria-label="Open architecture dossier"
           >
             <Search className="size-3.5" />
           </motion.button>
+
+          {/* Celestial Atlas Legend & Grammar */}
+          {onToggleLegend && (
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                sound.playClick(500, 0.06);
+                onToggleLegend();
+              }}
+              className={`flex size-9 items-center justify-center rounded-full transition-colors ${
+                isLegendOpen
+                  ? "bg-zinc-900 text-white shadow-lg"
+                  : isDay
+                  ? "glass-pill-day text-amber-700 hover:text-amber-900"
+                  : "glass-pill-night text-amber-300 hover:text-white"
+              }`}
+              title="Celestial Atlas Legend & Map Grammar"
+              aria-label="Open celestial atlas legend"
+            >
+              <Compass className="size-3.5" />
+            </motion.button>
+          )}
 
           {/* Command Quest Terminal (>_) */}
           <motion.button
