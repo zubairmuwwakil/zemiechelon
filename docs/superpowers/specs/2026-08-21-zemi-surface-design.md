@@ -154,11 +154,51 @@ The cents-per-point control is wired to `breakevenCentsPerPoint`, so dragging it
 flips the recommendation at the point the engine computed. That is the claim
 "deterministic systems over speculation" made operable rather than asserted.
 
+### 3.8 The map plays
+
+A transport — play, pause, scrub, speed — advances a clock from the galaxy's
+epoch to its newest repository, and the map builds itself as the clock runs.
+
+**The rule that makes it coherent: positions come from the full set; visibility
+and mass come from the current time.**
+
+That rule exists because `placeBodies` is a pure function of the body *set*, not
+of each body. Its crowd-run fan spreads mutually-crowded repositories according
+to which neighbours exist, so re-running it on a date-filtered set would move a
+repository because something was created after it. That is both visually wrong —
+the map would jitter as you scrub — and factually wrong. Placements are therefore
+computed once over the whole set, and the clock decides only what is drawn.
+
+Planets follow the same rule with one deliberate exception. A planet is not drawn
+until its arm's first repository exists, and its **size** is recomputed as the arm
+fills, because mass genuinely accumulates and Products visibly swelling as each
+venture ships is the point. Its **position does not drift**, even though the
+centroid it derives from would move: a planet is a landmark, a map whose landmarks
+wander while you scrub is unreadable, and the frontier story is already told by
+the bodies themselves marching outward.
+
+Moons appear when their system is born. Arm dust follows its anchor bodies. The
+ideals ring appears only once every repository it cites exists, which makes a
+claim's evidence visibly accumulate rather than being asserted from the start.
+
+The transport's own figures are derived — the span, the end date, the position of
+each milestone on the track. Milestone *titles* are editorial and belong in
+`bodies.overrides.ts` with the rest of the authored copy: a repository may name
+the moment it represents, but no date and no count is typed.
+
+**The deleted `TimelineScrubber.tsx` is not a starting point.** It was never
+mounted, its `onDateChange` callback had no consumer, and its four milestones and
+its 286-day span were hardcoded strings. Its layout is worth a glance; its content
+is precisely what §3.6's rule forbids.
+
 ## 4. What a visitor does
 
 Arrives at the galaxy. Opens the legend and learns that distance is time, that
 the rings are months, that 286 days separate the first website from the
 distributed systems at the rim.
+
+Presses play, and watches those 286 days build the map: Foundations filling fast
+around the core and then going quiet, Products erupting late at the frontier.
 
 Flies to Products and lands on it. Seven supporting repositories are underfoot;
 four shipped ventures turn overhead; an orrery stands on the ground.
@@ -179,10 +219,13 @@ Three, and the first is independent of the other two.
 | **A · Legend** | The legend surface, element annotations, derived-figures test | nothing |
 | **B · Surface** | Camera tracking, surface camera mode, moon frames, hit proxies, the shard, Products' ground, the orrery, flybys | Plan 2 |
 | **C · Console** | Engine wiring, fixture-seeded scenarios, breakeven control, mounting it as an object | B for mounting only |
+| **D · Timeline** | Transport, date filter, planet growth, derived milestones | nothing |
 
 **Track A should ship first.** It is the cheapest work on the list, it needs no
 3D, and it makes the map that already exists substantially more legible. Track C
-is buildable against the existing panel before B mounts it on a surface.
+is buildable against the existing panel before B mounts it on a surface. Track D
+depends on nothing and pairs with A: the legend *tells* a visitor that distance is
+time, and the transport *shows* them.
 
 ## 6. Testing
 
@@ -197,6 +240,10 @@ is buildable against the existing panel before B mounts it on a surface.
 | Fixtures | Each seeded scenario matches a case in `engine-fixtures.json` |
 | Breakeven | Crossing `breakevenCentsPerPoint` changes the winning card |
 | Public surface | `publicSurface.test.ts` still passes — the console imports nothing private |
+| Timeline | A body is drawn if and only if its `bornAt` is at or before the clock |
+| Timeline | Placements are byte-identical at every clock position — nothing moves as time advances |
+| Timeline | A planet is absent before its arm's first repository, and its radius never decreases as the clock advances |
+| Timeline | Every figure in the transport is derived; no date or count is a literal |
 | Keyboard | Props, orrery and console are focusable with accessible names; descend and ascend are reachable |
 | Reduced motion | Launch arrives without travel; nothing becomes unreachable |
 
@@ -207,6 +254,7 @@ is buildable against the existing panel before B mounts it on a surface.
 | 1 | **A surface is a lot of authored geometry**, and authored is what this project has avoided. | The vocabulary is authored; the arrangement is derived from the bodies in the scope, per §6. The prop set is recoverable from `SceneBuilder.ts` in `e0abd4e` rather than invented. | Real. Watch the ratio. |
 | 2 | **Depth costs time-to-evidence.** Galaxy, planet, moon is three flights before the console. | The legend gives the headline immediately at galaxy level, and the deep link lands directly on the console. | Low once Track A ships. |
 | 3 | **The form is a bad arrival moment.** A visitor with no context faces empty fields. | It arrives populated from a fixture case with a verdict already on screen. | Low. |
+| 5 | **Scrubbing re-runs layout and the map jitters.** `placeBodies` fans crowded runs by neighbour, so filtering its input moves bodies that already existed. | Placements are computed once over the full set; the clock filters what is drawn, never what is laid out. A test asserts positions are identical at every clock position. | Low once the test exists. |
 | 4 | **Frame budget at depth.** A surface, props, an orrery and the console on top of 16,500 field points. | The field culls by scope — the sky thins as you descend, which is also how it should look. | Watch on mobile. |
 
 ## 8. Out of scope
