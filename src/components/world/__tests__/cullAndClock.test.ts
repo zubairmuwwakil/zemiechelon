@@ -165,3 +165,35 @@ describe("standing on a surface, against the clock and the cull", () => {
     expect(shard()).toBe(true);
   });
 });
+
+describe("what a cull is allowed to take", () => {
+  /** Root children that are neither field, nor a scope group, nor an arm body. */
+  function instrumentPieces(builder: WorldSceneBuilder): THREE.Object3D[] {
+    const scopeNames = new Set(builder.scopeGroups.keys());
+    return builder.rootGroup.children.filter(
+      (c) =>
+        !(c as THREE.Points).isPoints &&
+        !scopeNames.has(c.name) &&
+        !c.name.startsWith("body-"),
+    );
+  }
+
+  it("leaves the galaxy's own instrument standing", () => {
+    // Standing on a planet, the parent IS the galaxy, and the galaxy has no
+    // body worth framing — its astrolabe rings and its core are what §3.2 asks
+    // to keep in view. A frustum check passes even when nothing is drawn
+    // there, so this asserts the pieces are still visible, not merely aimed at.
+    const { builder } = built();
+    const pieces = instrumentPieces(builder);
+    expect(pieces.length).toBeGreaterThan(0);
+    builder.setScopeCull(planetScopeId("products"));
+    for (const piece of pieces) expect(piece.visible).toBe(true);
+  });
+
+  it("still takes the field and the other frames", () => {
+    const { builder } = built();
+    builder.setScopeCull(planetScopeId("products"));
+    const labs = builder.groupFor(planetScopeId("labs"));
+    expect(labs.visible).toBe(false);
+  });
+});

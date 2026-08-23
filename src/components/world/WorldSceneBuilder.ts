@@ -14,6 +14,7 @@ import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { surfaceScopeIds } from "@/lib/atlas/surfaces";
 import { buildSurface, type SurfaceHandle } from "./SurfaceBuilder";
+import { buildOrrery, updateOrreries, type OrreryHandle } from "./Orrery";
 import {
   deriveArmAnnotation,
   derivePlanetAnnotation,
@@ -261,6 +262,8 @@ export class WorldSceneBuilder {
   private readonly surfaces = new Map<ScopeId, SurfaceHandle>();
   /** The scope whose surface is currently shown, or null in orbit. */
   private standingOn: ScopeId | null = null;
+  /** One per surface that has moons to travel between. */
+  private readonly orreries = new Map<ScopeId, OrreryHandle>();
   /** The arm a scope cull is keeping, or null when nothing is culled. */
   private cullKeepArm: string | null = null;
   /** Root children hidden by the current cull, so releasing it restores exactly those. */
@@ -1506,6 +1509,8 @@ export class WorldSceneBuilder {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
     });
 
+    updateOrreries([...this.orreries.values()], delta);
+
     this.moons.forEach((moon) => {
       moon.pivot.rotation.y += delta * moon.rate;
     });
@@ -1562,12 +1567,24 @@ export class WorldSceneBuilder {
     }
 
     const kept = this.scopeGroups.get(keep);
+    const scopeNames = new Set(this.scopeGroups.keys());
     for (const child of this.rootGroup.children) {
       // The planet mesh is never hidden wholesale; it is culled per instance
       // below, because the kept scope's own planet lives inside it.
       if (child === this.planetMesh) continue;
       if (kept && (child === kept || this.contains(child, kept))) continue;
       if (!child.visible) continue;
+
+      // What thins is the population, not the instrument. Dust, field and the
+      // bodies of other frames go; the astrolabe's rings and the core stay,
+      // because from a planet's surface those *are* the parent frame — the
+      // galaxy has no body of its own worth framing, and culling them would
+      // take away the very thing §3.2 asks to keep in view.
+      const isField = (child as THREE.Points).isPoints === true;
+      const isOtherScope = scopeNames.has(child.name);
+      const isArmBody = child.name.startsWith("body-");
+      if (!isField && !isOtherScope && !isArmBody) continue;
+
       child.visible = false;
       this.culled.push(child);
     }
@@ -1628,8 +1645,30 @@ export class WorldSceneBuilder {
     for (const scopeId of surfaceScopeIds(this.bodies)) {
       const group = this.scopeGroups.get(scopeId);
       if (!group) continue;
-      this.surfaces.set(scopeId, buildSurface(group, scopeId, this.bodies));
+      const surface = buildSurface(group, scopeId, this.bodies);
+      this.surfaces.set(scopeId, surface);
+
+      // The instrument stands on the ground, so it is built into the surface
+      // and inherits its visibility rather than needing its own gate.
+      const orrery = buildOrrery(surface.group, scopeId, this.bodies);
+      if (!orrery) continue;
+      this.orreries.set(scopeId, orrery);
+      for (const [moonId, bead] of orrery.targets) {
+        const proxy = bead.parent?.getObjectByName(`orrery-hit:${moonId}`) ?? bead;
+        this.hitObjects.push({
+          id: moonId,
+          name: moonId,
+          type: "body",
+          mesh: proxy,
+          position: bead.position.clone(),
+        });
+      }
     }
+  }
+
+  /** The moons an instrument on this surface can launch a flight to. */
+  public orreryTargets(scopeId: ScopeId): string[] {
+    return [...(this.orreries.get(scopeId)?.targets.keys() ?? [])];
   }
 
   /**

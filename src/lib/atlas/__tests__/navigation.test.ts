@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { moonScopeId, planetScopeId } from "../galaxy";
-import { resolveBodySelection } from "../navigation";
+import { landingMode, resolveBodySelection } from "../navigation";
 import { declaresSurface } from "../surfaces";
 
 const bodies = loadBodies();
@@ -60,5 +60,33 @@ describe("selecting a body", () => {
       const expected = body.kind === "system" && declaresSurface(moonScopeId(body.id), bodies);
       expect(resolveBodySelection(body.id, bodies).landed).toBe(expected);
     }
+  });
+});
+
+describe("how a planet should be landed on", () => {
+  it("stands on the surface when there is room and motion is allowed", () => {
+    expect(
+      landingMode({ scopeId: planetScopeId("products"), viewportWidth: 1280, reducedMotion: false, bodies }),
+    ).toBe("surface");
+  });
+
+  it("falls back to the panel on a narrow viewport", () => {
+    // Spec §3.1: the panel survives where flying to a surface is the wrong
+    // interaction. It stops being the primary path; it does not stop existing.
+    expect(
+      landingMode({ scopeId: planetScopeId("products"), viewportWidth: 480, reducedMotion: false, bodies }),
+    ).toBe("panel");
+  });
+
+  it("falls back to the panel when motion is reduced", () => {
+    expect(
+      landingMode({ scopeId: planetScopeId("products"), viewportWidth: 1280, reducedMotion: true, bodies }),
+    ).toBe("panel");
+  });
+
+  it("falls back to the panel for a planet with no ground to stand on", () => {
+    expect(
+      landingMode({ scopeId: planetScopeId("labs"), viewportWidth: 1280, reducedMotion: false, bodies }),
+    ).toBe("panel");
   });
 });

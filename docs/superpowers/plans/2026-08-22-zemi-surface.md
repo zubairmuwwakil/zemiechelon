@@ -648,7 +648,34 @@ size when landed, so a sibling's pill can sit across the parent's face (spike
 finding 8). The quote sky's HTML also overlays the parent. Both are label-layer
 concerns rather than surface ones.
 
-## Phase 3 — not yet written
+## Phase 3 — Products' ground and the orrery (Tasks 9-10) — BUILT
+
+| Task | Delivered |
+|---|---|
+| 9 · Products' ground | `landingMode()` routes a planet to its surface, keeping `LandedConsolePanel` for narrow viewports and reduced motion per §3.1. Leaving a planet's surface ascends to the galaxy; leaving a moon's ascends to its planet. |
+| 10 · The orrery | `Orrery.ts` — a model of the planet with its moons turning on it, standing at the point the camera orbits. Each bead carries a hit proxy naming its moon, so tapping one runs the same rule a tap in the sky does: PickMe lands, the rest fly by. |
+
+**Verified in the browser.** Landing on Products puts the seven supporting
+repositories underfoot, the four ventures overhead, and the instrument on the
+ground. Tapping a bead launched a flight to PickleOps and arrived at its card.
+
+**Two things found by looking.**
+
+1. The scope cull was taking the galaxy's own instrument. Standing on a planet
+   the parent *is* the galaxy, which has no body worth framing — its astrolabe
+   rings and core are what §3.2 asks to keep in view, and the cull was hiding
+   exactly those. The rule is now that a cull thins the *population* (field,
+   dust, other frames' bodies) and never the instrument. The original camera
+   test passed throughout, because a frustum check is satisfied by an empty sky.
+2. The orrery first turned at 0.28 rad/s — a revolution every 22 seconds — so
+   beads slid out from under the pointer. For an instrument whose whole purpose
+   is being tapped, tappable is the binding constraint, not visibly moving. Now
+   roughly a revolution a minute.
+
+**Still open, and deliberately.** Moon label sprites draw at constant screen size
+when landed, so a sibling's pill can sit across the parent's face (spike finding
+8); the quote sky's HTML overlays it too. Both are label-layer concerns rather
+than surface ones, and neither blocks Track C mounting the console.
 
 Tasks 3–10 (moon scopes, hit proxies, flybys, the surface camera, the shard,
 scope culling at depth, Products' ground, the orrery) are deliberately unwritten

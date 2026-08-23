@@ -17,7 +17,7 @@ import { TimelineTransport } from "@/components/hud/TimelineTransport";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
-import { resolveBodySelection } from "@/lib/atlas/navigation";
+import { landingMode, resolveBodySelection } from "@/lib/atlas/navigation";
 import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
 import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
@@ -81,12 +81,31 @@ export default function HomePage() {
       }
 
       setActivePreset(arm);
-      // Land only where there is a scope to land in; otherwise the preset still
-      // frames the planet, which is what clicking it has always done.
       const scopeId = planetScopeId(arm);
-      setActiveLandingPlanet(landableScopes.has(scopeId) ? scopeId : null);
+      if (!landableScopes.has(scopeId)) {
+        // No scope to land in. The preset still frames the planet, which is
+        // what clicking it has always done.
+        setActiveLandingPlanet(null);
+        setStandingScope(null);
+        return;
+      }
+
+      // Spec §3.1: landing means standing on the ground, with the panel kept
+      // for the cases where flying to a surface is the wrong interaction.
+      const mode = landingMode({
+        scopeId,
+        viewportWidth: window.innerWidth,
+        reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+        bodies,
+      });
+      setStandingScope(mode === "surface" ? scopeId : null);
+      setActiveLandingPlanet(mode === "panel" ? scopeId : null);
+      setFlybyScope(null);
+      // Leaving a planet's surface goes out to the galaxy: it is the frame the
+      // planet sits in, and the one level up from here.
+      setFlybyReturn(mode === "surface" ? null : flybyReturn);
     },
-    [landableScopes],
+    [bodies, landableScopes, flybyReturn],
   );
 
   // Celestial Body Selection Handler
@@ -119,7 +138,9 @@ export default function HomePage() {
   /** Leaving a surface ascends one level, to the frame it sits in. */
   const leaveSurface = useCallback(() => {
     sound.playClick(400, 0.06);
-    if (flybyReturn) setActivePreset(flybyReturn.replace("planet:", ""));
+    // One level out: a moon's surface returns to its planet, a planet's to the
+    // galaxy. Spec §2 found ascending a level at a time is what reads right.
+    setActivePreset(flybyReturn ? flybyReturn.replace("planet:", "") : "galaxy");
     setStandingScope(null);
     setFlybyReturn(null);
   }, [flybyReturn]);

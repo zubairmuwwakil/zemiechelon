@@ -56,3 +56,32 @@ export function resolveBodySelection(
     landed,
   };
 }
+
+/**
+ * Below this CSS width, a surface is the wrong interaction. Mirrors
+ * `NARROW_VIEWPORT` in the scene builder, which gates the field budget on the
+ * same threshold for the same reason: there is not enough room.
+ */
+const NARROW_VIEWPORT = 768;
+
+/**
+ * How a scope should be landed on.
+ *
+ * Spec §3.1 replaces the drawer with a surface, and keeps the drawer for the
+ * two cases where flying to one is the wrong interaction: a viewport too narrow
+ * to stand up in, and a visitor who has asked for less motion. A scope with no
+ * ground falls back for the plainer reason that there is nothing to stand on.
+ *
+ * `LandedConsolePanel` stops being the primary path. It does not stop existing.
+ */
+export function landingMode(opts: {
+  scopeId: ScopeId;
+  viewportWidth: number;
+  reducedMotion: boolean;
+  bodies?: Body[];
+}): "surface" | "panel" {
+  const bodies = opts.bodies ?? loadBodies();
+  if (opts.viewportWidth < NARROW_VIEWPORT) return "panel";
+  if (opts.reducedMotion) return "panel";
+  return declaresSurface(opts.scopeId, bodies) ? "surface" : "panel";
+}
