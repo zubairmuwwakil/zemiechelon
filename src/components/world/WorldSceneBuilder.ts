@@ -11,7 +11,7 @@ import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
-import { obliquityFor } from "@/lib/atlas/motion";
+import { obliquityFor, patternAngle } from "@/lib/atlas/motion";
 import { createFieldMaterial } from "./FieldShader";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { surfaceScopeIds } from "@/lib/atlas/surfaces";
@@ -337,6 +337,13 @@ export class WorldSceneBuilder {
   private armDustGeometry: THREE.BufferGeometry | null = null;
   private armDustSortedDays: Float32Array = new Float32Array(0);
 
+  /**
+   * The 12,000-point sky. Held because it is a child of `rootGroup` and must be
+   * counter-rotated: rotation is only perceptible against something that is not
+   * rotating, and without this the pattern and its own reference cancel.
+   */
+  private skyShell: THREE.Points | null = null;
+
   /** Every body's own birth day, since the galaxy epoch. Computed once; gating reads it many times. */
   private readonly bornDayById = new Map<string, number>();
 
@@ -624,6 +631,7 @@ export class WorldSceneBuilder {
         createFieldMaterial({ size, opacity, attenuate, fog: attenuate }),
       );
       points.name = name;
+      if (name === "background-field") this.skyShell = points;
       this.fieldMaterials.push(points.material as THREE.ShaderMaterial);
       // The shell is larger than any frustum test three.js will infer cheaply,
       // and a wrongly-culled sky is indistinguishable from a missing one.
@@ -1564,6 +1572,15 @@ export class WorldSceneBuilder {
   }
 
   public update(elapsed: number, delta: number): void {
+    // L1. One angle for the whole galaxy: rigid, so no relative angle between
+    // any two bodies changes and no radius does. That is what lets the map keep
+    // claiming that angle means arm and radius means time.
+    const pattern = patternAngle(elapsed);
+    this.rootGroup.rotation.y = pattern;
+    // The sky is the fixed reference the pattern is seen against. It rides the
+    // root like everything else, so it has to be given the rotation back.
+    if (this.skyShell) this.skyShell.rotation.y = -pattern;
+
     // Rotate central corona rings
     this.centralCoronaRings.forEach((ring, idx) => {
       ring.rotation.z += delta * (0.07 + idx * 0.035);
