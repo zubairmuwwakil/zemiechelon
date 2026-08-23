@@ -47,9 +47,23 @@ export const NIGHT_PALETTE: DayNightPalette = {
   fogFar: ASTROLABE_OUTER * 5.4,
 };
 
+/**
+ * Seconds for the sun to travel once around the map.
+ *
+ * Eight minutes. The terminator has to crawl rather than sweep: what makes a
+ * sphere read as a body is that its lit edge is in a different place when you
+ * look back, not that you can watch it move.
+ */
+export const SUN_ARC_PERIOD_SECONDS = 8 * 60;
+
 export class DayNightController {
   private currentMode: CosmicMode = "day";
   private transitionProgress: number = 0; // 0 = day, 1 = night
+  /** Radians travelled around the arc. Advanced by `update`, not by the palette. */
+  private arcAngle = 0;
+  private reducedMotion = false;
+  /** Reused so `sunDirection` allocates nothing in the render loop. */
+  private readonly sunDir = new THREE.Vector3();
   private isTransitioning: boolean = false;
   private transitionSpeed: number = 2.5;
 
@@ -119,6 +133,51 @@ export class DayNightController {
     fog.far = reference * 9;
   }
 
+  /**
+   * Travel removed, content kept — the same rule descent already follows. The
+   * sun stops where it is; it is not moved to some neutral position, because
+   * that would change the lighting rather than only the motion in it.
+   */
+  public setReducedMotion(reduced: boolean): void {
+    this.reducedMotion = reduced;
+  }
+
+  /**
+   * Where the light is, as a unit vector from the origin. World space.
+   *
+   * The planet shader needs this because it does its own lighting: its lambert
+   * term was a hardcoded direction, so no planet had a terminator that moved.
+   */
+  public sunDirection(): THREE.Vector3 {
+    return this.sunDir.copy(this.directionalSun.position).normalize();
+  }
+
+  /**
+   * Swing the palette's sun position around the vertical axis.
+   *
+   * The palettes keep their two authored positions and the day/night lerp keeps
+   * writing them; the arc is applied on top as a rotation about +Y, so the
+   * sun's height and distance are still the palette's to state and only its
+   * bearing is this method's. Rotating about +Y is also what keeps the light
+   * above the plane at every angle — a light that dipped below would rake the
+   * map from underneath once a circuit.
+   */
+  private applyArc(): void {
+    const palette = this.currentMode === "day" ? DAY_PALETTE : NIGHT_PALETTE;
+    const [x, y, z] = palette.sunPosition;
+    const base = new THREE.Vector3(x, y, z);
+    // Mid-transition the palette lerp owns the position, so the arc is applied
+    // on top of whatever it just wrote rather than on top of one endpoint.
+    if (this.isTransitioning) base.copy(this.directionalSun.position);
+    const radius = Math.hypot(base.x, base.z);
+    const bearing = Math.atan2(base.z, base.x) + this.arcAngle;
+    this.directionalSun.position.set(
+      Math.cos(bearing) * radius,
+      base.y,
+      Math.sin(bearing) * radius,
+    );
+  }
+
   public setMode(mode: CosmicMode) {
     if (this.currentMode === mode) return;
     this.currentMode = mode;
@@ -142,6 +201,14 @@ export class DayNightController {
       }
 
       this.applyPaletteInterpolation();
+    }
+
+    // Outside the transition branch: the sun travels whether or not the palette
+    // is changing, which is the difference between a light and a light switch.
+    if (!this.reducedMotion) {
+      this.arcAngle =
+        (this.arcAngle + (2 * Math.PI * deltaSeconds) / SUN_ARC_PERIOD_SECONDS) % (2 * Math.PI);
+      this.applyArc();
     }
   }
 
