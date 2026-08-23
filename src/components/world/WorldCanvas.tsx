@@ -10,6 +10,8 @@ import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
 import { WorldSceneBuilder, fieldDensityFor } from "./WorldSceneBuilder";
+import { shardRadiusFor } from "@/lib/atlas/surfaces";
+import { GALAXY_ZEMI, getScope } from "@/lib/atlas/scopes";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
@@ -47,6 +49,12 @@ export interface WorldCanvasProps {
    * stand on.
    */
   flybyScope?: ScopeId | null;
+  /**
+   * The scope whose surface the visitor is standing on. Landing is not close
+   * orbit (§3.1): the camera comes down onto the ground, the sky thins to the
+   * frame, and the body this ground replaces stops being drawn.
+   */
+  standingScope?: ScopeId | null;
   /**
    * Scene-space anchors projected alongside the planet pins each frame. This is
    * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
@@ -128,6 +136,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     clockDay = Infinity,
     landedScope = null,
     flybyScope = null,
+    standingScope = null,
     anchors,
     onProjectAnchors,
   },
@@ -506,6 +515,31 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const builder = sceneBuilderRef.current;
     const camera = cameraManagerRef.current;
     if (!builder || !camera) return;
+    // Standing on a surface takes precedence over every other framing: it is
+    // the innermost frame the visitor can be in.
+    if (standingScope && builder.scopeGroups.has(standingScope)) {
+      const parentId = getScope(standingScope).parent ?? GALAXY_ZEMI.id;
+      const parent = builder.scopeGroups.get(parentId) ?? builder.rootGroup;
+      const frameGroup = builder.groupFor(standingScope);
+      camera.landOnSurface(frameGroup, parent, shardRadiusFor(standingScope, bodies));
+      builder.setStandingOn(standingScope);
+      builder.setScopeCull(standingScope);
+      // Fog is pulled in to the distance of the parent, so it recedes the
+      // galaxy without touching the frame §3.2 requires to stay legible.
+      frameGroup.updateWorldMatrix(true, false);
+      parent.updateWorldMatrix(true, false);
+      dayNightRef.current?.setFogReference(
+        new THREE.Vector3()
+          .setFromMatrixPosition(frameGroup.matrixWorld)
+          .distanceTo(new THREE.Vector3().setFromMatrixPosition(parent.matrixWorld)) || 60,
+      );
+      return;
+    }
+
+    builder.setStandingOn(null);
+    builder.setScopeCull(null);
+    dayNightRef.current?.setFogReference(null);
+
     // A landing wins over a flyby if both are somehow set: you cannot be
     // standing on a surface and swinging past it at the same time.
     const frame = landedScope ?? flybyScope;
@@ -520,7 +554,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
   useEffect(() => {
     frameRef.current();
-  }, [landedScope, flybyScope, cameraPreset]);
+  }, [landedScope, flybyScope, standingScope, cameraPreset]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 size-full overflow-hidden touch-none">

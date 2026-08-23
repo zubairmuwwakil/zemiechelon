@@ -1,6 +1,7 @@
 import type { Body, ScopeId } from "./types";
 import { moonScopeId, planetScopeId } from "./galaxy";
 import { loadBodies } from "./bodies";
+import { declaresSurface } from "./surfaces";
 
 /**
  * What tapping a body should do to the camera and the HUD.
@@ -11,8 +12,12 @@ import { loadBodies } from "./bodies";
  * tested without any of them.
  */
 export interface BodySelection {
-  /** The card to open. Always the body that was tapped. */
-  cardId: string;
+  /**
+   * The card to open, or null when the tap lands instead. A card is the
+   * flyby's payload; a landing is the place itself, and §4 has the visitor
+   * arriving on the ground rather than reading a panel about it.
+   */
+  cardId: string | null;
   /** A frame to fly to, or null to leave the camera where it is. */
   flyTo: ScopeId | null;
   /**
@@ -22,9 +27,9 @@ export interface BodySelection {
    */
   ascendTo: ScopeId | null;
   /**
-   * Whether this puts the visitor on a surface. Always false today: a flyby is
-   * honest about there being nothing to stand on (spec §3.3), and PickMe's
-   * landing arrives with the surface camera.
+   * Whether this puts the visitor on a surface. True only where the scope
+   * declares one — which is derived from where the evidence is, so a venture
+   * that earns an engine starts landing without an edit here (§3.3).
    */
   landed: boolean;
 }
@@ -42,10 +47,12 @@ export function resolveBodySelection(
     return { cardId: bodyId, flyTo: null, ascendTo: null, landed: false };
   }
 
+  const scopeId = moonScopeId(body.id);
+  const landed = declaresSurface(scopeId, bodies);
   return {
-    cardId: bodyId,
-    flyTo: moonScopeId(body.id),
+    cardId: landed ? null : bodyId,
+    flyTo: scopeId,
     ascendTo: planetScopeId(body.arm),
-    landed: false,
+    landed,
   };
 }

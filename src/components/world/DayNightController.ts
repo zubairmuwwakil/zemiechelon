@@ -91,6 +91,34 @@ export class DayNightController {
     this.scene.add(this.directionalSun);
   }
 
+  /**
+   * Pull the fog in to a frame's own scale.
+   *
+   * The palette's planes are galaxy-sized — day fog starts at 328 and ends at
+   * 1025 — which means nothing in a landed frame is ever fogged: the parent is
+   * about 35 away and the far rim of the galaxy about 300. The sky renders as
+   * flat paper with no depth cue at all, which is a large part of why the first
+   * spike's landed frame read as a white void.
+   *
+   * `reference` is the distance to the frame's parent, so the parent itself
+   * stays crisp and the galaxy behind it recedes. Fog that started before the
+   * parent would wash out the one thing §3.2 requires to be legible.
+   */
+  public setFogReference(reference: number | null): void {
+    // The scene is constructed with linear Fog, which is the only kind that
+    // has planes to move; the narrowing keeps that explicit rather than assumed.
+    const fog = this.scene.fog;
+    if (!(fog instanceof THREE.Fog)) return;
+    const palette = this.currentMode === "day" ? DAY_PALETTE : NIGHT_PALETTE;
+    if (reference === null) {
+      fog.near = palette.fogNear;
+      fog.far = palette.fogFar;
+      return;
+    }
+    fog.near = reference * 1.8;
+    fog.far = reference * 9;
+  }
+
   public setMode(mode: CosmicMode) {
     if (this.currentMode === mode) return;
     this.currentMode = mode;

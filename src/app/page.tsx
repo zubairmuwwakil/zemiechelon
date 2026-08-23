@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorldCanvas, type WorldCanvasHandle } from "@/components/world/WorldCanvas";
 import type { CosmicMode } from "@/components/world/DayNightController";
 import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
@@ -18,6 +18,7 @@ import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
 import { resolveBodySelection } from "@/lib/atlas/navigation";
+import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
 import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 
@@ -53,6 +54,8 @@ export default function HomePage() {
    */
   const [flybyScope, setFlybyScope] = useState<ScopeId | null>(null);
   const [flybyReturn, setFlybyReturn] = useState<ScopeId | null>(null);
+  /** The surface the visitor is standing on, or null in orbit. */
+  const [standingScope, setStandingScope] = useState<ScopeId | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -93,8 +96,12 @@ export default function HomePage() {
       // What a tap means is a rule about the body, not a branch here.
       const selection = resolveBodySelection(bodyId, bodies);
       setSelectedBodyId(selection.cardId);
-      setFlybyScope(selection.flyTo);
       setFlybyReturn(selection.ascendTo);
+      // A landing and a flyby are different arrivals, not the same one with a
+      // flag: landing owns the camera all the way down to the ground, so the
+      // flyby framing has to be released rather than layered under it.
+      setStandingScope(selection.landed ? selection.flyTo : null);
+      setFlybyScope(selection.landed ? null : selection.flyTo);
     },
     [bodies],
   );
@@ -109,6 +116,14 @@ export default function HomePage() {
     setFlybyReturn(null);
   }, [flybyScope, flybyReturn]);
 
+  /** Leaving a surface ascends one level, to the frame it sits in. */
+  const leaveSurface = useCallback(() => {
+    sound.playClick(400, 0.06);
+    if (flybyReturn) setActivePreset(flybyReturn.replace("planet:", ""));
+    setStandingScope(null);
+    setFlybyReturn(null);
+  }, [flybyReturn]);
+
   // Reset to Galaxy Orbit
   const resetView = useCallback(() => {
     sound.playClick(400, 0.06);
@@ -117,7 +132,55 @@ export default function HomePage() {
     setActiveLandingPlanet(null);
     setFlybyScope(null);
     setFlybyReturn(null);
+    setStandingScope(null);
   }, []);
+
+  /**
+   * The URL hash names a body, and naming one arrives at it.
+   *
+   * Spec §7 risk 2 offsets the cost of depth — galaxy, planet, moon is three
+   * flights before the console — with "the deep link lands directly on the
+   * console". `deepLink.ts` has existed and been tested since the atlas shell,
+   * but only `AtlasStage` ever read it, so on this page the mitigation did not
+   * exist. Arriving goes through the same rule a tap does, so a link lands the
+   * visitor exactly where tapping would have.
+   */
+  const writingHash = useRef(false);
+  useEffect(() => {
+    const arrive = () => {
+      if (writingHash.current) {
+        writingHash.current = false;
+        return;
+      }
+      const id = hashToBodyId(window.location.hash, bodies);
+      if (id) handleSelectBody(id);
+    };
+    arrive();
+    window.addEventListener("hashchange", arrive);
+    return () => window.removeEventListener("hashchange", arrive);
+  }, [bodies, handleSelectBody]);
+
+  useEffect(() => {
+    if (!selectedBodyId && !standingScope) return;
+    const id = standingScope?.startsWith("moon:")
+      ? standingScope.slice("moon:".length)
+      : selectedBodyId;
+    if (!id) return;
+    const next = bodyIdToHash(id);
+    if (window.location.hash === next) return;
+    // Flagged so the listener above does not treat our own write as an arrival.
+    writingHash.current = true;
+    window.location.hash = next;
+  }, [selectedBodyId, standingScope]);
+
+  useEffect(() => {
+    if (!standingScope) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") leaveSurface();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [standingScope, leaveSurface]);
 
   const selectedBody = useMemo(
     () => (selectedBodyId ? bodies.find((b) => b.id === selectedBodyId) ?? null : null),
@@ -138,6 +201,7 @@ export default function HomePage() {
         clockDay={clockDay}
         landedScope={activeLandingPlanet}
         flybyScope={flybyScope}
+        standingScope={standingScope}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
       />

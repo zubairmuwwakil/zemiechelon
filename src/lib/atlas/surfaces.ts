@@ -150,9 +150,27 @@ export interface SurfaceProp {
   height: number;
 }
 
-/** Props occupy this band of the shard, as fractions of its radius. */
-const PROP_BAND = { inner: 0.34, outer: 0.68 } as const;
-const PROP_HEIGHT = 0.16;
+/**
+ * Props occupy this band of the shard, as fractions of its radius.
+ *
+ * The inner edge clears the camera, which stands at 0.65 R: a prop much closer
+ * to the centre than that ends up at the visitor's feet, filling the frame.
+ */
+const PROP_BAND = { inner: 0.35, outer: 0.75 } as const;
+
+/** Prop height, as a fraction of the shard's radius. Roughly eye height. */
+const PROP_HEIGHT = 0.08;
+
+/**
+ * How much of the arc either end of the sightline is kept clear, in radians.
+ *
+ * The camera stands on the outward radial — angle 0 — and looks across the
+ * origin at the parent, so the line continues out through angle PI. A prop at
+ * angle 0 stands in the visitor's face; one at PI is silhouetted against the
+ * parent. Both ends are therefore excluded and the props fan across the two
+ * arcs that flank them.
+ */
+const SIGHTLINE_CLEARANCE = Math.PI / 6;
 
 /**
  * What stands on a scope's ground.
@@ -203,12 +221,28 @@ export function surfacePropsFor(
   }
 
   const count = entries.length;
+  // Props stand on the far half of the shard, ahead of the visitor: the camera
+  // is at angle 0, so anything on the near half ends up beside or behind them,
+  // and anything close to it fills the frame. The usable arc runs from square
+  // on (PI/2) to just short of the parent's bearing, mirrored either side.
+  const near = Math.PI / 2;
+  const far = Math.PI - SIGHTLINE_CLEARANCE;
+
   return entries.map((entry, i) => {
     // A lone prop sits mid-band rather than dividing by zero at the rim.
     const t = count === 1 ? 0.5 : i / (count - 1);
+    // Alternate flanks as the list advances, so consecutive work does not pile
+    // up on one side and both arcs fill evenly whatever the count.
+    const side = i % 2;
+    const step = Math.floor(i / 2);
+    const perSide = Math.ceil(count / 2);
+    const u = perSide === 1 ? 0.5 : step / (perSide - 1);
+    const spread = near + u * (far - near);
+    const angle = side === 0 ? spread : Math.PI * 2 - spread;
+
     return {
       ...entry,
-      angle: (i / count) * Math.PI * 2,
+      angle,
       distance: radius * (PROP_BAND.inner + t * (PROP_BAND.outer - PROP_BAND.inner)),
       height: radius * PROP_HEIGHT,
     };

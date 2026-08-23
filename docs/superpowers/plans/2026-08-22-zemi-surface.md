@@ -612,7 +612,43 @@ landing in Task 6, through surface state that does not go through that panel.
 hash. Spec §7 risk 2 mitigates depth-cost with "the deep link lands directly on
 the console" — that mitigation does not currently exist on the live page.
 
-## Phases 2–3 — not yet written
+## Phase 2 — The surface (Tasks 6-8) — BUILT
+
+| Task | Delivered |
+|---|---|
+| 6 · Surface camera | `landOnSurface(frame, parent, shardRadius)`. Pose stored in the frame's local space, driven from its world matrix each update. The bearing to the parent is computed in local coordinates, so a moon lands on its outward radial and a planet faces the galaxy through one code path. |
+| 7 · The shard | `SurfaceBuilder` (authored vocabulary only) plus `surfacePropsFor` (derived arrangement). LOD swap is a hard substitution. Planet instance visibility gained a single owner. |
+| 8 · Wiring | Landing routed from `resolveBodySelection`; scope cull and surface fog applied on arrival; the deep link wired on the main page. |
+
+**Verified in the browser** against a clean static build: ground fills the bottom
+61% with the horizon 39% down, and Products spans 44% of frame height — against
+0.431 predicted. At 45 seconds the parent has not moved a pixel; only the sibling
+moons and the quote sky have. That is the failure the first spike recorded,
+closed.
+
+**Two bugs found by looking, that no unit test would have caught.**
+
+1. Props fanned from angle 0, and angle 0 is exactly where the camera stands.
+   The first prop was in the visitor's face, occluding the parent almost
+   entirely. Angle PI is as bad — a prop there is silhouetted against the parent.
+   Props now stand on the far half only, with the sightline kept clear at both
+   ends, and `surfaces.test.ts` pins both invariants.
+2. Verification was blocked for a long stretch by a stale bundle: `next build`
+   with `output: export` leaves old chunks in `out/`, and a cached `index.html`
+   kept pointing at them, so three rounds of fixes appeared to do nothing. Clear
+   `out/` before rebuilding when verifying visually.
+
+**Also fixed, a gap the spec depends on.** `deepLink.ts` was consumed only by
+`AtlasStage`; `page.tsx` never read the hash, so §7 risk 2's mitigation — "the
+deep link lands directly on the console" — did not exist on the live page. The
+hash now arrives through the same rule a tap does.
+
+**Known and not addressed.** Moon label sprites still draw at constant screen
+size when landed, so a sibling's pill can sit across the parent's face (spike
+finding 8). The quote sky's HTML also overlays the parent. Both are label-layer
+concerns rather than surface ones.
+
+## Phase 3 — not yet written
 
 Tasks 3–10 (moon scopes, hit proxies, flybys, the surface camera, the shard,
 scope culling at depth, Products' ground, the orrery) are deliberately unwritten

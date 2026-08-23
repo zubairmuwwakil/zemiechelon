@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { moonScopeId, planetScopeId } from "../galaxy";
 import { resolveBodySelection } from "../navigation";
+import { declaresSurface } from "../surfaces";
 
 const bodies = loadBodies();
 
 describe("selecting a body", () => {
-  it("opens the card for whatever was tapped", () => {
+  it("opens the card for whatever was tapped, unless tapping it lands", () => {
     for (const body of bodies.slice(0, 8)) {
-      expect(resolveBodySelection(body.id, bodies).cardId).toBe(body.id);
+      const selection = resolveBodySelection(body.id, bodies);
+      if (!selection.landed) expect(selection.cardId).toBe(body.id);
     }
   });
 
@@ -19,6 +21,7 @@ describe("selecting a body", () => {
     const selection = resolveBodySelection(moon.id, bodies);
     expect(selection.flyTo).toBe(moonScopeId(moon.id));
     expect(selection.landed).toBe(false);
+    expect(selection.cardId).toBe(moon.id);
   });
 
   it("returns the planet a flyby should ascend back to, not the galaxy", () => {
@@ -43,11 +46,19 @@ describe("selecting a body", () => {
     expect(selection.flyTo).toBeNull();
   });
 
-  it("never reports landed, because nothing lands yet", () => {
-    // This flips for PickMe when the surface camera lands. Pinning it now
-    // means that change has to be deliberate rather than incidental.
+  it("lands on a moon that declares a surface, and opens no card", () => {
+    // Spec §4: a visitor lands on PickMe and walks up to the console. A card
+    // is the flyby's payload — a landing is the place itself.
+    const selection = resolveBodySelection("PickMe", bodies);
+    expect(selection.landed).toBe(true);
+    expect(selection.flyTo).toBe(moonScopeId("PickMe"));
+    expect(selection.cardId).toBeNull();
+  });
+
+  it("lands on exactly the moons that declare a surface, and no others", () => {
     for (const body of bodies) {
-      expect(resolveBodySelection(body.id, bodies).landed).toBe(false);
+      const expected = body.kind === "system" && declaresSurface(moonScopeId(body.id), bodies);
+      expect(resolveBodySelection(body.id, bodies).landed).toBe(expected);
     }
   });
 });

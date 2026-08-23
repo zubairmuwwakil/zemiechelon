@@ -163,6 +163,30 @@ describe("what stands on a surface", () => {
     }
   });
 
+  it("stands every prop on the far half, ahead of the visitor", () => {
+    // The camera is at angle 0. A prop on the near half is beside or behind
+    // the visitor, and one close to angle 0 fills the frame entirely.
+    for (const scopeId of surfaceScopeIds(bodies)) {
+      for (const prop of surfacePropsFor(scopeId, bodies)) {
+        expect(Math.cos(prop.angle)).toBeLessThanOrEqual(0.001);
+      }
+    }
+  });
+
+  it("keeps the sightline to the parent clear", () => {
+    // The camera stands on the outward radial — angle 0 — and looks across the
+    // origin at the parent, which continues the line out through angle PI. A
+    // prop at either end stands in the visitor's face or is silhouetted against
+    // the one thing §3.2 requires to stay legible.
+    for (const scopeId of surfaceScopeIds(bodies)) {
+      for (const prop of surfacePropsFor(scopeId, bodies)) {
+        const fromCamera = Math.abs(Math.atan2(Math.sin(prop.angle), Math.cos(prop.angle)));
+        const fromParent = Math.PI - fromCamera;
+        expect(Math.min(fromCamera, fromParent)).toBeGreaterThan(0.3);
+      }
+    }
+  });
+
   it("fans props apart rather than stacking them", () => {
     const props = surfacePropsFor(planetScopeId("products"), bodies);
     const angles = props.map((p) => p.angle).sort((a, b) => a - b);
