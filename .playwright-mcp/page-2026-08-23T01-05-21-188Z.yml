@@ -1,0 +1,55 @@
+- generic [active] [ref=f8e1]:
+  - main [ref=f8e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f8e6]':
+        - generic [ref=f8e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f8e10]':
+        - generic [ref=f8e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f8e14]':
+        - generic [ref=f8e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f8e18]':
+        - generic [ref=f8e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f8e22]':
+        - generic [ref=f8e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f8e26]':
+        - generic [ref=f8e27]: Creative
+    - generic:
+      - button "When one is so stuck in a routine or spends large amounts on a passion, it leaves little time to question one’s own actions and life questions. Self-reflection is put on a standstill and your habits take ahold of you and guide you through day-to-day life while your brain power is put towards your passion. It is only during brief moments of clarity does one realize what actions he has taken thus far." [ref=f8e29]
+      - button "One must have those ready to cheer them up when their resolve falters." [ref=f8e31]
+      - button "To know why someone does the things that they do leads to an easier time forgiving their actions." [ref=f8e33]
+      - button "To properly make strides in personal development, one must first acknowledge their flaws, then make an effort to change it positively." [ref=f8e35]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f8e37] [cursor=pointer]:
+          - generic [ref=f8e49]:
+            - generic [ref=f8e50]: ZEMI ECHELON
+            - generic [ref=f8e51]: CELESTIAL ATLAS
+        - navigation [ref=f8e52]:
+          - button "Foundations" [ref=f8e54]
+          - button "Products" [ref=f8e57]
+          - button "Labs" [ref=f8e60]
+          - button "Self" [ref=f8e63]
+          - button "Creative" [ref=f8e66]
+        - generic [ref=f8e67]:
+          - button "Switch to Cosmic Night Mode" [ref=f8e68]
+          - button "Open architecture dossier" [ref=f8e75]
+          - button "Open celestial atlas legend" [ref=f8e79]
+          - button "Command Quest CRT Terminal (>_)" [ref=f8e83]
+          - button "Unmute Audio Effects" [ref=f8e86]
+          - button "Reset to Galaxy Overview" [ref=f8e91]
+          - link "GitHub Profile" [ref=f8e95] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f8e98]
+    - generic [ref=f8e101]:
+      - generic [ref=f8e102]:
+        - button "Play timeline" [ref=f8e103]
+        - slider "Timeline" [ref=f8e107]: "286"
+        - combobox "Playback speed" [ref=f8e108]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f8e109]:
+        - generic [ref=f8e110]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f8e111]: 45 / 45 repositories
+  - alert [ref=f8e112]

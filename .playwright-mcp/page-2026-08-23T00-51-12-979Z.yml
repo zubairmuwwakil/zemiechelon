@@ -1,0 +1,54 @@
+- generic [active] [ref=f5e1]:
+  - main [ref=f5e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f5e6]':
+        - generic [ref=f5e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f5e10]':
+        - generic [ref=f5e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f5e14]':
+        - generic [ref=f5e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f5e18]':
+        - generic [ref=f5e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f5e22]':
+        - generic [ref=f5e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f5e26]':
+        - generic [ref=f5e27]: Creative
+    - generic:
+      - button "Do you really have a beautiful home if there's no one to see it?" [ref=f5e29]
+      - button "If one refuses good advice, let them learn through adversity." [ref=f5e31]
+      - button "Make someone’s abnormal your normal." [ref=f5e33]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f5e35] [cursor=pointer]:
+          - generic [ref=f5e47]:
+            - generic [ref=f5e48]: ZEMI ECHELON
+            - generic [ref=f5e49]: CELESTIAL ATLAS
+        - navigation [ref=f5e50]:
+          - button "Foundations" [ref=f5e52]
+          - button "Products" [ref=f5e55]
+          - button "Labs" [ref=f5e58]
+          - button "Self" [ref=f5e61]
+          - button "Creative" [ref=f5e64]
+        - generic [ref=f5e65]:
+          - button "Switch to Cosmic Night Mode" [ref=f5e66]
+          - button "Open architecture dossier" [ref=f5e73]
+          - button "Open celestial atlas legend" [ref=f5e77]
+          - button "Command Quest CRT Terminal (>_)" [ref=f5e81]
+          - button "Unmute Audio Effects" [ref=f5e84]
+          - button "Reset to Galaxy Overview" [ref=f5e89]
+          - link "GitHub Profile" [ref=f5e93] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f5e96]
+    - generic [ref=f5e99]:
+      - generic [ref=f5e100]:
+        - button "Play timeline" [ref=f5e101]
+        - slider "Timeline" [ref=f5e105]: "286"
+        - combobox "Playback speed" [ref=f5e106]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f5e107]:
+        - generic [ref=f5e108]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f5e109]: 45 / 45 repositories
+  - alert [ref=f5e110]

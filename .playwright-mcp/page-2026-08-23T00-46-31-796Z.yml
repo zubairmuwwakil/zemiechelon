@@ -1,0 +1,57 @@
+- generic [active] [ref=f4e1]:
+  - main [ref=f4e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f4e6]':
+        - generic [ref=f4e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f4e10]':
+        - generic [ref=f4e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f4e14]':
+        - generic [ref=f4e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f4e18]':
+        - generic [ref=f4e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f4e22]':
+        - generic [ref=f4e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f4e26]':
+        - generic [ref=f4e27]: Creative
+    - generic:
+      - button "Pride corrupts the heart and blinds your judgement." [ref=f4e29]
+      - button "Do what you need to do before you do what you want to do." [ref=f4e31]
+      - button "Everyone wants to be the hero of their story, but sometimes you are the villain in reality." [ref=f4e33]
+      - button "I urge you do not get discouraged from your failures. “I have not failed 10,000 times — I've successfully found 10,000 ways that will not work.” — Thomas Edison on the lightbulb." [ref=f4e35]
+      - button "How did these niceties evolve to such complex lies? It’s absolutely disgusting how we look each other in the eye and tell such blatant lies all under the guise of being 'polite'. 'How are you?' 'I’m good.' A foul lie told by most on a daily basis. How did it come to this… why did it come to this? The act of being genuine is becoming increasingly rare as this world goes to shit. Being honest is frowned upon — how ironic this infamous truth. One cannot be too blunt for they may offend others easily. I refute this means of interaction and I will uphold my belief in being honest." [ref=f4e37]
+      - 'button "Attraction: A subject all want to master but few actually study as a course. Although beauty is indeed in the eye of the beholder, there are some set baselines we can cast across the general populous. And it is through that we have something to educate ourselves on. Looks play a key factor in attraction, but unless you are in the upper echelons of society it is no longer very leverageable (at least for men). So what else is there? Personality is certainty, but the point I really want to touch upon is shared interests, mutual understanding, the feeling that ''this person gets me, they see me for who I am.'' This I find plays an immense role in attraction and can be either created through long periods of time spent with a person or coincidences whereas you and the person of interest are quite similar. This will make or break those first talking stages." [ref=f4e39]'
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f4e41] [cursor=pointer]:
+          - generic [ref=f4e53]:
+            - generic [ref=f4e54]: ZEMI ECHELON
+            - generic [ref=f4e55]: CELESTIAL ATLAS
+        - navigation [ref=f4e56]:
+          - button "Foundations" [ref=f4e58]
+          - button "Products" [ref=f4e61]
+          - button "Labs" [ref=f4e64]
+          - button "Self" [ref=f4e67]
+          - button "Creative" [ref=f4e70]
+        - generic [ref=f4e71]:
+          - button "Switch to Cosmic Night Mode" [ref=f4e72]
+          - button "Open architecture dossier" [ref=f4e79]
+          - button "Open celestial atlas legend" [ref=f4e83]
+          - button "Command Quest CRT Terminal (>_)" [ref=f4e87]
+          - button "Unmute Audio Effects" [ref=f4e90]
+          - button "Reset to Galaxy Overview" [ref=f4e95]
+          - link "GitHub Profile" [ref=f4e99] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f4e102]
+    - generic [ref=f4e105]:
+      - generic [ref=f4e106]:
+        - button "Play timeline" [ref=f4e107]
+        - slider "Timeline" [ref=f4e111]: "286"
+        - combobox "Playback speed" [ref=f4e112]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f4e113]:
+        - generic [ref=f4e114]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f4e115]: 45 / 45 repositories
+  - alert [ref=f4e116]

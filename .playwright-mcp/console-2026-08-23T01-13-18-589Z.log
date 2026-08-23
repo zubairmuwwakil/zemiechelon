@@ -1,0 +1,3 @@
+[       9ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/1g35f1tfbqdw4.js:357
+[       9ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/1g35f1tfbqdw4.js:357
+[      39ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/1g35f1tfbqdw4.js:0

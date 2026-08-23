@@ -1,0 +1,56 @@
+- generic [active] [ref=f9e1]:
+  - main [ref=f9e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f9e6]':
+        - generic [ref=f9e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f9e10]':
+        - generic [ref=f9e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f9e14]':
+        - generic [ref=f9e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f9e18]':
+        - generic [ref=f9e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f9e22]':
+        - generic [ref=f9e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f9e26]':
+        - generic [ref=f9e27]: Creative
+    - generic:
+      - button "Complacency is poison for those who stand above others." [ref=f9e29]
+      - 'button "Lust: What is it about lust that throws your senses into disarray? Is it floating questions about what if? How does it feel? The kiss, the sex, the first touch. A woman who truly finds you sexually attractive provides better sex than one who loves you ever will. I think this is in part to the primitive instincts at play in our subconscious. The woman becomes extremely infatuated with your presence resulting in heightened senses all over her body. Everything you do will feel much better than what it actually is. This is Lust. When you lose yourself in someone else, venturing down paths you’ve never thought of before — truly a feeling one must experience at least once in their lifetime…" [ref=f9e31]'
+      - button "To properly make strides in personal development, one must first acknowledge their flaws, then make an effort to change it positively." [ref=f9e33]
+      - button "Self-criticism and reflection are a must; don’t live life making the same mistakes." [ref=f9e35]
+      - button "Having something that you strongly admire about someone creates an unbreakable level of respect and sincerity." [ref=f9e37]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f9e39] [cursor=pointer]:
+          - generic [ref=f9e51]:
+            - generic [ref=f9e52]: ZEMI ECHELON
+            - generic [ref=f9e53]: CELESTIAL ATLAS
+        - navigation [ref=f9e54]:
+          - button "Foundations" [ref=f9e56]
+          - button "Products" [ref=f9e59]
+          - button "Labs" [ref=f9e62]
+          - button "Self" [ref=f9e65]
+          - button "Creative" [ref=f9e68]
+        - generic [ref=f9e69]:
+          - button "Switch to Cosmic Night Mode" [ref=f9e70]
+          - button "Open architecture dossier" [ref=f9e77]
+          - button "Open celestial atlas legend" [ref=f9e81]
+          - button "Command Quest CRT Terminal (>_)" [ref=f9e85]
+          - button "Unmute Audio Effects" [ref=f9e88]
+          - button "Reset to Galaxy Overview" [ref=f9e93]
+          - link "GitHub Profile" [ref=f9e97] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f9e100]
+    - generic [ref=f9e103]:
+      - generic [ref=f9e104]:
+        - button "Play timeline" [ref=f9e105]
+        - slider "Timeline" [ref=f9e109]: "286"
+        - combobox "Playback speed" [ref=f9e110]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f9e111]:
+        - generic [ref=f9e112]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f9e113]: 45 / 45 repositories
+  - alert [ref=f9e114]

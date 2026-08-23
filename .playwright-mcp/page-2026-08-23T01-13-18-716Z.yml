@@ -1,0 +1,258 @@
+- generic [active] [ref=f9e1]:
+  - main [ref=f9e2]:
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f9e39] [cursor=pointer]:
+          - generic [ref=f9e51]:
+            - generic [ref=f9e52]: ZEMI ECHELON
+            - generic [ref=f9e53]: CELESTIAL ATLAS
+        - navigation [ref=f9e54]:
+          - button "Foundations" [ref=f9e56]
+          - button "Products" [ref=f9e59]
+          - button "Labs" [ref=f9e62]
+          - button "Self" [ref=f9e65]
+          - button "Creative" [ref=f9e68]
+        - generic [ref=f9e69]:
+          - button "Switch to Cosmic Night Mode" [ref=f9e70]
+          - button "Open architecture dossier" [ref=f9e77]
+          - button "Open celestial atlas legend" [ref=f9e81]
+          - button "Command Quest CRT Terminal (>_)" [ref=f9e85]
+          - button "Unmute Audio Effects" [ref=f9e88]
+          - button "Reset to Galaxy Overview" [ref=f9e93]
+          - link "GitHub Profile" [ref=f9e97] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - complementary "Landed on planet products" [ref=f9e116]:
+      - generic [ref=f9e117]:
+        - generic [ref=f9e118]:
+          - text: "Landed on:"
+          - strong [ref=f9e119]: Planet products
+        - button "Return to Orbit" [ref=f9e120]
+      - generic [ref=f9e125]:
+        - generic [ref=f9e126]:
+          - generic [ref=f9e127]:
+            - generic [ref=f9e128]:
+              - generic [ref=f9e129]: 🎾
+              - generic [ref=f9e130]:
+                - heading "PickleOps" [level=3] [ref=f9e131]
+                - paragraph [ref=f9e132]: Roon Tournament Manager
+            - link "iOS 18" [ref=f9e133] [cursor=pointer]:
+              - /url: https://github.com/zubairmuwwakil/pickleops
+          - generic [ref=f9e139]:
+            - generic [ref=f9e140]:
+              - generic [ref=f9e141]: Round-Robin Court Schedule
+              - generic [ref=f9e142]: Courts 1-4
+            - generic [ref=f9e143]:
+              - generic [ref=f9e144]:
+                - generic [ref=f9e145]: Court 1
+                - generic [ref=f9e146]: 10:00 - Smith/Doe vs. Jones/Lee [9/11, 11/8, 11/7]
+              - generic [ref=f9e147]:
+                - generic [ref=f9e148]: Court 2
+                - generic [ref=f9e149]: 11:30 - Mia/Ben vs. Leo/Ana [9/11, 11/8, 11/7]
+              - generic [ref=f9e150]:
+                - generic [ref=f9e151]: Court 3
+                - generic [ref=f9e152]: 10:00 - Mia/Ben vs. Jones/Lee [9/11, 11/8, 11/7]
+          - generic [ref=f9e153]:
+            - generic [ref=f9e154]: Glicko-2 Rating Recalculation
+            - generic [ref=f9e156]: Adjust Glicko-2 Deviation
+            - generic [ref=f9e157]:
+              - slider "Glicko-2 rating" [ref=f9e158] [cursor=pointer]: "1525"
+              - generic [ref=f9e159]:
+                - generic [ref=f9e160]: "1450"
+                - generic [ref=f9e161]: 1500 -> 1525 (±35)
+                - generic [ref=f9e162]: "1600"
+          - generic [ref=f9e163]:
+            - generic [ref=f9e164]:
+              - generic [ref=f9e165]: Live Match Score Simulator
+              - generic [ref=f9e166]: Court 2
+            - generic [ref=f9e167]:
+              - generic [ref=f9e168]: Team Alpha
+              - generic [ref=f9e169]:
+                - generic [ref=f9e170]: "10"
+                - generic [ref=f9e171]: vs
+                - generic [ref=f9e172]: "8"
+              - generic [ref=f9e173]: Team Beta
+            - generic [ref=f9e174]:
+              - button "+ Alpha" [ref=f9e175]
+              - button "+ Beta" [ref=f9e176]
+              - button "Next Set" [ref=f9e177]
+            - generic [ref=f9e178]: Games 1-0
+        - generic [ref=f9e179]:
+          - generic [ref=f9e180]:
+            - generic [ref=f9e181]:
+              - generic [ref=f9e182]: 💳
+              - generic [ref=f9e183]:
+                - heading "PickMe" [level=3] [ref=f9e184]
+                - paragraph [ref=f9e185]: iOS Card Copilot
+            - generic [ref=f9e186]: Catalogue v1.1
+          - generic [ref=f9e187]:
+            - text: Scenario
+            - combobox "Scenario" [ref=f9e188]:
+              - option "Standalone grocery (Loblaws), $100, MCC 5411, all networks accepted" [selected]
+              - option "Costco warehouse, $200, MCC 5300 (NOT 5411), Mastercard only"
+              - option "Restaurant, $50, MCC 5812, all networks"
+              - option "Grocery $100 with cobalt-eats-monthly progress $2,450 — purchase straddles the cap"
+              - option "Grocery $100 with Cobalt monthly cap fully consumed — winner must flip"
+              - option "Netflix subscription $15.49, MCC 5968, network recurring indicator set, online"
+              - option "US$ online purchase ≈ C$165, all networks, Level Up Pro inactive"
+              - option "Same USD purchase with Level Up Pro active and CRO auto-sold"
+              - option "Marriott property direct charge, $300, all networks"
+              - option "Canadian Tire store, $150 pre-tax, all networks — drawer card should still win with warning"
+              - option "Pharmacy $30, MCC 5912, Tangerine categories unset — nothing beats the default"
+              - option "Taxi $12, MCC 4121 — Cobalt technically wins but fails the $0.25 floor"
+              - option "Household utility bill $80, MCC UNKNOWN (nil) — MBNA's mccInclude gate is skipped and the rule fires on category alone"
+              - option "The same $80 utility bill, but the terminal submits MCC 4816 — outside mbna-utilities-5x's include list, so the rule is excluded"
+              - option "Insurance premium $200, MCC 6300, Level Up Pro ACTIVE and CRO auto-sold — mccExclude drops Crypto's only earn rule, so the card leaves the ranking entirely"
+              - option "Costco checkout $100 whose terminal submits MCC 5411 — brand exclusion, not the MCC, is the only thing blocking Triangle's 3% grocery rule"
+              - option "Recurring insurance premium $120 evaluated on 2026-02-01 — the exact effectiveFrom day of every Scotia Momentum rule"
+              - option "The same premium one day earlier, 2026-01-31 — every Scotia rule is pre-effective, so the card has no scorable rule at all"
+              - option "US$ purchase of C$2,000 evaluated 2026-08-20 — Crypto's announced 2026-09-01 FX record must not apply yet"
+              - option "The same US$ purchase one day later — the announced record takes over and the engine declares the free-allowance assumption instead of pricing it"
+              - option "Recurring insurance premium $500 with momentum-4pct-accountYear at $24,700 of $25,000 — a 60/40 straddle of the accelerated/post-cap boundary"
+              - option "$400 at a Mastercard-only merchant with rogers-enhanced-accountYear fully consumed and an eligible service linked — appliedRuleId names the 2% rule while every dollar earns the 1.5% postCapEarn"
+              - option "$1,000 specialty-grocer order (MCC 5451) with Cobalt's eats cap at $2,420 — Cobalt beats the default by $3.76 but only 0.376pp, so 'both' semantics holds the default"
+              - option "The same $1,000 order with the cap $20 lower ($2,400) — advantage lands at 0.520pp and the switch is recommended"
+              - option "$400 recurring specialty-grocer charge — Scotia's 4% wins in dollars, Cobalt would win at 2.00¢/MR, and 2.00¢ is inside the 2.2¢ published benchmark, so the upside is disclosed"
+              - option "The same $400 grocer charge, NOT recurring and with the Cobalt cap at $2,490 — the flip needs 2.2727¢/MR, past the 2.2¢ benchmark, so nothing is disclosed"
+              - option "$300 at a Mastercard-only merchant with rogersEligibleServiceLinked forced back to unresolved (nil) — the 2% rule is skipped rather than guessed"
+          - generic [ref=f9e189]:
+            - generic [ref=f9e190]:
+              - text: Amount (CAD)
+              - spinbutton "Amount (CAD)" [ref=f9e191]: "100"
+            - generic [ref=f9e192]:
+              - text: Category
+              - combobox "Category" [ref=f9e193]:
+                - option "ctFamily"
+                - option "dining"
+                - option "drugStore"
+                - option "grocery" [selected]
+                - option "householdUtilities"
+                - option "insurance"
+                - option "marriottDirect"
+                - option "other"
+                - option "streaming"
+                - option "transit"
+                - option "wholesaleClub"
+            - generic [ref=f9e194]:
+              - text: Country
+              - textbox "Country" [ref=f9e195]: CA
+            - generic [ref=f9e196]:
+              - text: Channel
+              - combobox "Channel" [ref=f9e197]:
+                - option "cardPresent" [selected]
+                - option "online"
+          - generic [ref=f9e198]:
+            - checkbox "Recurring" [ref=f9e199]
+            - generic [ref=f9e200]: Recurring charge
+          - generic [ref=f9e201]:
+            - text: Accepted networks
+            - generic [ref=f9e202]:
+              - generic [ref=f9e203]:
+                - checkbox "amex" [checked] [ref=f9e204]
+                - generic [ref=f9e205]: amex
+              - generic [ref=f9e206]:
+                - checkbox "visa" [checked] [ref=f9e207]
+                - generic [ref=f9e208]: visa
+              - generic [ref=f9e209]:
+                - checkbox "mastercard" [checked] [ref=f9e210]
+                - generic [ref=f9e211]: mastercard
+          - generic [ref=f9e212]: MCC 5411 · loblaws
+          - generic [ref=f9e213]:
+            - generic [ref=f9e214]:
+              - generic [ref=f9e215]: Amex Membership Rewards — your declared value
+              - generic [ref=f9e216]: 1¢/point
+            - generic [ref=f9e217]:
+              - slider "Amex Membership Rewards cents per point" [ref=f9e218]: "1"
+              - generic [ref=f9e219]:
+                - generic [ref=f9e220]: 0.5¢
+                - generic [ref=f9e221]: declared 1¢
+                - generic [ref=f9e222]: 2.5¢
+            - paragraph [ref=f9e223]: "No flip point here: at 1¢ the engine discloses no valuation the advice would change at. Drag to find one."
+          - generic [ref=f9e224]:
+            - generic [ref=f9e225]:
+              - generic [ref=f9e226]: American Express Cobalt Card
+              - generic [ref=f9e227]: $5.00
+            - generic [ref=f9e228]: "rule: cobalt-eats-5x"
+            - generic [ref=f9e229]: Switches from your default card. Advantage $3.00.
+            - generic [ref=f9e230]: "runner-up: MBNA Rewards World Elite Mastercard · $5.00"
+          - generic [ref=f9e231]:
+            - generic [ref=f9e232]: Ranked candidates
+            - generic [ref=f9e233]:
+              - generic [ref=f9e234]:
+                - generic [ref=f9e235]: American Express Cobalt Card
+                - generic [ref=f9e236]: $5.00
+              - generic [ref=f9e237]:
+                - generic [ref=f9e238]: MBNA Rewards World Elite Mastercard
+                - generic [ref=f9e239]: $5.00
+              - generic [ref=f9e240]:
+                - generic [ref=f9e241]: Scotia Momentum Visa Infinite + Card
+                - generic [ref=f9e242]: $4.00
+              - generic [ref=f9e243]:
+                - generic [ref=f9e244]: Triangle World Elite Mastercard
+                - generic [ref=f9e245]: $2.85
+              - generic [ref=f9e246]:
+                - generic [ref=f9e247]: Wealthsimple Visa Infinite Privilege Credit Card
+                - generic [ref=f9e248]: $2.00
+              - generic [ref=f9e249]:
+                - generic [ref=f9e250]: Tangerine Money-Back World Mastercard
+                - generic [ref=f9e251]: $2.00
+              - generic [ref=f9e252]:
+                - generic [ref=f9e253]: Marriott Bonvoy American Express Card
+                - generic [ref=f9e254]: $1.60
+              - generic [ref=f9e255]:
+                - generic [ref=f9e256]: Rogers Red World Elite Mastercard
+                - generic [ref=f9e257]: $1.50
+              - generic [ref=f9e258]:
+                - generic [ref=f9e259]: SimplyCash Card from American Express
+                - generic [ref=f9e260]: $1.25
+              - generic [ref=f9e261]:
+                - generic [ref=f9e262]: The Platinum Card from American Express
+                - generic [ref=f9e263]: $1.00
+              - generic [ref=f9e264]:
+                - generic [ref=f9e265]: CIBC Dividend Visa Infinite Card
+                - generic [ref=f9e266]: $1.00
+              - generic [ref=f9e267]:
+                - generic [ref=f9e268]: TD Cash Back Visa Infinite Card
+                - generic [ref=f9e269]: $1.00
+              - generic [ref=f9e270]:
+                - generic [ref=f9e271]: Amazon.ca Rewards Mastercard
+                - generic [ref=f9e272]: $0.00
+              - generic [ref=f9e273]:
+                - generic [ref=f9e274]: BMO Ascend World Elite Mastercard
+                - generic [ref=f9e275]: $0.00
+              - generic [ref=f9e276]:
+                - generic [ref=f9e277]: BMO eclipse Visa Infinite Card
+                - generic [ref=f9e278]: $0.00
+              - generic [ref=f9e279]:
+                - generic [ref=f9e280]: CIBC Aventura Visa Card
+                - generic [ref=f9e281]: $0.00
+              - generic [ref=f9e282]:
+                - generic [ref=f9e283]: CIBC Aventura Visa Infinite Card
+                - generic [ref=f9e284]: $0.00
+              - generic [ref=f9e285]:
+                - generic [ref=f9e286]: National Bank World Elite Mastercard credit card
+                - generic [ref=f9e287]: $0.00
+              - generic [ref=f9e288]:
+                - generic [ref=f9e289]: PC Insiders World Elite Mastercard
+                - generic [ref=f9e290]: $0.00
+              - generic [ref=f9e291]:
+                - generic [ref=f9e292]: RBC Avion Visa Infinite
+                - generic [ref=f9e293]: $0.00
+              - generic [ref=f9e294]:
+                - generic [ref=f9e295]: RBC ION+ Visa
+                - generic [ref=f9e296]: $0.00
+              - generic [ref=f9e297]:
+                - generic [ref=f9e298]: Scotiabank Gold American Express Card
+                - generic [ref=f9e299]: $0.00
+              - generic [ref=f9e300]:
+                - generic [ref=f9e301]: Scotiabank Passport Visa Infinite + Card
+                - generic [ref=f9e302]: $0.00
+              - generic [ref=f9e303]:
+                - generic [ref=f9e304]: TD Aeroplan Visa Infinite Card
+                - generic [ref=f9e305]: $0.00
+              - generic [ref=f9e306]:
+                - generic [ref=f9e307]: TD First Class Travel Visa Infinite Card
+                - generic [ref=f9e308]: $0.00
+              - generic [ref=f9e309]:
+                - generic [ref=f9e310]: WestJet RBC World Elite Mastercard
+                - generic [ref=f9e311]: $0.00
+  - alert [ref=f9e114]

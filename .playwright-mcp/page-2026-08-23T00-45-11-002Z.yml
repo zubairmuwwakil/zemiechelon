@@ -1,0 +1,70 @@
+- generic [active] [ref=f3e1]:
+  - button "Open Next.js Dev Tools" [ref=f3e85] [cursor=pointer]
+  - alert [ref=f3e89]
+  - main [ref=f3e90]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f3e213]':
+        - generic [ref=f3e214]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f3e217]':
+        - generic [ref=f3e218]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f3e221]':
+        - generic [ref=f3e222]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f3e225]':
+        - generic [ref=f3e226]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f3e229]':
+        - generic [ref=f3e230]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f3e233]':
+        - generic [ref=f3e234]: Creative
+    - generic:
+      - button "I love people showing appreciation and gratitude for the things I do for them. Makes me feel content." [ref=f3e236]:
+        - generic [ref=f3e237]: ✦
+      - 'button "Social Media: why are we so obsessed with it? Is it the temporary spikes in dopamine we feel scrolling down our feed, or is the illusion of validation through likes and views? For one reason or another, we flock to it like bees to honey, wasting our lives away by living it through a screen." [ref=f3e239]':
+        - generic [ref=f3e240]: ✦
+      - button "Luck is what happens when preparation meets opportunity." [ref=f3e242]:
+        - generic [ref=f3e243]: ✦
+      - button "Should you support a decision a loved one is making even though you don’t agree with it?" [ref=f3e245]
+      - button "If I can't accept you at your worst, do I deserve you at your best?" [ref=f3e247]
+      - button "It is better to know one's limits rather than to fool one's self. Such foolish thinking leads to overzealous belief in one's ability, and will ultimately lead to their destruction. For example, someone with an eating disorder should not have false confidence in believing they can be around unhealthy foods without eating it. It is ok to admit you sometimes cannot control your actions. Instead, know your limits and remove such tempting food from your life. Knowing your limits is key to future success and avoiding unwarranted ego." [ref=f3e249]
+      - button "Is being alone the spice to success?" [ref=f3e251]
+      - button "You can lead a horse to water, but you can't force it to drink." [ref=f3e253]
+      - button "Does the growth you gain from individuals drop off the more comfortable you get with them?" [ref=f3e255]
+      - button "It takes character and control to be understanding and forgiving." [ref=f3e257]
+      - button "Just the ability to speak with someone about your problems whilst they listen can provide a huge relief." [ref=f3e259]
+      - button "Pride corrupts the heart and blinds your judgement." [ref=f3e261]
+      - button "Is obsession a requirement for success?" [ref=f3e263]
+      - button "Experience and knowledge are the basis for an excellent predictive ability. One who can see the future before it happens has truly conquered his surroundings." [ref=f3e265]
+      - button "If you find yourself losing who you are around someone else, you must be able to maintain your character without letting their actions affect you." [ref=f3e267]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f3e137] [cursor=pointer]:
+          - generic [ref=f3e149]:
+            - generic [ref=f3e150]: ZEMI ECHELON
+            - generic [ref=f3e151]: CELESTIAL ATLAS
+        - navigation [ref=f3e152]:
+          - button "Foundations" [ref=f3e154]
+          - button "Products" [ref=f3e157]
+          - button "Labs" [ref=f3e160]
+          - button "Self" [ref=f3e163]
+          - button "Creative" [ref=f3e166]
+        - generic [ref=f3e167]:
+          - button "Switch to Cosmic Night Mode" [ref=f3e168]
+          - button "Open architecture dossier" [ref=f3e175]
+          - button "Open celestial atlas legend" [ref=f3e179]
+          - button "Command Quest CRT Terminal (>_)" [ref=f3e183]
+          - button "Unmute Audio Effects" [ref=f3e186]
+          - button "Reset to Galaxy Overview" [ref=f3e191]
+          - link "GitHub Profile" [ref=f3e195] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f3e198]
+    - generic [ref=f3e201]:
+      - generic [ref=f3e202]:
+        - button "Play timeline" [ref=f3e203]
+        - slider "Timeline" [ref=f3e207]: "286"
+        - combobox "Playback speed" [ref=f3e208]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f3e209]:
+        - generic [ref=f3e210]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f3e211]: 45 / 45 repositories

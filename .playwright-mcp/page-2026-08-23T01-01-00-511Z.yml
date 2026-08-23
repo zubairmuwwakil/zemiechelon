@@ -1,0 +1,56 @@
+- generic [active] [ref=f6e1]:
+  - main [ref=f6e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f6e6]':
+        - generic [ref=f6e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f6e10]':
+        - generic [ref=f6e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f6e14]':
+        - generic [ref=f6e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f6e18]':
+        - generic [ref=f6e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f6e22]':
+        - generic [ref=f6e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f6e26]':
+        - generic [ref=f6e27]: Creative
+    - generic:
+      - button "If someone is highly motivated, is an intimate relationship fair to join? You won't be able to give that person what they need because your passion takes priority." [ref=f6e29]
+      - button "Deterministic calculation engines over speculative black-box guesses." [ref=f6e31]
+      - button "If you're gonna do something, do it to the best of your ability." [ref=f6e33]
+      - button "One must have those ready to cheer them up when their resolve falters." [ref=f6e35]
+      - 'button "“I care about you; you know that” — words heard all too often. When you find yourself saying these words, revert to this thought: Are my actions matching my words? Am I showing that I care through my actions or am I just saying it? The distinction is key here. It is important to convey how you feel to loved ones and also show it." [ref=f6e37]'
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f6e39] [cursor=pointer]:
+          - generic [ref=f6e51]:
+            - generic [ref=f6e52]: ZEMI ECHELON
+            - generic [ref=f6e53]: CELESTIAL ATLAS
+        - navigation [ref=f6e54]:
+          - button "Foundations" [ref=f6e56]
+          - button "Products" [ref=f6e59]
+          - button "Labs" [ref=f6e62]
+          - button "Self" [ref=f6e65]
+          - button "Creative" [ref=f6e68]
+        - generic [ref=f6e69]:
+          - button "Switch to Cosmic Night Mode" [ref=f6e70]
+          - button "Open architecture dossier" [ref=f6e77]
+          - button "Open celestial atlas legend" [ref=f6e81]
+          - button "Command Quest CRT Terminal (>_)" [ref=f6e85]
+          - button "Unmute Audio Effects" [ref=f6e88]
+          - button "Reset to Galaxy Overview" [ref=f6e93]
+          - link "GitHub Profile" [ref=f6e97] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f6e100]
+    - generic [ref=f6e103]:
+      - generic [ref=f6e104]:
+        - button "Play timeline" [ref=f6e105]
+        - slider "Timeline" [ref=f6e109]: "286"
+        - combobox "Playback speed" [ref=f6e110]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f6e111]:
+        - generic [ref=f6e112]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f6e113]: 45 / 45 repositories
+  - alert [ref=f6e114]

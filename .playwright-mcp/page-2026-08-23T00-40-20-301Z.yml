@@ -1,0 +1,37 @@
+- generic [active] [ref=f3e1]:
+  - main [ref=f3e2]:
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f3e5] [cursor=pointer]:
+          - generic [ref=f3e17]:
+            - generic [ref=f3e18]: ZEMI ECHELON
+            - generic [ref=f3e19]: CELESTIAL ATLAS
+        - navigation [ref=f3e20]:
+          - button "Foundations" [ref=f3e22]
+          - button "Products" [ref=f3e25]
+          - button "Labs" [ref=f3e28]
+          - button "Self" [ref=f3e31]
+          - button "Creative" [ref=f3e34]
+        - generic [ref=f3e35]:
+          - button "Switch to Cosmic Night Mode" [ref=f3e36]
+          - button "Open architecture dossier" [ref=f3e43]
+          - button "Open celestial atlas legend" [ref=f3e47]
+          - button "Command Quest CRT Terminal (>_)" [ref=f3e51]
+          - button "Unmute Audio Effects" [ref=f3e54]
+          - button "Reset to Galaxy Overview" [ref=f3e59]
+          - link "GitHub Profile" [ref=f3e63] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f3e66]
+    - generic [ref=f3e69]:
+      - generic [ref=f3e70]:
+        - button "Play timeline" [ref=f3e71]
+        - slider "Timeline" [ref=f3e75]: "286"
+        - combobox "Playback speed" [ref=f3e76]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f3e77]:
+        - generic [ref=f3e78]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f3e79]: 45 / 45 repositories
+  - button "Open Next.js Dev Tools" [ref=f3e85] [cursor=pointer]

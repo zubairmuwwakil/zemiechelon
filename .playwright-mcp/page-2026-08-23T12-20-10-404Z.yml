@@ -1,0 +1,59 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=e6]':
+        - generic [ref=e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=e10]':
+        - generic [ref=e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=e14]':
+        - generic [ref=e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=e18]':
+        - generic [ref=e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=e22]':
+        - generic [ref=e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=e26]':
+        - generic [ref=e27]: Creative
+    - generic:
+      - button "Switch on the console" [ref=e30]:
+        - generic [ref=e31]: Switch on
+      - button "Recommendation Engine — open its card" [ref=e33]:
+        - generic [ref=e34]: Recommendation Engine
+      - button "ROI & Fee Audits — open its card" [ref=e36]:
+        - generic [ref=e37]: ROI & Fee Audits
+      - button "Merchant Rules — open its card" [ref=e39]:
+        - generic [ref=e40]: Merchant Rules
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=e41] [cursor=pointer]:
+          - generic [ref=e53]:
+            - generic [ref=e54]: ZEMI ECHELON
+            - generic [ref=e55]: CELESTIAL ATLAS
+        - navigation [ref=e56]:
+          - button "Foundations" [ref=e58]
+          - button "Products" [ref=e61]
+          - button "Labs" [ref=e64]
+          - button "Self" [ref=e67]
+          - button "Creative" [ref=e70]
+        - generic [ref=e71]:
+          - button "Switch to Cosmic Night Mode" [ref=e72]
+          - button "Open architecture dossier" [ref=e79]
+          - button "Open celestial atlas legend" [ref=e83]
+          - button "Command Quest CRT Terminal (>_)" [ref=e87]
+          - button "Unmute Audio Effects" [ref=e90]
+          - button "Reset to Galaxy Overview" [ref=e95]
+          - link "GitHub Profile" [ref=e99] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=e102]
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - button "Play timeline" [ref=e107]
+        - slider "Timeline" [ref=e111]: "286"
+        - combobox "Playback speed" [ref=e112]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=e113]:
+        - generic [ref=e114]: Day 286 / 286 · 2026-08-19
+        - generic [ref=e115]: 45 / 45 repositories
+  - alert [ref=e116]

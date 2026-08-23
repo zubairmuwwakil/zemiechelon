@@ -1,0 +1,55 @@
+- generic [active] [ref=f10e1]:
+  - main [ref=f10e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f10e6]':
+        - generic [ref=f10e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f10e10]':
+        - generic [ref=f10e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f10e14]':
+        - generic [ref=f10e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f10e18]':
+        - generic [ref=f10e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f10e22]':
+        - generic [ref=f10e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f10e26]':
+        - generic [ref=f10e27]: Creative
+    - generic:
+      - 'button "“I care about you; you know that” — words heard all too often. When you find yourself saying these words, revert to this thought: Are my actions matching my words? Am I showing that I care through my actions or am I just saying it? The distinction is key here. It is important to convey how you feel to loved ones and also show it." [ref=f10e29]'
+      - button "If you're gonna do something, do it to the best of your ability." [ref=f10e31]
+      - button "In the pursuit of great, one may fail to do good." [ref=f10e33]
+      - button "If I can't accept you at your worst, do I deserve you at your best?" [ref=f10e35]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f10e37] [cursor=pointer]:
+          - generic [ref=f10e49]:
+            - generic [ref=f10e50]: ZEMI ECHELON
+            - generic [ref=f10e51]: CELESTIAL ATLAS
+        - navigation [ref=f10e52]:
+          - button "Foundations" [ref=f10e54]
+          - button "Products" [ref=f10e57]
+          - button "Labs" [ref=f10e60]
+          - button "Self" [ref=f10e63]
+          - button "Creative" [ref=f10e66]
+        - generic [ref=f10e67]:
+          - button "Switch to Cosmic Night Mode" [ref=f10e68]
+          - button "Open architecture dossier" [ref=f10e75]
+          - button "Open celestial atlas legend" [ref=f10e79]
+          - button "Command Quest CRT Terminal (>_)" [ref=f10e83]
+          - button "Unmute Audio Effects" [ref=f10e86]
+          - button "Reset to Galaxy Overview" [ref=f10e91]
+          - link "GitHub Profile" [ref=f10e95] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f10e98]
+    - generic [ref=f10e101]:
+      - generic [ref=f10e102]:
+        - button "Play timeline" [ref=f10e103]
+        - slider "Timeline" [ref=f10e107]: "286"
+        - combobox "Playback speed" [ref=f10e108]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f10e109]:
+        - generic [ref=f10e110]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f10e111]: 45 / 45 repositories
+  - alert [ref=f10e112]

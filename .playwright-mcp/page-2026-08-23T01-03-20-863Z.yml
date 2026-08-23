@@ -1,0 +1,55 @@
+- generic [active] [ref=f7e1]:
+  - main [ref=f7e2]:
+    - generic:
+      - 'button "Ancestral Anchor Core: Epoch 2025-11-06 · Origin of time" [ref=f7e6]':
+        - generic [ref=f7e7]: Nodes
+      - 'button "Planet Self: 0 shipped systems · 6 learning repositories" [ref=f7e10]':
+        - generic [ref=f7e11]: Self
+      - 'button "Planet Foundations: 0 shipped systems · 19 learning repositories" [ref=f7e14]':
+        - generic [ref=f7e15]: Foundations
+      - 'button "Planet Products: 4 shipped systems · 7 learning repositories" [ref=f7e18]':
+        - generic [ref=f7e19]: Products
+      - 'button "Planet Labs: 1 shipped system · 6 learning repositories" [ref=f7e22]':
+        - generic [ref=f7e23]: Labs
+      - 'button "Planet Creative: 0 shipped systems · 2 learning repositories" [ref=f7e26]':
+        - generic [ref=f7e27]: Creative
+    - generic:
+      - button "If you find yourself losing who you are around someone else, you must be able to maintain your character without letting their actions affect you." [ref=f7e29]
+      - button "Discomfort arises when someone does something for you in which you wouldn’t have done for them." [ref=f7e31]
+      - button "One must have those ready to cheer them up when their resolve falters." [ref=f7e33]
+      - button "Money will come and go; what matters is how you spend it while you have it and how you act when you don't." [ref=f7e35]
+    - generic:
+      - generic:
+        - generic "Reset to Celestial Galaxy Orbit" [ref=f7e37] [cursor=pointer]:
+          - generic [ref=f7e49]:
+            - generic [ref=f7e50]: ZEMI ECHELON
+            - generic [ref=f7e51]: CELESTIAL ATLAS
+        - navigation [ref=f7e52]:
+          - button "Foundations" [ref=f7e54]
+          - button "Products" [ref=f7e57]
+          - button "Labs" [ref=f7e60]
+          - button "Self" [ref=f7e63]
+          - button "Creative" [ref=f7e66]
+        - generic [ref=f7e67]:
+          - button "Switch to Cosmic Night Mode" [ref=f7e68]
+          - button "Open architecture dossier" [ref=f7e75]
+          - button "Open celestial atlas legend" [ref=f7e79]
+          - button "Command Quest CRT Terminal (>_)" [ref=f7e83]
+          - button "Unmute Audio Effects" [ref=f7e86]
+          - button "Reset to Galaxy Overview" [ref=f7e91]
+          - link "GitHub Profile" [ref=f7e95] [cursor=pointer]:
+            - /url: https://github.com/zubairmuwwakil
+    - button "Interaction Hints" [ref=f7e98]
+    - generic [ref=f7e101]:
+      - generic [ref=f7e102]:
+        - button "Play timeline" [ref=f7e103]
+        - slider "Timeline" [ref=f7e107]: "286"
+        - combobox "Playback speed" [ref=f7e108]:
+          - option "1×"
+          - option "4×" [selected]
+          - option "14×"
+          - option "30×"
+      - generic [ref=f7e109]:
+        - generic [ref=f7e110]: Day 286 / 286 · 2026-08-19
+        - generic [ref=f7e111]: 45 / 45 repositories
+  - alert [ref=f7e112]

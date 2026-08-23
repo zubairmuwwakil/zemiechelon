@@ -1,0 +1,18 @@
+[     201ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[    4150ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[    9152ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[    9153ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[    9183ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[   10972ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[   12485ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   12486ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   12516ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[   14365ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   14365ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   14391ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[   16286ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   16286ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   16319ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
+[   17138ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   17139ms] [WARNING] WebGL: INVALID_OPERATION: texImage3D: FLIP_Y or PREMULTIPLY_ALPHA isn't allowed for uploading 3D textures @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:357
+[   17165ms] [WARNING] THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead. @ http://localhost:3100/_next/static/chunks/0ersebq5bgwcp.js:0
