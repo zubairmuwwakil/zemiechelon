@@ -90,3 +90,20 @@ describe("how a planet should be landed on", () => {
     ).toBe("panel");
   });
 });
+
+describe("arriving somewhere leaves where you were", () => {
+  it("always names a frame to fly to when the body is a place", () => {
+    // page.tsx keys "release the frame I was in" off this being set, so a
+    // system body must always name one — otherwise a visitor who takes the
+    // orrery from a planet to a moon keeps the planet's console open on top
+    // of the moon they are now standing on.
+    for (const body of bodies.filter((b) => b.kind === "system")) {
+      expect(resolveBodySelection(body.id, bodies).flyTo).not.toBeNull();
+    }
+  });
+
+  it("names none for a body that is only a card", () => {
+    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    expect(resolveBodySelection(star.id, bodies).flyTo).toBeNull();
+  });
+});

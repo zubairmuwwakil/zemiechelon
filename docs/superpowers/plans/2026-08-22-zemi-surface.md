@@ -672,10 +672,33 @@ ground. Tapping a bead launched a flight to PickleOps and arrived at its card.
    is being tapped, tappable is the binding constraint, not visibly moving. Now
    roughly a revolution a minute.
 
-**Still open, and deliberately.** Moon label sprites draw at constant screen size
-when landed, so a sibling's pill can sit across the parent's face (spike finding
-8); the quote sky's HTML overlays it too. Both are label-layer concerns rather
-than surface ones, and neither blocks Track C mounting the console.
+## Follow-ups — CLOSED
+
+The three items left open after Phase 3 are done.
+
+**Labels at depth.** Constant-screen-size labels exist because a moon is about
+fourteen screen pixels across at galaxy framing. On a surface they are the wrong
+size by construction and the wrong idea besides — the orrery is how a moon is
+found and reached from there — so they are suppressed while standing, along with
+the quote sky, whose text hangs at galaxy distances and lands across the parent's
+face. Resolved by traversal rather than at the creation sites: a list built as
+labels are made is a list to forget to add to, which is exactly how the first
+attempt missed one.
+
+**The fallback paths, verified in the browser rather than only in units.** A
+420px viewport lands on the panel; so does a full-width viewport reporting
+`prefers-reduced-motion: reduce`. Both confirmed against a clean build.
+
+**The two corrected tests, re-examined.** Both calls were right — the orrery does
+stand on a plinth above the frame origin, and the registered hit mesh is the
+proxy rather than the sub-fingertip bead. But the position test was groping at an
+invariant it never asserted: `y > 0` passes for an instrument hovering a mile up.
+There is now a test that the plinth's base rests at exactly ground level.
+
+**A state bug the verification found.** Landing on a planet and then taking its
+orrery to a moon left the planet's console open over the moon being stood on —
+two frames each claiming to be where you are. Arriving anywhere now releases the
+frame you were in.
 
 Tasks 3–10 (moon scopes, hit proxies, flybys, the surface camera, the shard,
 scope culling at depth, Products' ground, the orrery) are deliberately unwritten

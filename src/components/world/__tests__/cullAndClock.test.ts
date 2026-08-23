@@ -197,3 +197,37 @@ describe("what a cull is allowed to take", () => {
     expect(labs.visible).toBe(false);
   });
 });
+
+describe("labels at depth", () => {
+  function labels(scene: THREE.Scene): THREE.Sprite[] {
+    const found: THREE.Sprite[] = [];
+    scene.traverse((o) => {
+      if ((o as THREE.Sprite).isSprite) found.push(o as THREE.Sprite);
+    });
+    return found;
+  }
+
+  it("draws its labels in orbit", () => {
+    const { scene, builder } = built();
+    const all = labels(scene);
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.every((l) => l.visible)).toBe(true);
+    expect(builder.standingScope).toBeNull();
+  });
+
+  it("puts them away on a surface, where they are the wrong size by construction", () => {
+    // A moon is about fourteen screen pixels at galaxy framing, which is what
+    // these pills exist for. Standing on a surface a sibling's pill lands
+    // across the parent's face, and the orrery is the finder at that depth.
+    const { scene, builder } = built();
+    builder.setStandingOn(moonScopeId("PickMe"));
+    expect(labels(scene).some((l) => l.visible)).toBe(false);
+  });
+
+  it("brings them back on leaving", () => {
+    const { scene, builder } = built();
+    builder.setStandingOn(moonScopeId("PickMe"));
+    builder.setStandingOn(null);
+    expect(labels(scene).every((l) => l.visible)).toBe(true);
+  });
+});

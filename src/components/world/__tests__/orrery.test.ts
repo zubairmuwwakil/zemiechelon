@@ -34,10 +34,24 @@ describe("the orrery", () => {
     const orrery = builder.groupFor(PRODUCTS).getObjectByName(`orrery:${PRODUCTS}`);
     expect(orrery).toBeDefined();
     // At the point the camera orbits, so walking around the surface is
-    // walking around the instrument — and above the ground rather than sunk
-    // into it, since it stands on a plinth.
+    // walking around the instrument.
     expect(Math.hypot(orrery!.position.x, orrery!.position.z)).toBeLessThan(0.001);
-    expect(orrery!.position.y).toBeGreaterThan(0);
+  });
+
+  it("rests its plinth on the ground rather than floating or sinking", () => {
+    // The instrument's origin is the model planet's centre, lifted so the
+    // plinth beneath reaches exactly the walking surface at y = 0. This is the
+    // invariant the position check above was really about: "y > 0" would pass
+    // for an instrument hovering a mile up.
+    const { builder } = built();
+    const orrery = builder.groupFor(PRODUCTS).getObjectByName(`orrery:${PRODUCTS}`)!;
+    const stem = orrery.children.find(
+      (c) => (c as THREE.Mesh).geometry instanceof THREE.CylinderGeometry,
+    ) as THREE.Mesh;
+    const height = (stem.geometry as THREE.CylinderGeometry).parameters.height;
+    // Group origin + stem centre - half its height = the base, in surface space.
+    const base = orrery.position.y + stem.position.y - height / 2;
+    expect(base).toBeCloseTo(0, 6);
   });
 
   it("is hidden until the visitor is standing on that surface", () => {

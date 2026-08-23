@@ -121,6 +121,11 @@ export default function HomePage() {
       // flyby framing has to be released rather than layered under it.
       setStandingScope(selection.landed ? selection.flyTo : null);
       setFlybyScope(selection.landed ? null : selection.flyTo);
+      // Arriving anywhere leaves the frame you were in. Without this a visitor
+      // who lands on a planet and then takes its orrery to a moon ends up
+      // standing on the moon with the planet's console still open over it —
+      // two frames claiming to be where you are.
+      if (selection.flyTo) setActiveLandingPlanet(null);
     },
     [bodies],
   );
@@ -240,8 +245,11 @@ export default function HomePage() {
         onHoverPlanet={(id) => canvasHandleRef.current?.setHoveredPlanet?.(id)}
       />
 
-      {/* 3. Scene-space Quote Sky: pulsing stars at night, catchable comets by day */}
-      <QuoteSky cosmicMode={cosmicMode} points={quotePoints} />
+      {/* 3. Scene-space Quote Sky: pulsing stars at night, catchable comets by day.
+             Suppressed on a surface: the quotes hang at galaxy distances, so from
+             the ground they land as running text across the parent's face — the one
+             thing §3.2 asks to keep legible. */}
+      {!standingScope && <QuoteSky cosmicMode={cosmicMode} points={quotePoints} />}
 
       {/* 4. Top Segmented Capsule HUD (Mockup Slides 1, 2, 4) */}
       <WorldHUD

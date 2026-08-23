@@ -264,6 +264,7 @@ export class WorldSceneBuilder {
   private standingOn: ScopeId | null = null;
   /** One per surface that has moons to travel between. */
   private readonly orreries = new Map<ScopeId, OrreryHandle>();
+
   /** The arm a scope cull is keeping, or null when nothing is culled. */
   private cullKeepArm: string | null = null;
   /** Root children hidden by the current cull, so releasing it restores exactly those. */
@@ -1699,6 +1700,20 @@ export class WorldSceneBuilder {
     // A planet is an instance in the shared mesh rather than an object, so its
     // half of the same swap happens there.
     this.applyPlanetInstances();
+
+    // Constant-screen-size labels are a galaxy-framing affordance: they exist
+    // because a moon is about fourteen screen pixels across from out there. On
+    // a surface they are the wrong size by construction — a sibling's pill
+    // lands across the parent's face — and the wrong idea besides, since the
+    // orrery is how a moon is found and reached from here.
+    //
+    // Resolved by traversal rather than at the creation sites. Every one of
+    // these is a Sprite, and asking the scene is a rule the next label added
+    // obeys for free; a list built as they are made is a list to forget to add
+    // to, which is how the first attempt missed one.
+    this.rootGroup.traverse((object) => {
+      if ((object as THREE.Sprite).isSprite) object.visible = scopeId === null;
+    });
   }
 
   /** The scope whose surface the camera is standing on, if any. */
