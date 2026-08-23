@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { planetScopeId } from "@/lib/atlas/scopes";
+import { moonScopeId, planetScopeId } from "@/lib/atlas/galaxy";
 import { daysSinceEpoch } from "@/lib/atlas/position";
 
 /**
@@ -96,3 +96,72 @@ function instanceScale(scene: THREE.Scene, index: number): number {
   });
   return scale;
 }
+
+describe("standing on a surface, against the clock and the cull", () => {
+  it("hides the planet you are standing on — you are on it, not looking at it", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("products");
+    expect(instanceScale(scene, index)).toBeGreaterThan(0);
+    builder.setStandingOn(planetScopeId("products"));
+    expect(instanceScale(scene, index)).toBeCloseTo(0, 5);
+  });
+
+  it("keeps the parent visible while standing on a moon inside it", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("products");
+    builder.setStandingOn(moonScopeId("PickMe"));
+    // Spec §3.2 is a hard requirement: the frame you came from stays in shot.
+    expect(instanceScale(scene, index)).toBeGreaterThan(0);
+  });
+
+  it("does not let the clock reveal the planet you are standing on", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("products");
+    builder.setStandingOn(planetScopeId("products"));
+    builder.setClockDay(FULL_SPAN);
+    expect(instanceScale(scene, index)).toBeCloseTo(0, 5);
+  });
+
+  it("does not let releasing a cull reveal the planet you are standing on", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("products");
+    builder.setStandingOn(planetScopeId("products"));
+    builder.setScopeCull(planetScopeId("products"));
+    builder.setScopeCull(null);
+    expect(instanceScale(scene, index)).toBeCloseTo(0, 5);
+  });
+
+  it("restores the planet when the visitor leaves its surface", () => {
+    const { scene, builder } = built();
+    const index = builder.planetInstanceIndex("products");
+    const before = instanceScale(scene, index);
+    builder.setStandingOn(planetScopeId("products"));
+    builder.setStandingOn(null);
+    expect(instanceScale(scene, index)).toBeCloseTo(before, 5);
+  });
+
+  it("never draws a moon and its own shard at the same time", () => {
+    // At any shard radius the two together read as a gold ball on a plate,
+    // which is the frame the first spike reported.
+    const { scene, builder } = built();
+    const sphere = () => {
+      let visible = false;
+      scene.traverse((o) => {
+        if (o.name === "moon-body:PickMe") visible = o.visible;
+      });
+      return visible;
+    };
+    const shard = () => {
+      let visible = false;
+      scene.traverse((o) => {
+        if (o.name === "surface:moon:PickMe") visible = o.visible;
+      });
+      return visible;
+    };
+    expect(sphere()).toBe(true);
+    expect(shard()).toBe(false);
+    builder.setStandingOn(moonScopeId("PickMe"));
+    expect(sphere()).toBe(false);
+    expect(shard()).toBe(true);
+  });
+});

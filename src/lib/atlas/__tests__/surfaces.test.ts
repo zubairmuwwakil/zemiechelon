@@ -8,6 +8,7 @@ import { deriveMoonScopes, SCOPES } from "../scopes";
 import {
   declaresSurface,
   shardRadiusFor,
+  surfacePropsFor,
   surfaceScopeIds,
   SHARD_RADIUS_MULTIPLE,
   SURFACE_ALTITUDE_RATIO,
@@ -111,5 +112,80 @@ describe("shard geometry", () => {
     const pitch = (Math.atan2(SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO) * 180) / Math.PI;
     expect(pitch).toBeGreaterThan(5);
     expect(pitch).toBeLessThan(12);
+  });
+});
+
+describe("what stands on a surface", () => {
+  it("puts Products' supporting repositories on Products' ground", () => {
+    // Spec §3.5: the seven non-shipped repositories become the props, while
+    // the four shipped ventures orbit overhead.
+    const props = surfacePropsFor(planetScopeId("products"), bodies);
+    expect(props.map((p) => p.id).sort()).toEqual(
+      [
+        "BloombergProject",
+        "Pickleball_League_Score_Tracker",
+        "market-data-pipeline",
+        "pb_score_keeper",
+        "pickleball-league-template",
+        "pickleball-session-manager",
+        "return-saas",
+      ].sort(),
+    );
+  });
+
+  it("puts a moon's own satellites on the moon's ground", () => {
+    // Spec §4: lands on its surface, three satellites around them.
+    const pickme = bodies.find((b) => b.id === "PickMe")!;
+    const props = surfacePropsFor(moonScopeId("PickMe"), bodies);
+    expect(props.map((p) => p.id)).toEqual(pickme.satellites!.map((s) => s.id));
+  });
+
+  it("orders a planet's props by birth, so radius is time here too", () => {
+    const props = surfacePropsFor(planetScopeId("products"), bodies);
+    const born = props.map(
+      (p) => bodies.find((b) => b.id === p.id)!.bornAt,
+    );
+    expect([...born].sort()).toEqual(born);
+    // Distance grows with age order, the same rule the map uses everywhere.
+    const distances = props.map((p) => p.distance);
+    expect([...distances].sort((a, b) => a - b)).toEqual(distances);
+  });
+
+  it("keeps every prop on the shard it stands on", () => {
+    for (const scopeId of surfaceScopeIds(bodies)) {
+      const radius = shardRadiusFor(scopeId, bodies);
+      for (const prop of surfacePropsFor(scopeId, bodies)) {
+        expect(prop.distance).toBeGreaterThan(0);
+        // Inside the inscribed radius of a seven-sided shard, so nothing
+        // stands over an edge.
+        expect(prop.distance).toBeLessThan(radius * Math.cos(Math.PI / 7));
+      }
+    }
+  });
+
+  it("fans props apart rather than stacking them", () => {
+    const props = surfacePropsFor(planetScopeId("products"), bodies);
+    const angles = props.map((p) => p.angle).sort((a, b) => a - b);
+    for (let i = 1; i < angles.length; i++) {
+      expect(angles[i] - angles[i - 1]).toBeGreaterThan(0.1);
+    }
+  });
+
+  it("stands the private repositories too, but without naming them", () => {
+    // Two of the seven §3.5 names are anonymous. Leaving them out would
+    // understate the supporting work the ground is an argument about; the arm
+    // already draws them and only withholds them from lists.
+    const props = surfacePropsFor(planetScopeId("products"), bodies);
+    const anonymous = props.filter((p) => p.anonymous);
+    expect(anonymous).toHaveLength(2);
+    for (const prop of anonymous) {
+      expect(prop.label).toBe("Private repository");
+    }
+  });
+
+  it("returns nothing for a scope with no surface, rather than throwing", () => {
+    // Unlike shardRadiusFor: asking what stands on nothing is a fair question
+    // with an empty answer, where asking how big nothing is is a bug.
+    expect(surfacePropsFor(planetScopeId("labs"), bodies)).toEqual([]);
   });
 });

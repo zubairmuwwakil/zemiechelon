@@ -12,6 +12,8 @@ import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/pl
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { moonScopeId } from "@/lib/atlas/galaxy";
+import { surfaceScopeIds } from "@/lib/atlas/surfaces";
+import { buildSurface, type SurfaceHandle } from "./SurfaceBuilder";
 import {
   deriveArmAnnotation,
   derivePlanetAnnotation,
@@ -255,6 +257,12 @@ export class WorldSceneBuilder {
   private planetMesh: THREE.InstancedMesh | null = null;
   /** Arm -> the drawn radius of its moons, so callers need not re-derive MOON_SIZE. */
   private readonly moonDrawnRadii = new Map<string, number>();
+  /** One per scope that declares a surface. Hidden until the visitor lands. */
+  private readonly surfaces = new Map<ScopeId, SurfaceHandle>();
+  /** The scope whose surface is currently shown, or null in orbit. */
+  private standingOn: ScopeId | null = null;
+  /** The arm a scope cull is keeping, or null when nothing is culled. */
+  private cullKeepArm: string | null = null;
   /** Root children hidden by the current cull, so releasing it restores exactly those. */
   private culled: THREE.Object3D[] = [];
   public readonly bodySprites: Map<string, THREE.Object3D> = new Map();
@@ -294,8 +302,7 @@ export class WorldSceneBuilder {
   /** Every ideal ring: the day its last citation is born, and what to show or hide. */
   private readonly idealGates: Array<{ id: string; day: number; objects: THREE.Object3D[] }> = [];
   private readonly visibleIdealIds = new Set<string>();
-  /** The shared planet InstancedMesh and each arm's frozen centre + instance index. */
-  private planetInstanceMesh: THREE.InstancedMesh | null = null;
+  /** Each arm's frozen centre and instance index in the shared planet mesh. */
   private readonly planetInstances: Array<{ arm: string; index: number; center: THREE.Vector3 }> = [];
   private readonly visiblePlanetArms = new Set<string>();
   /** Arm dust, sorted by its anchor's birth day so a draw range can gate it without reordering. */
@@ -327,6 +334,7 @@ export class WorldSceneBuilder {
     this.buildIdealRings();
     this.buildMoons();
     this.buildSatellitesAndBodies();
+    this.buildSurfaces();
 
     // One code path decides what is drawn, whatever day it runs at — so the
     // freshly-built scene and a later `setClockDay` call can never disagree.
@@ -810,10 +818,6 @@ export class WorldSceneBuilder {
 
     this.planetMaterial = material;
     this.planetMesh = mesh;
-    // Same InstancedMesh as `planetMesh` above — `setClockDay` keeps its own
-    // name for the growth bookkeeping it does, distinct from the hover/pick
-    // uses `planetMesh` serves elsewhere in this class.
-    this.planetInstanceMesh = mesh;
     this.rootGroup.add(mesh);
   }
 
@@ -1254,7 +1258,7 @@ export class WorldSceneBuilder {
       if (visible) this.visibleIdealIds.add(gate.id);
     }
 
-    if (this.planetInstanceMesh) {
+    if (this.planetMesh) {
       const growthByArm = new Map(planetGrowthAt(this.bodies, day).map((p) => [p.arm, p]));
       this.visiblePlanetArms.clear();
       for (const instance of this.planetInstances) {
@@ -1262,14 +1266,16 @@ export class WorldSceneBuilder {
         const radius = growth?.visible ? growth.radius * SCENE_SCALE : 0;
         const matrix = new THREE.Matrix4().makeScale(radius, radius, radius);
         matrix.setPosition(instance.center);
-        this.planetInstanceMesh.setMatrixAt(instance.index, matrix);
+        // The clock owns the matrix, not the draw: `applyPlanetInstances`
+        // below composes it with the cull and with standing.
+
         // `setScopeCull`'s restore reads this array, not the mesh, when it puts
         // a culled instance back — it must restore to the clock's current
         // radius, not the full-size matrix captured at build time.
         this.planetInstanceMatrices[instance.index] = matrix;
         if (growth?.visible) this.visiblePlanetArms.add(instance.arm);
       }
-      this.planetInstanceMesh.instanceMatrix.needsUpdate = true;
+      this.applyPlanetInstances();
     }
 
     if (this.armDustGeometry) {
@@ -1360,6 +1366,7 @@ export class WorldSceneBuilder {
           metalness: 0.2,
         }),
       );
+      body.name = `moon-body:${moon.id}`;
       moonGroup.add(body);
       pivot.add(moonGroup);
       group.add(pivot);
@@ -1548,8 +1555,11 @@ export class WorldSceneBuilder {
   public setScopeCull(keep: ScopeId | null): void {
     for (const object of this.culled) object.visible = true;
     this.culled = [];
-    this.restorePlanetInstances();
-    if (!keep) return;
+    this.cullKeepArm = null;
+    if (!keep) {
+      this.applyPlanetInstances();
+      return;
+    }
 
     const kept = this.scopeGroups.get(keep);
     for (const child of this.rootGroup.children) {
@@ -1565,7 +1575,8 @@ export class WorldSceneBuilder {
     // The arm the kept scope sits in, whether that scope is a planet or a moon
     // inside one. `scopeChain` resolves both without a second code path.
     const planetScope = scopeChain(keep).find((scope) => scope.id.startsWith("planet:"));
-    if (planetScope) this.hidePlanetInstancesExcept(planetScope.id.replace("planet:", ""));
+    this.cullKeepArm = planetScope ? planetScope.id.replace("planet:", "") : null;
+    this.applyPlanetInstances();
   }
 
   private contains(root: THREE.Object3D, node: THREE.Object3D): boolean {
@@ -1577,22 +1588,82 @@ export class WorldSceneBuilder {
     return false;
   }
 
-  private hidePlanetInstancesExcept(arm: string): void {
+  /**
+   * The single owner of what the planet InstancedMesh draws.
+   *
+   * Three things now decide whether a planet is on screen — the timeline clock
+   * decides how big it is, a scope cull decides whether it belongs to the frame
+   * the visitor is in, and standing on one hides it because you are on it
+   * rather than looking at it. Each of them used to write the instance matrix
+   * directly, which meant the last writer won and the order they ran in was the
+   * behaviour. They are inputs to this method now, and nothing else touches the
+   * mesh.
+   */
+  private applyPlanetInstances(): void {
     const mesh = this.planetMesh;
     if (!mesh) return;
-    const keepIndex = this.planetInstanceIndices.get(arm);
+
+    const standingArm = this.standingOn?.startsWith("planet:")
+      ? this.standingOn.slice("planet:".length)
+      : null;
     const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-    this.planetInstanceMatrices.forEach((_, i) => {
-      if (i === keepIndex) return;
-      mesh.setMatrixAt(i, zero);
-    });
+
+    for (const [arm, index] of this.planetInstanceIndices) {
+      const culled = this.cullKeepArm !== null && arm !== this.cullKeepArm;
+      const standingOnIt = arm === standingArm;
+      // `planetInstanceMatrices` is what the clock says this planet should be:
+      // its position, and the mass it has accumulated by the current day.
+      const matrix = this.planetInstanceMatrices[index];
+      mesh.setMatrixAt(index, culled || standingOnIt || !matrix ? zero : matrix);
+    }
     mesh.instanceMatrix.needsUpdate = true;
   }
 
-  private restorePlanetInstances(): void {
-    const mesh = this.planetMesh;
-    if (!mesh) return;
-    this.planetInstanceMatrices.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
-    mesh.instanceMatrix.needsUpdate = true;
+  /**
+   * One ground per scope that declares a surface, built into that scope's own
+   * group and hidden. Which scopes those are is derived from where the evidence
+   * is — see `surfaces.ts` — so nothing here names a body.
+   */
+  private buildSurfaces(): void {
+    for (const scopeId of surfaceScopeIds(this.bodies)) {
+      const group = this.scopeGroups.get(scopeId);
+      if (!group) continue;
+      this.surfaces.set(scopeId, buildSurface(group, scopeId, this.bodies));
+    }
+  }
+
+  /**
+   * Stand on a scope's surface, or `null` to go back to orbit.
+   *
+   * This is the level-of-detail swap, and it has to be a hard substitution.
+   * At any shard radius the sphere and the shard drawn together read as a gold
+   * ball sitting on a plate — the exact frame the first spike reported — so the
+   * body a surface replaces is hidden for as long as the surface is shown.
+   */
+  public setStandingOn(scopeId: ScopeId | null): void {
+    if (this.standingOn === scopeId) return;
+    this.standingOn = scopeId;
+
+    for (const [id, surface] of this.surfaces) {
+      const showing = id === scopeId;
+      surface.group.visible = showing;
+
+      // The body this ground replaces. A moon has a sphere to hide; a planet
+      // is an instance in the shared mesh, and hiding it there would take the
+      // parent-in-frame guarantee with it, so a planet keeps its sphere and the
+      // shard simply sits on it.
+      if (id.startsWith("moon:")) {
+        const body = this.bodySprites.get(id.slice("moon:".length));
+        if (body) body.visible = !showing;
+      }
+    }
+    // A planet is an instance in the shared mesh rather than an object, so its
+    // half of the same swap happens there.
+    this.applyPlanetInstances();
+  }
+
+  /** The scope whose surface the camera is standing on, if any. */
+  public get standingScope(): ScopeId | null {
+    return this.standingOn;
   }
 }

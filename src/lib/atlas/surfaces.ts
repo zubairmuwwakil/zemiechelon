@@ -123,3 +123,94 @@ export function shardRadiusFor(scopeId: ScopeId, bodies: Body[] = loadBodies()):
   if (planetRadius === undefined) throw new Error(`arm "${body.arm}" has no planet`);
   return planetRadius * MOON_SIZE * SHARD_RADIUS_MULTIPLE;
 }
+
+/**
+ * A thing standing on a surface.
+ *
+ * Spec §7 risk 1 names the trap: a surface is a lot of authored geometry, and
+ * authored is what this project has avoided. The split that keeps it honest is
+ * that the *vocabulary* is authored — what a prop looks like — while the
+ * *arrangement* is derived from the bodies actually in the scope. Nothing here
+ * is a coordinate somebody chose.
+ */
+export interface SurfaceProp {
+  id: string;
+  label: string;
+  /**
+   * A private repository. It still stands — the work supported the ventures
+   * either way, and leaving it out would understate the ground — but it is
+   * drawn without a name, exactly as the arm already draws it.
+   */
+  anonymous: boolean;
+  /** Radians around the shard's centre. Fanned across the set, not hashed. */
+  angle: number;
+  /** Distance from the shard's centre, in scene units. */
+  distance: number;
+  /** Drawn height, in scene units. */
+  height: number;
+}
+
+/** Props occupy this band of the shard, as fractions of its radius. */
+const PROP_BAND = { inner: 0.34, outer: 0.68 } as const;
+const PROP_HEIGHT = 0.16;
+
+/**
+ * What stands on a scope's ground.
+ *
+ * A planet's ground is its supporting work: the repositories in its arm that
+ * did not ship as systems (§3.5). What shipped orbits overhead; what supported
+ * it is the ground it stands on. Those keep their galaxy parent and stay drawn
+ * on the arm — rendering them here is level of detail, not reparenting.
+ *
+ * Private repositories are included. Two of the seven §3.5 names are anonymous,
+ * and dropping them would understate the ground the argument rests on; the atlas
+ * already draws them on the arm and only withholds them from lists. They stand
+ * here unnamed, which is the same treatment.
+ *
+ * A moon's ground carries the moon's own satellites, which is what §4 describes
+ * a visitor finding when they land on PickMe.
+ *
+ * Ordered by birth and fanned across the set, for the reason `placeBodies` is a
+ * function of the set rather than of each body: only knowing the neighbours can
+ * guarantee they do not stack.
+ */
+export function surfacePropsFor(
+  scopeId: ScopeId,
+  bodies: Body[] = loadBodies(),
+): SurfaceProp[] {
+  if (!declaresSurface(scopeId, bodies)) return [];
+
+  const radius = shardRadiusFor(scopeId, bodies);
+  const entries: { id: string; label: string; anonymous: boolean }[] = [];
+
+  if (scopeId.startsWith("planet:")) {
+    const arm = scopeId.slice("planet:".length);
+    entries.push(
+      ...bodies
+        .filter((b) => b.arm === arm && b.kind !== "system")
+        .sort((a, b) => a.bornAt.localeCompare(b.bornAt) || a.id.localeCompare(b.id))
+        .map((b) => ({ id: b.id, label: b.label, anonymous: b.anonymous })),
+    );
+  } else {
+    const body = bodies.find((b) => b.id === scopeId.slice("moon:".length));
+    entries.push(
+      ...(body?.satellites ?? []).map((s) => ({
+        id: s.id,
+        label: s.label,
+        anonymous: false,
+      })),
+    );
+  }
+
+  const count = entries.length;
+  return entries.map((entry, i) => {
+    // A lone prop sits mid-band rather than dividing by zero at the rim.
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    return {
+      ...entry,
+      angle: (i / count) * Math.PI * 2,
+      distance: radius * (PROP_BAND.inner + t * (PROP_BAND.outer - PROP_BAND.inner)),
+      height: radius * PROP_HEIGHT,
+    };
+  });
+}
