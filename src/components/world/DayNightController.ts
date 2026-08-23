@@ -178,6 +178,36 @@ export class DayNightController {
     );
   }
 
+  /** The sun's shadow camera, so callers can size it and tests can read it. */
+  public get shadowCamera(): THREE.OrthographicCamera {
+    return this.directionalSun.shadow.camera;
+  }
+
+  /**
+   * Size the shadow frustum to the frame being looked at.
+   *
+   * The constructor's `d = 35` and `far = 150` predate the world being scaled
+   * to the astrolabe: against a reach of 205 they put every planet outside the
+   * frustum, so `castShadow` on the planet mesh bought nothing at all. This is
+   * the same rule `setFrameScale` follows for the near and far planes and
+   * `setFogReference` follows for the fog — one number derived from the frame,
+   * rather than a constant that was right at one scale.
+   *
+   * A 2048² map spread over the whole galaxy is coarse, which is why this
+   * narrows again on descent rather than being set once to the widest case.
+   */
+  public setShadowReach(radius: number): void {
+    const camera = this.shadowCamera;
+    camera.left = -radius;
+    camera.right = radius;
+    camera.top = radius;
+    camera.bottom = -radius;
+    // The light sits outside the frame it lights, so the depth range has to
+    // cross the frame and then reach the far side of it.
+    camera.far = Math.max(150, radius * 4);
+    camera.updateProjectionMatrix();
+  }
+
   public setMode(mode: CosmicMode) {
     if (this.currentMode === mode) return;
     this.currentMode = mode;

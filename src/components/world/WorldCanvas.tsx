@@ -8,7 +8,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
-import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
+import { WorldCameraManager, type CameraTargetPreset, ASTROLABE_OUTER, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { GALAXY_ZEMI, getScope } from "@/lib/atlas/scopes";
@@ -578,6 +578,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
           .setFromMatrixPosition(frameGroup.matrixWorld)
           .distanceTo(new THREE.Vector3().setFromMatrixPosition(parent.matrixWorld)) || 60,
       );
+      // Shadows follow the fog down to the frame's own scale. A frustum sized
+      // for the galaxy would spend the whole 2048² map on ground you cannot see.
+      dayNightRef.current?.setShadowReach(shardRadiusFor(standingScope, bodies));
       return;
     }
 
@@ -585,6 +588,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     builder.setStandingOn(null);
     builder.setScopeCull(null);
     dayNightRef.current?.setFogReference(null);
+    // Back out to the galaxy: the frustum has to reach the planets again.
+    dayNightRef.current?.setShadowReach(ASTROLABE_OUTER);
 
     // A landing wins over a flyby if both are somehow set: you cannot be
     // standing on a surface and swinging past it at the same time.

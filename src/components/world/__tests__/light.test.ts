@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DayNightController, SUN_ARC_PERIOD_SECONDS } from "../DayNightController";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
+import { ASTROLABE_OUTER } from "../WorldCameraManager";
 
 function controller() {
   return new DayNightController(new THREE.Scene(), "day");
@@ -79,5 +80,32 @@ describe("the planets are lit by the scene's own sun", () => {
     expect(material.fragmentShader).toContain("uLightDir");
     // The hardcoded raking direction is gone.
     expect(material.fragmentShader).not.toContain("vec3(0.6, 0.7, 0.4)");
+  });
+});
+
+describe("shadows reach what is in frame", () => {
+  it("ships with a frustum too small for the galaxy, which is the bug", () => {
+    // Recorded so the fix cannot be quietly reverted: the constructor sets
+    // d = 35 and far = 150, against this reach.
+    expect(ASTROLABE_OUTER).toBeGreaterThan(150);
+  });
+
+  it("grows the shadow frustum to cover the framed radius", () => {
+    const c = controller();
+    c.setShadowReach(ASTROLABE_OUTER);
+    const cam = c.shadowCamera;
+    expect(cam.right).toBeGreaterThanOrEqual(ASTROLABE_OUTER);
+    expect(cam.top).toBeGreaterThanOrEqual(ASTROLABE_OUTER);
+    expect(cam.left).toBeLessThanOrEqual(-ASTROLABE_OUTER);
+    expect(cam.far).toBeGreaterThan(ASTROLABE_OUTER * 2);
+  });
+
+  it("shrinks again for a landed frame, so the map keeps its shadow resolution", () => {
+    const c = controller();
+    c.setShadowReach(ASTROLABE_OUTER);
+    const wide = c.shadowCamera.right;
+    c.setShadowReach(6);
+    expect(c.shadowCamera.right).toBeLessThan(wide);
+    expect(c.shadowCamera.right).toBeGreaterThan(0);
   });
 });
