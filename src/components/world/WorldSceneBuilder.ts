@@ -138,6 +138,17 @@ export function buildFieldGeometry(
   return { positions, armDustDays };
 }
 
+/** Something on a surface a visitor can reach, by pointer or by keyboard. */
+export interface SurfaceTarget {
+  /** Unique on screen. An orrery bead and its moon in the sky are not the same control. */
+  id: string;
+  label: string;
+  /** The body whose card or flight this opens. */
+  bodyId: string;
+  kind: "prop" | "moon";
+  object: THREE.Object3D;
+}
+
 export interface InteractiveHitObject {
   id: string;
   name: string;
@@ -1665,6 +1676,50 @@ export class WorldSceneBuilder {
         });
       }
     }
+  }
+
+  /**
+   * Everything on a surface a visitor can reach, so the overlay can give each
+   * one a focusable, named control.
+   *
+   * Spec §6 asks for props, orrery and console to be focusable with accessible
+   * names. Nothing inside a canvas is reachable by keyboard on its own — the
+   * planets solved this by projecting to real DOM buttons, and this is the same
+   * answer one frame further in. It improves pointing too: these are the same
+   * sub-fingertip targets the moons were.
+   */
+  public surfaceTargets(scopeId: ScopeId | null): SurfaceTarget[] {
+    if (!scopeId) return [];
+    const out: SurfaceTarget[] = [];
+
+    const surface = this.surfaces.get(scopeId);
+    if (surface) {
+      for (const [id, mesh] of surface.props) {
+        const meta = surface.labels.get(id);
+        out.push({
+          id,
+          label: meta?.label ?? id,
+          bodyId: meta?.bodyId ?? id,
+          kind: "prop",
+          object: mesh,
+        });
+      }
+    }
+
+    const orrery = this.orreries.get(scopeId);
+    if (orrery) {
+      const named = new Map(this.bodies.map((b) => [b.id, b.label || b.id]));
+      for (const [moonId, bead] of orrery.targets) {
+        out.push({
+          id: `orrery:${moonId}`,
+          label: named.get(moonId) ?? moonId,
+          bodyId: moonId,
+          kind: "moon",
+          object: bead,
+        });
+      }
+    }
+    return out;
   }
 
   /** The moons an instrument on this surface can launch a flight to. */

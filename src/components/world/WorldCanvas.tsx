@@ -9,7 +9,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, type CameraTargetPreset, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
-import { WorldSceneBuilder, fieldDensityFor } from "./WorldSceneBuilder";
+import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { GALAXY_ZEMI, getScope } from "@/lib/atlas/scopes";
 
@@ -62,6 +62,19 @@ export interface WorldCanvasProps {
    */
   anchors?: ProjectableAnchor[];
   onProjectAnchors?: (points: ScreenPoint[]) => void;
+  /**
+   * The reachable things on the surface the visitor is standing on, projected
+   * each frame. Nothing inside a canvas is focusable on its own; this is what
+   * lets the overlay give props and the orrery real controls (§6).
+   */
+  onProjectSurfaceTargets?: (points: SurfaceTargetPoint[]) => void;
+}
+
+/** A projected surface target: a screen point that also knows what it is. */
+export interface SurfaceTargetPoint extends ScreenPoint {
+  label: string;
+  bodyId: string;
+  kind: "prop" | "moon";
 }
 
 /**
@@ -139,6 +152,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     standingScope = null,
     anchors,
     onProjectAnchors,
+    onProjectSurfaceTargets,
   },
   ref
 ) {
@@ -461,6 +475,31 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         onProjectPins(points);
       }
 
+      // Surface targets ride the same projection bridge. Their world positions
+      // move — an orrery bead is on a turning pivot — so they are read from the
+      // scene graph frame rather than cached with the target list.
+      if (onProjectSurfaceTargets) {
+        const cam = cameraManager.camera;
+        const scratch = new THREE.Vector3();
+        onProjectSurfaceTargets(
+          surfaceTargetsRef.current.map((t) => {
+            t.object.updateWorldMatrix(true, false);
+            scratch.setFromMatrixPosition(t.object.matrixWorld);
+            const p = projectToScreen(scratch, cam, width, height);
+            return {
+              id: t.id,
+              label: t.label,
+              bodyId: t.bodyId,
+              kind: t.kind,
+              x: p.x,
+              y: p.y,
+              visible: p.visible,
+              depth: p.depth,
+            };
+          }),
+        );
+      }
+
       // Project the scene-space overlay anchors (the quote sky) down the same path.
       if (onProjectAnchors && anchors && anchors.length > 0) {
         const cam = cameraManager.camera;
@@ -497,6 +536,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onProjectPins,
     anchors,
     onProjectAnchors,
+    onProjectSurfaceTargets,
     cosmicMode,
   ]);
 
@@ -510,6 +550,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
    * `scopeGroups.has` makes that a no-op rather than a throw, and the preset
    * table still frames the planet as it did before.
    */
+  /** Rebuilt only when the standing frame changes; projected every frame. */
+  const surfaceTargetsRef = useRef<SurfaceTarget[]>([]);
   const frameRef = useRef<() => void>(() => {});
   frameRef.current = () => {
     const builder = sceneBuilderRef.current;
@@ -523,6 +565,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       const frameGroup = builder.groupFor(standingScope);
       camera.landOnSurface(frameGroup, parent, shardRadiusFor(standingScope, bodies));
       builder.setStandingOn(standingScope);
+      surfaceTargetsRef.current = builder.surfaceTargets(standingScope);
       builder.setScopeCull(standingScope);
       // Fog is pulled in to the distance of the parent, so it recedes the
       // galaxy without touching the frame §3.2 requires to stay legible.
@@ -536,6 +579,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       return;
     }
 
+    surfaceTargetsRef.current = [];
     builder.setStandingOn(null);
     builder.setScopeCull(null);
     dayNightRef.current?.setFogReference(null);

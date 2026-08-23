@@ -28,6 +28,8 @@ export interface SurfaceHandle {
   group: THREE.Group;
   /** The prop meshes, for hit-testing. Keyed by the prop's own id. */
   props: Map<string, THREE.Mesh>;
+  /** What each prop is called, and whose card it opens. */
+  labels: Map<string, { label: string; bodyId: string }>;
 }
 
 /**
@@ -71,6 +73,11 @@ export function buildSurface(
   surface.add(slab);
 
   const props = new Map<string, THREE.Mesh>();
+  const labels = new Map<string, { label: string; bodyId: string }>();
+  // A planet's props are repositories and open their own card. A moon's are
+  // its satellites, which have no card of their own — what describes them is
+  // the moon's, so that is what activating one opens.
+  const owner = scopeId.startsWith("moon:") ? scopeId.slice("moon:".length) : null;
   const plinthMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(DIRECTION_A.rule),
     roughness: 0.7,
@@ -100,8 +107,9 @@ export function buildSurface(
     plinth.castShadow = true;
     surface.add(plinth);
     props.set(prop.id, plinth);
+    labels.set(prop.id, { label: prop.label, bodyId: owner ?? prop.id });
   }
 
   group.add(surface);
-  return { scopeId, group: surface, props };
+  return { scopeId, group: surface, props, labels };
 }

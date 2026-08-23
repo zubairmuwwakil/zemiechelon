@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WorldCanvas, type WorldCanvasHandle } from "@/components/world/WorldCanvas";
+import { WorldCanvas, type WorldCanvasHandle, type SurfaceTargetPoint } from "@/components/world/WorldCanvas";
 import type { CosmicMode } from "@/components/world/DayNightController";
 import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
 import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
@@ -9,6 +9,7 @@ import { WorldHUD } from "@/components/hud/WorldHUD";
 import { LandedConsolePanel } from "@/components/hud/LandedConsolePanel";
 import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
 import { PlanetPinsOverlay } from "@/components/world/PlanetPinsOverlay";
+import { SurfaceTargetsOverlay } from "@/components/world/SurfaceTargetsOverlay";
 import { NoiseOverlay } from "@/components/world/NoiseOverlay";
 import { QuickDossierModal } from "@/components/hud/QuickDossierModal";
 import { LegendModal } from "@/components/hud/LegendModal";
@@ -34,6 +35,8 @@ export default function HomePage() {
   // The quote sky rides the same projection bridge as the planet pins, so the
   // stars parallax with the scene instead of sitting on the viewport.
   const [quotePoints, setQuotePoints] = useState<ScreenPoint[]>([]);
+  /** The reachable things on the surface underfoot, projected each frame. */
+  const [surfaceTargets, setSurfaceTargets] = useState<SurfaceTargetPoint[]>([]);
 
   /**
    * The scopes there are to land in. Derived, not listed: a scope exists when an
@@ -187,16 +190,19 @@ export default function HomePage() {
   }, [bodies, handleSelectBody]);
 
   useEffect(() => {
-    if (!selectedBodyId && !standingScope) return;
     const id = standingScope?.startsWith("moon:")
       ? standingScope.slice("moon:".length)
-      : selectedBodyId;
-    if (!id) return;
-    const next = bodyIdToHash(id);
+      : standingScope
+        ? null // A planet's surface names no repository, so it names nothing.
+        : selectedBodyId;
+
+    // A hash left pointing at the last moon while the visitor stands on a
+    // planet is a link that lies about where they are. Better to say nothing.
+    const next = id ? bodyIdToHash(id) : "";
     if (window.location.hash === next) return;
-    // Flagged so the listener above does not treat our own write as an arrival.
     writingHash.current = true;
-    window.location.hash = next;
+    if (next) window.location.hash = next;
+    else window.history.replaceState(null, "", window.location.pathname + window.location.search);
   }, [selectedBodyId, standingScope]);
 
   useEffect(() => {
@@ -230,6 +236,7 @@ export default function HomePage() {
         standingScope={standingScope}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
+        onProjectSurfaceTargets={setSurfaceTargets}
       />
 
       {/* 2. Tactile Swiss Paper Grain & Archival Noise Overlay */}
@@ -243,6 +250,14 @@ export default function HomePage() {
         bodies={bodies}
         onSelectPlanet={handleSelectSector}
         onHoverPlanet={(id) => canvasHandleRef.current?.setHoveredPlanet?.(id)}
+      />
+
+      {/* 2b. Real controls for what stands on the surface: focusable, named, and
+             larger than the few pixels the thing itself occupies (§6). */}
+      <SurfaceTargetsOverlay
+        points={surfaceTargets}
+        cosmicMode={cosmicMode}
+        onActivate={handleSelectBody}
       />
 
       {/* 3. Scene-space Quote Sky: pulsing stars at night, catchable comets by day.
