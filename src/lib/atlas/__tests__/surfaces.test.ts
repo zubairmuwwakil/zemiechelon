@@ -6,6 +6,7 @@ import { planetScopeId } from "../galaxy";
 import { moonScopeId } from "../galaxy";
 import { deriveMoonScopes, SCOPES } from "../scopes";
 import {
+  consoleIdFor,
   declaresSurface,
   shardRadiusFor,
   surfacePropsFor,
@@ -211,5 +212,33 @@ describe("what stands on a surface", () => {
     // Unlike shardRadiusFor: asking what stands on nothing is a fair question
     // with an empty answer, where asking how big nothing is is a bug.
     expect(surfacePropsFor(planetScopeId("labs"), bodies)).toEqual([]);
+  });
+});
+
+describe("the console standing on the ground", () => {
+  it("gives PickMe's surface the engine that ships behind it", () => {
+    expect(consoleIdFor(moonScopeId("PickMe"), bodies)).toBe("pickme");
+  });
+
+  it("withholds one where the console is a mockup", () => {
+    const inunity = bodies.find((b) => b.consoleId === "inunity")!;
+    expect(consoleIdFor(moonScopeId(inunity.id), bodies)).toBeNull();
+  });
+
+  it("puts none on a planet, whose evidence is one level further in", () => {
+    // Products' ground carries supporting work and an orrery. The console it
+    // is an argument about lives on PickMe, which is where the orrery goes.
+    expect(consoleIdFor(planetScopeId("products"), bodies)).toBeNull();
+  });
+
+  it("arrives with the surface, never separately", () => {
+    // Both answer the same question — is there evidence here — so a scope with
+    // a console and no ground to stand it on would be a contradiction.
+    for (const body of bodies) {
+      const scopeId = moonScopeId(body.id);
+      if (consoleIdFor(scopeId, bodies)) {
+        expect(declaresSurface(scopeId, bodies)).toBe(true);
+      }
+    }
   });
 });

@@ -7,6 +7,7 @@ import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
 import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
 import { WorldHUD } from "@/components/hud/WorldHUD";
 import { LandedConsolePanel } from "@/components/hud/LandedConsolePanel";
+import { SurfaceConsolePanel } from "@/components/hud/SurfaceConsolePanel";
 import { InteractionHintsPill } from "@/components/hud/InteractionHintsPill";
 import { PlanetPinsOverlay } from "@/components/world/PlanetPinsOverlay";
 import { SurfaceTargetsOverlay } from "@/components/world/SurfaceTargetsOverlay";
@@ -37,6 +38,8 @@ export default function HomePage() {
   const [quotePoints, setQuotePoints] = useState<ScreenPoint[]>([]);
   /** The reachable things on the surface underfoot, projected each frame. */
   const [surfaceTargets, setSurfaceTargets] = useState<SurfaceTargetPoint[]>([]);
+  /** The console the visitor has switched on, or null. */
+  const [openConsoleId, setOpenConsoleId] = useState<string | null>(null);
 
   /**
    * The scopes there are to land in. Derived, not listed: a scope exists when an
@@ -143,6 +146,23 @@ export default function HomePage() {
     setFlybyReturn(null);
   }, [flybyScope, flybyReturn]);
 
+  /**
+   * A control on the ground either switches the console on or names a body.
+   * The overlay stays ignorant of which: it reports what was activated, and the
+   * page decides, the same way `resolveBodySelection` decides what a tap means.
+   */
+  const activateSurfaceTarget = useCallback(
+    (bodyId: string) => {
+      const target = surfaceTargets.find((t) => t.bodyId === bodyId);
+      if (target?.kind === "console") {
+        setOpenConsoleId(bodyId);
+        return;
+      }
+      handleSelectBody(bodyId);
+    },
+    [surfaceTargets, handleSelectBody],
+  );
+
   /** Leaving a surface ascends one level, to the frame it sits in. */
   const leaveSurface = useCallback(() => {
     sound.playClick(400, 0.06);
@@ -151,6 +171,7 @@ export default function HomePage() {
     setActivePreset(flybyReturn ? flybyReturn.replace("planet:", "") : "galaxy");
     setStandingScope(null);
     setFlybyReturn(null);
+    setOpenConsoleId(null);
   }, [flybyReturn]);
 
   // Reset to Galaxy Orbit
@@ -200,14 +221,24 @@ export default function HomePage() {
     // planet is a link that lies about where they are. Better to say nothing.
     const next = id ? bodyIdToHash(id) : "";
     if (window.location.hash === next) return;
-    writingHash.current = true;
-    if (next) window.location.hash = next;
-    else window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+    if (next) {
+      // Assigning the hash fires `hashchange`, so the listener has to be told
+      // this one is ours. `replaceState` fires nothing, so flagging that case
+      // would leave the guard raised and swallow the next genuine arrival —
+      // which is exactly what it did.
+      writingHash.current = true;
+      window.location.hash = next;
+      return;
+    }
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
   }, [selectedBodyId, standingScope]);
 
   useEffect(() => {
     if (!standingScope) return;
     const onKey = (e: KeyboardEvent) => {
+      // The console handles its own Escape and stops it here, so this only
+      // ever sees the key when nothing is switched on.
       if (e.key === "Escape") leaveSurface();
     };
     window.addEventListener("keydown", onKey);
@@ -257,7 +288,7 @@ export default function HomePage() {
       <SurfaceTargetsOverlay
         points={surfaceTargets}
         cosmicMode={cosmicMode}
-        onActivate={handleSelectBody}
+        onActivate={activateSurfaceTarget}
       />
 
       {/* 3. Scene-space Quote Sky: pulsing stars at night, catchable comets by day.
@@ -302,6 +333,14 @@ export default function HomePage() {
         }}
         onOpenTerminal={() => setIsTerminalOpen(true)}
         escapeEnabled={!isTerminalOpen && !isDossierOpen && !isLegendOpen && !selectedBodyId}
+      />
+
+      {/* 6b. The console, switched on. §3.1: a thing you approach and switch on,
+             where approaching happens in the scene and this is the switching. */}
+      <SurfaceConsolePanel
+        consoleId={openConsoleId}
+        cosmicMode={cosmicMode}
+        onClose={() => setOpenConsoleId(null)}
       />
 
       {/* 7. Global Dossier Search Modal (44 Repositories) */}

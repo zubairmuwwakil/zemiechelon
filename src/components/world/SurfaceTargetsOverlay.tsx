@@ -18,9 +18,10 @@ import { sound } from "@/lib/audio";
  * pixels across, and a real button over it is a larger target that also says
  * what it is.
  *
- * The dot is not decoration. A prop is a thing to read about and a bead is a
- * departure, and those are different enough acts that the control should not
- * look identical for both.
+ * The three kinds do not look alike, because they are not the same act. A prop
+ * is something to read about, a bead on the orrery is a departure, and the
+ * console is what the visitor travelled three frames to reach — so it is the
+ * one control here that looks like a primary action.
  */
 
 interface SurfaceTargetsOverlayProps {
@@ -46,9 +47,12 @@ export function SurfaceTargetsOverlay({
         if (!pt.visible) return null;
 
         const isDeparture = pt.kind === "moon";
-        const accessibleName = isDeparture
-          ? `Travel to ${pt.label}`
-          : `${pt.label} — open its card`;
+        const isConsole = pt.kind === "console";
+        const accessibleName = isConsole
+          ? "Switch on the console"
+          : isDeparture
+            ? `Travel to ${pt.label}`
+            : `${pt.label} — open its card`;
 
         return (
           <div
@@ -63,18 +67,20 @@ export function SurfaceTargetsOverlay({
           >
             <button
               onClick={() => {
-                sound.playClick(isDeparture ? 660 : 520, 0.05);
+                sound.playClick(isConsole ? 740 : isDeparture ? 660 : 520, 0.05);
                 onActivate(pt.bodyId);
               }}
               aria-label={accessibleName}
               title={accessibleName}
               className={`group flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-tight shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 ${
-                isDay
-                  ? "border-zinc-300/70 bg-white/85 text-zinc-800 hover:bg-white"
-                  : "border-white/15 bg-zinc-900/80 text-zinc-100 hover:bg-zinc-800"
+                isConsole
+                  ? "border-transparent bg-zinc-900 px-3 py-1 text-white shadow-md hover:bg-zinc-800"
+                  : isDay
+                    ? "border-zinc-300/70 bg-white/85 text-zinc-800 hover:bg-white"
+                    : "border-white/15 bg-zinc-900/80 text-zinc-100 hover:bg-zinc-800"
               }`}
             >
-              <span>{pt.label}</span>
+              <span>{isConsole ? "Switch on" : pt.label}</span>
               {isDeparture && (
                 <span aria-hidden className="text-[9px] opacity-70">
                   ↗

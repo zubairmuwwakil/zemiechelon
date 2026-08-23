@@ -32,3 +32,13 @@ describe("deep links", () => {
     expect(hashToBodyId("#/moneytalks", bodies)).toBe("MoneyTalks");
   });
 });
+
+describe("a hash that names nothing", () => {
+  it("resolves to null rather than throwing, so clearing it is safe", () => {
+    // page.tsx clears the hash when the visitor stands somewhere no repository
+    // names — a planet's surface. The listener still runs on the way out.
+    expect(hashToBodyId("", loadBodies())).toBeNull();
+    expect(hashToBodyId("#", loadBodies())).toBeNull();
+    expect(hashToBodyId("#/", loadBodies())).toBeNull();
+  });
+});

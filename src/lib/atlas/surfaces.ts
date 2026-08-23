@@ -248,3 +248,23 @@ export function surfacePropsFor(
     };
   });
 }
+
+/**
+ * The console standing on a scope's ground, if it has earned one.
+ *
+ * Same predicate that decides whether a scope has a surface at all: a console
+ * backed by an engine that ships. That is not a coincidence — §3.3 gives a
+ * surface *because* there is evidence to stand on, so the ground and the
+ * instrument on it arrive together or not at all.
+ *
+ * A planet's ground carries no console. Its evidence is one level in, on the
+ * moon that holds it, and the orrery is how you get there.
+ */
+export function consoleIdFor(
+  scopeId: ScopeId,
+  bodies: Body[] = loadBodies(),
+): string | null {
+  if (!scopeId.startsWith("moon:")) return null;
+  const body = bodies.find((b) => b.id === scopeId.slice("moon:".length));
+  return body && hasEvidence(body) ? body.consoleId! : null;
+}

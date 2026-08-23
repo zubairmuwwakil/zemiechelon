@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Body, ScopeId } from "@/lib/atlas/types";
-import { shardRadiusFor, surfacePropsFor } from "@/lib/atlas/surfaces";
+import { consoleIdFor, shardRadiusFor, surfacePropsFor } from "@/lib/atlas/surfaces";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 
 /**
@@ -23,6 +23,15 @@ const SHARD_SIDES = 7;
 const SHARD_THICKNESS = 0.34;
 const SHARD_UNDERSIDE = 0.55;
 
+/**
+ * The console's height, as a fraction of the shard's radius.
+ *
+ * Taller than a prop, which is 0.08. A prop is supporting work you read about;
+ * the console is the thing the visitor travelled three frames to use, and it
+ * should read as the destination rather than as more scenery.
+ */
+const CONSOLE_HEIGHT = 0.13;
+
 export interface SurfaceHandle {
   scopeId: ScopeId;
   group: THREE.Group;
@@ -30,6 +39,8 @@ export interface SurfaceHandle {
   props: Map<string, THREE.Mesh>;
   /** What each prop is called, and whose card it opens. */
   labels: Map<string, { label: string; bodyId: string }>;
+  /** The console standing on this ground, if it earned one. */
+  console: { id: string; object: THREE.Mesh } | null;
 }
 
 /**
@@ -110,6 +121,47 @@ export function buildSurface(
     labels.set(prop.id, { label: prop.label, bodyId: owner ?? prop.id });
   }
 
+  // The instrument you came to use stands at the point the camera orbits, so
+  // walking around the surface is walking around it. On a planet that is the
+  // orrery; on a moon it is the console. §3.1: a thing you approach and switch
+  // on, not a sidebar that appears.
+  const consoleId = consoleIdFor(scopeId, bodies);
+  let consoleHandle: { id: string; object: THREE.Mesh } | null = null;
+  if (consoleId) {
+    const height = radius * CONSOLE_HEIGHT;
+    // A lectern: a slab you stand at, canted toward whoever approaches it.
+    // The visitor stands on the frame's +X radial — that is where
+    // `landOnSurface` puts them — so the face tilts that way and the slab is
+    // widest across their view, along Z.
+    const desk = new THREE.Mesh(
+      new THREE.BoxGeometry(height * 0.72, height * 0.13, height * 1.15),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(DIRECTION_A.ink),
+        roughness: 0.5,
+        metalness: 0.2,
+        flatShading: true,
+      }),
+    );
+    desk.name = `console:${consoleId}`;
+    desk.position.y = height;
+    desk.rotation.z = -0.32;
+    desk.castShadow = true;
+
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(height * 0.13, height * 0.2, height, 8),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(DIRECTION_A.rule),
+        roughness: 0.72,
+        metalness: 0.1,
+        flatShading: true,
+      }),
+    );
+    post.position.y = height * 0.5;
+    surface.add(post);
+    surface.add(desk);
+    consoleHandle = { id: consoleId, object: desk };
+  }
+
   group.add(surface);
-  return { scopeId, group: surface, props, labels };
+  return { scopeId, group: surface, props, labels, console: consoleHandle };
 }

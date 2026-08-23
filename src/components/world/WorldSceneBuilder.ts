@@ -145,7 +145,7 @@ export interface SurfaceTarget {
   label: string;
   /** The body whose card or flight this opens. */
   bodyId: string;
-  kind: "prop" | "moon";
+  kind: "prop" | "moon" | "console";
   object: THREE.Object3D;
 }
 
@@ -1704,6 +1704,18 @@ export class WorldSceneBuilder {
           object: mesh,
         });
       }
+    }
+
+    // The console goes first: it is what the visitor came for, so it should be
+    // the first thing the tab order offers, not the last after seven plinths.
+    if (surface?.console) {
+      out.unshift({
+        id: `console:${surface.console.id}`,
+        label: "Console",
+        bodyId: surface.console.id,
+        kind: "console",
+        object: surface.console.object,
+      });
     }
 
     const orrery = this.orreries.get(scopeId);

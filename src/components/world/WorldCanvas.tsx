@@ -74,7 +74,7 @@ export interface WorldCanvasProps {
 export interface SurfaceTargetPoint extends ScreenPoint {
   label: string;
   bodyId: string;
-  kind: "prop" | "moon";
+  kind: "prop" | "moon" | "console";
 }
 
 /**

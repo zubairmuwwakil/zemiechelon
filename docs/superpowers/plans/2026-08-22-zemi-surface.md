@@ -707,3 +707,35 @@ other task builds on; drafting eight tasks against an unreviewed foundation is
 work that gets thrown away if the foundation moves.
 
 Resume by writing them against the File Structure and Measured Constants above.
+
+---
+
+## Beyond Track B — the console as an object
+
+Track C's last piece, which §5 said depended on "B for mounting only".
+
+**A rule rather than two placements.** The centre of a surface — the point the
+camera orbits — holds the instrument the visitor came to use: an orrery on a
+planet, because travel is why you are there, and a console on a moon, because
+evidence is. Walking around the surface is walking around it either way.
+
+**Which grounds carry one is derived from the same predicate as the ground
+itself:** a console backed by an engine that ships. That is not a coincidence —
+§3.3 grants a surface *because* there is evidence to stand on, so the ground and
+the instrument arrive together or not at all. A planet carries none; its evidence
+is one level in, and the orrery is how you reach it.
+
+`SurfaceConsolePanel` is deliberately not `LandedConsolePanel`. The latter is
+scoped to a planet, carries every arm's content, and slides in from the edge
+because it *is* the drawer §3.1 replaces; it survives as the narrow-viewport and
+reduced-motion fallback and nothing more.
+
+**A bug found while verifying.** The hash guard was set before `replaceState`,
+which fires no `hashchange` — so the flag stayed raised and swallowed the next
+genuine arrival. Only the assignment path needs flagging.
+
+## What remains untested
+
+Mobile. The surface has never rendered on a small screen, because narrow
+viewports fall back to the panel by design, and the spike's frame-budget
+measurement was desktop-only and vsync-capped.
