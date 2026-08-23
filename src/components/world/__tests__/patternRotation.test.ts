@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { PATTERN_PERIOD_SECONDS, patternAngle } from "@/lib/atlas/motion";
+import { moonScopeId } from "@/lib/atlas/galaxy";
+import { deriveMoons } from "@/lib/atlas/moons";
 
 const bodies = loadBodies();
 
@@ -123,5 +125,33 @@ describe("the pattern is rigid", () => {
     expect(builder.rootGroup.rotation.y).toBe(turned);
     builder.setClockDay(100000);
     expect(builder.rootGroup.rotation.y).toBe(turned);
+  });
+});
+
+describe("positions are read, not remembered", () => {
+  it("keeps a moon's hit position on the moon after it has travelled", () => {
+    const builder = built();
+    builder.update(300, 300);
+    builder.rootGroup.updateMatrixWorld(true);
+    for (const moon of deriveMoons(bodies)) {
+      const hit = builder.hitObjects.find((h) => h.id === moon.id && h.type === "body")!;
+      const group = builder.groupFor(moonScopeId(moon.id));
+      const world = group.getWorldPosition(new THREE.Vector3());
+      expect(hit.position.distanceTo(world)).toBeLessThan(0.001);
+    }
+  });
+
+  it("keeps a planet's hit position on the planet after the pattern has turned", () => {
+    const builder = built();
+    const before = builder.hitObjects
+      .find((h) => h.type === "planet" && h.id === "products")!
+      .position.clone();
+    builder.update(600, 600);
+    builder.rootGroup.updateMatrixWorld(true);
+    const hit = builder.hitObjects.find((h) => h.type === "planet" && h.id === "products")!;
+    expect(hit.position.distanceTo(before)).toBeGreaterThan(1);
+    const group = builder.groupFor("planet:products");
+    const world = group.getWorldPosition(new THREE.Vector3());
+    expect(Math.hypot(hit.position.x - world.x, hit.position.z - world.z)).toBeLessThan(0.001);
   });
 });

@@ -8,7 +8,8 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
-import { WorldCameraManager, type CameraTargetPreset, ASTROLABE_OUTER, PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
+import { WorldCameraManager, type CameraTargetPreset, ASTROLABE_OUTER, PLANET_RADII } from "./WorldCameraManager";
+import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { GALAXY_ZEMI, getScope } from "@/lib/atlas/scopes";
@@ -457,22 +458,16 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         const points: ScreenPoint[] = [];
         const cam = cameraManager.camera;
 
-        // 5 Dedicated Planet Pins & Central Anchor Sun
-        const planetPins = [
-          { id: "galaxy", label: "Golden Zemí Sun", pos: new THREE.Vector3(PLANET_CENTERS.sun.x, 8.8, PLANET_CENTERS.sun.z) },
-          { id: "self", label: "Planet Self", pos: new THREE.Vector3(PLANET_CENTERS.self.x, 5.8, PLANET_CENTERS.self.z) },
-          { id: "foundations", label: "Planet Foundations", pos: new THREE.Vector3(PLANET_CENTERS.foundations.x, 6.2, PLANET_CENTERS.foundations.z) },
-          { id: "products", label: "Planet Products", pos: new THREE.Vector3(PLANET_CENTERS.products.x, 7.8, PLANET_CENTERS.products.z) },
-          { id: "labs", label: "Planet Labs", pos: new THREE.Vector3(PLANET_CENTERS.labs.x, 6.8, PLANET_CENTERS.labs.z) },
-          { id: "creative", label: "Planet Creative", pos: new THREE.Vector3(PLANET_CENTERS.creative.x, 5.6, PLANET_CENTERS.creative.z) },
-        ];
-
-        planetPins.forEach((s) => {
-          const p = projectToScreen(s.pos, cam, width, height);
+        // 5 Dedicated Planet Pins & Central Anchor Sun. Anchored in
+        // `planetPins.ts`, where the rule can be tested: heights are authored,
+        // the horizontal comes off the scene graph every frame, because the
+        // pattern turns and a constant would leave the pins behind.
+        for (const { id, anchor } of planetPinAnchors(sceneBuilder)) {
+          const p = projectToScreen(anchor, cam, width, height);
           if (p.depth < 1) {
-            points.push({ id: s.id, x: p.x, y: p.y, visible: true, depth: p.depth });
+            points.push({ id, x: p.x, y: p.y, visible: true, depth: p.depth });
           }
-        });
+        }
 
         onProjectPins(points);
       }

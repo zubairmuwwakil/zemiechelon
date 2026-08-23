@@ -838,12 +838,19 @@ export class WorldSceneBuilder {
       this.planetAnnotations.set(planet.arm, label);
       this.planetAnnotations.set(ann.id, label);
 
+      const planetAnchor = new THREE.Vector3();
       this.hitObjects.push({
         id: planet.arm,
         name: `Planet ${planet.arm[0].toUpperCase()}${planet.arm.slice(1)}`,
         type: "planet",
         mesh: pickSphere,
-        position: new THREE.Vector3(center.x, PLANET_Y, center.z),
+        // Same reason as the moons: the pattern turns, so the planet's centre
+        // is a live read off the pick sphere the click already resolved to,
+        // not a constant that was true when the scene was assembled.
+        get position() {
+          pickSphere.updateWorldMatrix(true, false);
+          return planetAnchor.setFromMatrixPosition(pickSphere.matrixWorld);
+        },
       });
 
       // The centre is frozen here, from the full-set derivation. `setClockDay`
@@ -1482,12 +1489,19 @@ export class WorldSceneBuilder {
       // moon flew to the planet. A flyby needs the moon's own place, so it is
       // read from the group's world matrix once the graph is assembled.
       moonGroup.updateWorldMatrix(true, false);
+      const moonAnchor = new THREE.Vector3();
       this.hitObjects.push({
         id: moon.id,
         name: moon.label,
         type: "body",
         mesh: pickSphere,
-        position: new THREE.Vector3().setFromMatrixPosition(moonGroup.matrixWorld),
+        // Read, not remembered. A moon orbits and the galaxy turns, so a
+        // position captured at build time is stale by the first frame — and
+        // `descend()` aiming at a stale position is the bug this fixes.
+        get position() {
+          moonGroup.updateWorldMatrix(true, false);
+          return moonAnchor.setFromMatrixPosition(moonGroup.matrixWorld);
+        },
       });
 
       // A moon appears when its system is born (§3.8) — orbit line, pivot and
