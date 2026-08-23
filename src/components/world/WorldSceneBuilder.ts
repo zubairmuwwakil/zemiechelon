@@ -11,6 +11,7 @@ import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
+import { moonScopeId } from "@/lib/atlas/galaxy";
 import {
   deriveArmAnnotation,
   derivePlanetAnnotation,
@@ -174,6 +175,22 @@ const ASTROLABE_TICKS = 120;
 
 /** Moon size and label, as fractions of the planet they belong to. */
 const MOON_SIZE = 0.34;
+
+/**
+ * How much larger a moon's invisible pick sphere is than the moon.
+ *
+ * The planets use 1.2x, but a planet is already a comfortable target. A moon is
+ * drawn at 0.34 of its planet's radius — about 14 screen pixels across at
+ * galaxy framing — which is what made them sub-pointer targets in the first
+ * place. 2.6x brings that to roughly 37, comfortably past a fingertip.
+ *
+ * At this size two proxies overlap when adjacent moons pass at the same phase:
+ * the orbit lanes are 4.735 apart and each proxy reaches 5.23. That is left
+ * alone deliberately. Shrinking the proxy far enough to guarantee no overlap
+ * would put it back under 1.2x and undo the fix, and the raycaster already
+ * resolves the ambiguity the right way by taking the nearest hit.
+ */
+const MOON_PICK_SCALE = 2.6;
 const MOON_LABEL_SCALE = 0.022;
 const MOON_LABEL_REACH = 1.75;
 const MOON_LABEL_ASPECT = 4.6;
@@ -236,6 +253,8 @@ export class WorldSceneBuilder {
   /** The instance matrices as built, so a cull can be released rather than recomputed. */
   private readonly planetInstanceMatrices: THREE.Matrix4[] = [];
   private planetMesh: THREE.InstancedMesh | null = null;
+  /** Arm -> the drawn radius of its moons, so callers need not re-derive MOON_SIZE. */
+  private readonly moonDrawnRadii = new Map<string, number>();
   /** Root children hidden by the current cull, so releasing it restores exactly those. */
   private culled: THREE.Object3D[] = [];
   public readonly bodySprites: Map<string, THREE.Object3D> = new Map();
@@ -1320,8 +1339,19 @@ export class WorldSceneBuilder {
 
       const pivot = new THREE.Group();
       pivot.rotation.y = moon.phase;
+
+      // The moon body gets its own frame, hung on the pivot at the orbit
+      // radius. This is what makes a tracked camera nearly free: the group
+      // rides the orbit, so its local -X points at the planet whatever the
+      // phase, and a camera posed in local space is looking down the
+      // moon->planet radial by construction rather than by arithmetic.
+      const moonRadius = planet.radius * MOON_SIZE;
+      const moonGroup = new THREE.Group();
+      moonGroup.name = moonScopeId(moon.id);
+      moonGroup.position.set(orbitRadius, 0, 0);
+
       const body = new THREE.Mesh(
-        new THREE.SphereGeometry(planet.radius * MOON_SIZE, 20, 20),
+        new THREE.SphereGeometry(moonRadius, 20, 20),
         new THREE.MeshStandardMaterial({
           color: new THREE.Color(DIRECTION_A.gold),
           emissive: new THREE.Color(DIRECTION_A.gold),
@@ -1330,9 +1360,21 @@ export class WorldSceneBuilder {
           metalness: 0.2,
         }),
       );
-      body.position.set(orbitRadius, 0, 0);
-      pivot.add(body);
+      moonGroup.add(body);
+      pivot.add(moonGroup);
       group.add(pivot);
+      this.scopeGroups.set(moonGroup.name, moonGroup);
+      this.moonDrawnRadii.set(moon.arm, moonRadius);
+
+      // Spec §2: moons are sub-pointer click targets at planet framing — two
+      // misses were logged with `hits: 0`. A moon is drawn at a third of its
+      // planet's radius, so where the planets get a 1.2x pick sphere, a moon
+      // needs proportionally more of one to be hit reliably at all.
+      const pickSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(moonRadius * MOON_PICK_SCALE, 12, 12),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+      );
+      moonGroup.add(pickSphere);
 
       // Labelled from orbit: constant screen size, so the ecosystem reads at
       // galaxy framing rather than only once you have flown in.
@@ -1349,12 +1391,16 @@ export class WorldSceneBuilder {
       this.bodySprites.set(moon.id, body);
       this.moons.push({ pivot, rate: moon.rate });
 
+      // The position used to be the planet's centre, which is why clicking a
+      // moon flew to the planet. A flyby needs the moon's own place, so it is
+      // read from the group's world matrix once the graph is assembled.
+      moonGroup.updateWorldMatrix(true, false);
       this.hitObjects.push({
         id: moon.id,
         name: moon.label,
         type: "body",
-        mesh: body,
-        position: new THREE.Vector3(planet.center.x, PLANET_Y, planet.center.z),
+        mesh: pickSphere,
+        position: new THREE.Vector3().setFromMatrixPosition(moonGroup.matrixWorld),
       });
 
       // A moon appears when its system is born (§3.8) — orbit line, pivot and
@@ -1462,6 +1508,16 @@ export class WorldSceneBuilder {
       ring.pivot.rotation.z += delta * ring.orbitRate;
     });
 
+  }
+
+  /** The drawn radius of an arm's moons, in scene units. */
+  public moonDrawnRadius(arm: string): number {
+    const radius = this.moonDrawnRadii.get(arm);
+    if (radius === undefined) {
+      // Loud, not defaulted — the same rule an unassigned arm already follows.
+      throw new Error(`arm "${arm}" has no moons`);
+    }
+    return radius;
   }
 
   /** Which row of the planet InstancedMesh an arm occupies. */
