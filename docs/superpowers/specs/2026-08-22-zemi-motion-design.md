@@ -130,33 +130,39 @@ altitude up. A planet pin is on the order of 100 px wide, so at 2.53 px/s it
 takes about **40 seconds to slide its own width** — two orders of magnitude
 clear of the failure already observed.
 
-### 3.5 Obliquity goes between the camera frames, which stay level
+### 3.5 Obliquity is baked per instance, and never reaches a camera frame
 
-A new `tilt:<arm>` group is inserted as the sole child of `planet:<arm>`, and the
-planet instance, the ideals rings and the moon pivots move inside it.
+The five planets are **one `InstancedMesh` by design**, so there is no group to
+tilt: obliquity goes into each per-instance matrix, which is also why it costs
+nothing. No object is reparented, which means the placement golden cannot be
+disturbed by this layer at all.
 
 ```
 rootGroup                      L1: rotation.y = Ωₚ·t
 ├── background-field (12k)     counter-rotated −Ωₚ·t — the fixed reference
 ├── arm-dust (4.5k)            L5
 ├── astrolabe rings            rides L1; rotationally symmetric, so invisible
+├── planet-surfaces (1 mesh)   L2 — obliquity baked into each instance matrix
+├── pick spheres, annotations  already children of root; L1 carries them
 ├── bodies, trails, core
 └── planet:<arm>               LEVEL — camera frame, unchanged
-    ├── tilt:<arm>             NEW — L2 lives here and only here
-    │   ├── planet instance    tilted spin axis
-    │   ├── pick sphere        rides the tilt
-    │   ├── annotation         rides the tilt
-    │   └── ideals rings       existing lean, now relative to the tilt
-    └── moon pivot             OUTSIDE the tilt. L3 inclines this, and only this
-        └── moon:<id>          rides the incline — landing frame, unchanged
+    ├── ideals lean group      existing derived lean, unchanged
+    └── orbit:<moonId>         L3 — inclination, static
+        └── pivot              rotation.y += rate
+            └── moon:<id>      rides the incline — landing frame, unchanged
 ```
 
-This **honours** the axis-aligned decision rather than reversing it. `planet:<arm>`
-stays level, so `descend()` is untouched by the tilt.
+**One shader change is mandatory, and it is easy to miss.** The vertex shader
+computes `vNormal = normalize(normalMatrix * normal)`, which excludes
+`instanceMatrix`. That is correct **only** while instances are pure scale and
+translation, as they are today — uniform scale does not change a normal's
+direction. The moment an instance carries rotation, every planet is lit as
+though it were untilted. The normal must be composed through the instance
+matrix as well.
 
-**The moon pivots stay outside `tilt:<arm>`, and that is not an oversight.**
-Obliquity must not reach the moon frames, because those frames are what a
-visitor lands on. Two invariants forbid it:
+**The moon pivots stay level, and that is not an oversight.** Obliquity must not
+reach the moon frames, because those frames are what a visitor lands on. Two
+invariants forbid it:
 
 - `moonFrames.test.ts` asserts a moon group's local **−X points at its planet,
   whatever the orbit phase**, to four decimal places — the property that makes a
@@ -168,15 +174,11 @@ visitor lands on. Two invariants forbid it:
   as a slope. Obliquity reaches 28°; adding it under a moon would put a visitor
   on a hillside.
 
-So L2 stops at the planet's own furniture, and L3 applies its own, much smaller
-inclination to the moon pivot — where riding it preserves the −X invariant
-exactly and the ground tilts by at most the inclination ceiling.
-
-The planet's tilt costs nothing in the shader. `PlanetSurfaces` notes that "the
-sphere is rotationally symmetric, so spinning the pattern and spinning the sphere
-are indistinguishable" — the pattern turns about **local** Y, so tilting the
-instance matrix tilts the spin axis with it and the banding starts reading as
-latitude.
+So L2 stops at the drawn sphere, and L3 applies its own much smaller inclination
+to a static `orbit:<moonId>` group holding the orbit ring and the pivot
+together — where riding it preserves the −X invariant exactly, keeps the drawn
+ring on the plane the moon actually travels, and tilts the ground by at most the
+inclination ceiling.
 
 ### 3.6 Obliquity is a bounded map of the arm's base angle
 
@@ -206,7 +208,7 @@ false, so each reads the scene graph instead.
 | HTML planet pins | project from those constants | project from `groupFor(...)`'s world matrix |
 | `hitObjects[].position` | frozen at build | derived from `mesh.matrixWorld` |
 | `descend()` | snapshots a world position once | re-reads the frame's matrix each `update()` |
-| planet pick spheres | static world position | parented into `tilt:<arm>`, ride for free |
+| planet pick spheres | static world position | already children of `rootGroup`; L1 carries them, no change |
 | planet annotations | static world position | same |
 | `landOnSurface()` | frame-local already | **unchanged** |
 
@@ -312,7 +314,7 @@ Ordered so each lands independently and the riskiest goes last.
 
 | Track | Layer | Scope |
 |---|---|---|
-| **A** | L2 | `tilt:<arm>` group; bounded obliquity; reparent instance, ideals, moon pivots; counter-level `moon:<id>` |
+| **A** | L2 | bounded obliquity baked into each planet instance matrix; compose the shader normal through `instanceMatrix` |
 | **B** | L4 | sun on an arc; light direction as a shader uniform; verify moon→planet shadows |
 | **C** | L5 | field shader with per-point phase; buffer order preserved |
 | **D** | L3 | moon orbital inclination; rate retune against the 1 px/s threshold |
@@ -331,7 +333,8 @@ last so it lands against a scene already proven alive.
 | Placement parity | `sceneParity.test.ts` golden unchanged. It captures before `update()` — as its own comment records, "a golden taken after a frame would encode elapsed time" — so any layer that shifts a *placement* fails here |
 | L1 is rigid | after 60 s of `update()`, every pairwise angle between bodies is unchanged and every radius from the core is unchanged, to within float tolerance |
 | Sky is fixed | after 60 s, `background-field` world positions are unchanged while a body's are not — this is the test that catches the cancellation in §2 |
-| Camera frames level | `planet:<arm>` world quaternion stays identity; obliquity never appears above a moon pivot; `descent.test.ts` passes unmodified |
+| Camera frames level | `planet:<arm>` world quaternion stays identity; obliquity appears only in instance matrices, never in the scene graph; `descent.test.ts` passes unmodified |
+| Instance normals | a tilted instance is lit as tilted — the shader normal is composed through `instanceMatrix`, not just `normalMatrix` |
 | Moon −X invariant | `moonFrames.test.ts` passes **unmodified** after inclination — a moon frame riding its incline holds `dot(−X, towardPlanet) = 1` at every phase |
 | Landed pose survives inclination | `surfaceCamera.test.ts`'s 15°-off-axis assertion is the ceiling gate for `MAX_INCLINATION`, not an afterthought |
 | Obliquity bounded | every derived tilt and inclination is within its stated ceiling, for all five arms and for a synthetic sixth |
@@ -348,7 +351,7 @@ last so it lands against a scene already proven alive.
 |---|---|---|---|
 | 1 | **The rotation cancels and ships as a still image.** `rootGroup` holds the sky shell; the bug is invisible in code review and in every placement test. | The "sky is fixed" assertion in §6 exists solely for this. | High without the test, near zero with it. |
 | 2 | **Pins slide out from under the pointer.** Already observed once at close range with the orrery beads. | Ωₚ sized at §3.4 to ~40 s per pin width; the perceptibility test guards the number both ways. | Low. |
-| 3 | **A reparent moves something by a fraction of a unit.** Track A moves three object sets into a new group; drift is invisible per frame and fatal to a map claiming to be derived. | The parity golden is the acceptance criterion, not a nicety — the same rule `2026-08-20-zemi-scope-nesting-design.md` §6 set for the previous reparent. | Medium, caught. |
+| 3 | **A reparent moves something by a fraction of a unit.** Track D groups each moon's ring and pivot under a new `orbit:<moonId>`; drift is invisible per frame and fatal to a map claiming to be derived. | The parity golden is the acceptance criterion, not a nicety — the same rule `2026-08-20-zemi-scope-nesting-design.md` §6 set for the previous reparent. Track A reparents nothing at all. | Low, caught. |
 | 4 | **L5 reorders the arm dust buffer** and the timeline gate silently starts drawing the wrong points. | Phase as a parallel attribute; displacement in-shader; buffer read-only to L5, asserted byte-identical. | Low, caught. |
 | 5 | **Frame budget.** L5 adds a custom shader over 16,500 points; L4 adds shadow work. | The field is already `frustumCulled = false` and measured at 120 fps; shadow map is already allocated. Measure before and after Track C and Track B. | Low. |
 | 6 | **Inclination tilts the ground a visitor lands on**, and may push the parent past `surfaceCamera.test.ts`'s 15°-off-axis limit. | `MAX_INCLINATION` is not a taste decision: Track D lowers the ceiling until that assertion passes, and the test is the acceptance gate. Obliquity is kept out of moon frames entirely (§3.5). | Medium, gated. |
