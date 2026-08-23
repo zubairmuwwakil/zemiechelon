@@ -12,6 +12,7 @@ import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/pl
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { obliquityFor } from "@/lib/atlas/motion";
+import { createFieldMaterial } from "./FieldShader";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { surfaceScopeIds } from "@/lib/atlas/surfaces";
 import { buildSurface, type SurfaceHandle } from "./SurfaceBuilder";
@@ -64,13 +65,14 @@ export function buildFieldGeometry(
   seed: number,
   scale = 1,
   scope: Scope = GALAXY_ZEMI,
-): { positions: Float32Array; armDustDays: Float32Array } {
+): { positions: Float32Array; armDustDays: Float32Array; phases: Float32Array } {
   const rand = mulberry32(seed);
   const positions = new Float32Array((BACKGROUND_STAR_COUNT + ARM_DUST_COUNT) * 3);
   // Arm dust follows its anchor bodies (§3.8): each dust point is tagged with
   // its own anchor's birth day, in generation order, so the timeline transport
   // can gate it without touching where any point is drawn.
   const armDustDays = new Float32Array(ARM_DUST_COUNT);
+  const phases = new Float32Array(BACKGROUND_STAR_COUNT + ARM_DUST_COUNT);
   const bornDayOf = new Map(bodies.map((b) => [b.id, daysSinceEpoch(b.bornAt, scope.epoch)]));
   const reach = deriveWorldRadius(bodies, scope);
   let i = 0;
@@ -136,7 +138,11 @@ export function buildFieldGeometry(
     positions[i++] = (Math.sin(theta) * r + (rand() - 0.5) * spread * 2) * scale;
   }
 
-  return { positions, armDustDays };
+  // Same `rand` stream, so the field stays deterministic. Drawn LAST so every
+  // existing draw keeps its value and the parity golden is untouched.
+  for (let n = 0; n < phases.length; n++) phases[n] = rand();
+
+  return { positions, armDustDays, phases };
 }
 
 /** Something on a surface a visitor can reach, by pointer or by keyboard. */
@@ -292,7 +298,7 @@ export class WorldSceneBuilder {
   private armAnnotations: Map<string, THREE.Sprite> = new Map();
   private moons: MoonOrbit[] = [];
   private hoveredIdeal: string | null = null;
-  private fieldMaterials: THREE.PointsMaterial[] = [];
+  private fieldMaterials: THREE.ShaderMaterial[] = [];
   private paperLabels: PaperLabel[] = [];
   /**
    * Drawing-buffer size, shared by every screen-space line. Line2 needs it to
@@ -588,7 +594,7 @@ export class WorldSceneBuilder {
    * does not move.
    */
   public buildBackgroundField(): void {
-    const { positions, armDustDays } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
+    const { positions, armDustDays, phases } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
 
     // The shell reads as sky and the dust as ground, so they need different
     // weights — but not different generation passes. Two geometries over
@@ -607,22 +613,18 @@ export class WorldSceneBuilder {
         "position",
         new THREE.BufferAttribute(positions.subarray(from * 3, (from + count) * 3), 3),
       );
+      geometry.setAttribute(
+        "aPhase",
+        new THREE.BufferAttribute(phases.subarray(from, from + count), 1),
+      );
       const points = new THREE.Points(
         geometry,
-        new THREE.PointsMaterial({
-          color: new THREE.Color(DIRECTION_A.dust),
-          size,
-          sizeAttenuation: attenuate,
-          // The shell is sky. Fading it into the paper would delete it, since
-          // the fog colour is the paper.
-          fog: attenuate,
-          transparent: true,
-          opacity,
-          depthWrite: false,
-        }),
+        // The shell is sky. Fading it into the paper would delete it, since
+        // the fog colour is the paper — so fog follows attenuation, as before.
+        createFieldMaterial({ size, opacity, attenuate, fog: attenuate }),
       );
       points.name = name;
-      this.fieldMaterials.push(points.material as THREE.PointsMaterial);
+      this.fieldMaterials.push(points.material as THREE.ShaderMaterial);
       // The shell is larger than any frustum test three.js will infer cheaply,
       // and a wrongly-culled sky is indistinguishable from a missing one.
       points.frustumCulled = false;
@@ -652,6 +654,7 @@ export class WorldSceneBuilder {
 
     const dustPositions = new Float32Array(dustBudget * 3);
     const dustDays = new Float32Array(dustBudget);
+    const dustPhases = new Float32Array(dustBudget);
     order.forEach((srcIndex, sortedIndex) => {
       const src = dustBase + srcIndex * 3;
       const dst = sortedIndex * 3;
@@ -659,24 +662,19 @@ export class WorldSceneBuilder {
       dustPositions[dst + 1] = positions[src + 1];
       dustPositions[dst + 2] = positions[src + 2];
       dustDays[sortedIndex] = armDustDays[srcIndex];
+      // Re-ordered with its point: phase belongs to the point, not to the slot.
+      dustPhases[sortedIndex] = phases[BACKGROUND_STAR_COUNT + srcIndex];
     });
 
     const dustGeometry = new THREE.BufferGeometry();
     dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    dustGeometry.setAttribute("aPhase", new THREE.BufferAttribute(dustPhases, 1));
     const dustPoints = new THREE.Points(
       dustGeometry,
-      new THREE.PointsMaterial({
-        color: new THREE.Color(DIRECTION_A.dust),
-        size: 1.2,
-        sizeAttenuation: true,
-        fog: true,
-        transparent: true,
-        opacity: 0.5,
-        depthWrite: false,
-      }),
+      createFieldMaterial({ size: 1.2, opacity: 0.5, attenuate: true, fog: true }),
     );
     dustPoints.name = "arm-dust";
-    this.fieldMaterials.push(dustPoints.material as THREE.PointsMaterial);
+    this.fieldMaterials.push(dustPoints.material as THREE.ShaderMaterial);
     dustPoints.frustumCulled = false;
     this.rootGroup.add(dustPoints);
 
@@ -1172,7 +1170,9 @@ export class WorldSceneBuilder {
    */
   public setCosmicMode(mode: CosmicMode): void {
     const mark = new THREE.Color(mode === "day" ? DIRECTION_A.dust : DIRECTION_A.ground);
-    for (const material of this.fieldMaterials) material.color.copy(mark);
+    for (const material of this.fieldMaterials) {
+      (material.uniforms.uColor.value as THREE.Color).copy(mark);
+    }
     for (const label of this.paperLabels) label.paint(mode);
   }
 
@@ -1190,6 +1190,9 @@ export class WorldSceneBuilder {
   /** Called on mount and on every resize. See `resolution`. */
   public setResolution(width: number, height: number): void {
     this.resolution.set(width, height);
+    // three.js sizes attenuated points by canvas half-height. The field draws
+    // its own points now, so it has to be told the same number.
+    for (const material of this.fieldMaterials) material.uniforms.uScale.value = height / 2;
   }
 
   public setHoveredIdeal(id: string | null): void {
@@ -1559,6 +1562,7 @@ export class WorldSceneBuilder {
     if (this.planetMaterial) {
       this.planetMaterial.uniforms.uTime.value = elapsed;
     }
+    for (const material of this.fieldMaterials) material.uniforms.uTime.value = elapsed;
     this.planetarySpheres.forEach((ps, idx) => {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
     });
