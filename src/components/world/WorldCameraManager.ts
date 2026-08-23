@@ -81,6 +81,48 @@ export const CAMERA_PRESETS: Record<string, CameraPose> = {
   founder: orbitPose("self"),
 };
 
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const IDENTITY_SCALE = new THREE.Vector3(1, 1, 1);
+
+/**
+ * `frame`'s position, oriented to face directly away from `parent` — the
+ * bearing a landed camera stands opposite — with no other tilt.
+ *
+ * A landed camera's altitude and pitch describe height above the ground and
+ * how far the horizon tips into view, both defined against world up. A moon
+ * frame rides its inclined orbit (motion design §3.5) and so carries a real
+ * tilt in its rotation. `landOnSurface` and `update` both fold a standback
+ * offset roughly 6.5x the altitude into whatever rotation this matrix
+ * carries — apply the frame's full rotation and that tilt bleeds most of the
+ * standback distance into altitude, swinging it by far more than the
+ * inclination itself.
+ *
+ * Heading is read from the LIVE bearing to `parent` rather than decomposed
+ * out of the frame's own rotation. The two are not interchangeable: the
+ * frame's local axes wobble against true bearing as an inclined orbit's tilt
+ * and its changing phase compose non-linearly, which is exactly what let the
+ * parent drift out of the off-axis tolerance across a minute of orbit when
+ * this read the frame's rotation instead. Bearing computed fresh from both
+ * world positions has no such drift — it points opposite the parent by
+ * construction, at every instant, however the frame got there.
+ */
+function leveledFrameMatrix(frame: THREE.Object3D, parent: THREE.Object3D): THREE.Matrix4 {
+  const position = new THREE.Vector3().setFromMatrixPosition(frame.matrixWorld);
+  const parentPosition = new THREE.Vector3().setFromMatrixPosition(parent.matrixWorld);
+  const bearing = new THREE.Vector3().subVectors(position, parentPosition).setY(0);
+  // A frame sitting exactly on its parent has no bearing to resolve; any
+  // horizontal will do, and +X keeps it deterministic — the same fallback
+  // `landOnSurface` already applies to `toParent` below.
+  if (bearing.lengthSq() < 1e-9) bearing.set(1, 0, 0);
+  // Negated: THREE's rotation about +Y maps local +X to (cos, 0, -sin), so
+  // the angle that actually lands +X on `bearing` is atan2(-z, x), not
+  // atan2(z, x). Missing this made the leveled frame spin opposite the
+  // moon's true bearing, doubling the drift every time the orbit advanced.
+  const heading = Math.atan2(-bearing.z, bearing.x);
+  const rotation = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, heading);
+  return new THREE.Matrix4().compose(position, rotation, IDENTITY_SCALE);
+}
+
 export class WorldCameraManager {
   public camera: THREE.PerspectiveCamera;
   public target = new THREE.Vector3(0, 0, 0);
@@ -107,7 +149,7 @@ export class WorldCameraManager {
    * multiply. The previous attempt stored a world pose captured on arrival and
    * lost the parent about twenty seconds later.
    */
-  private surface: { frame: THREE.Object3D } | null = null;
+  private surface: { frame: THREE.Object3D; parent: THREE.Object3D } | null = null;
 
   // Orbit state
   private spherical = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
@@ -235,10 +277,14 @@ export class WorldCameraManager {
     frame.updateWorldMatrix(true, false);
     parent.updateWorldMatrix(true, false);
 
-    // Where the parent lies, expressed in the frame's own coordinates.
-    const parentLocal = frame.worldToLocal(
-      new THREE.Vector3().setFromMatrixPosition(parent.matrixWorld),
-    );
+    // Where the parent lies, expressed in the frame's LEVELLED coordinates —
+    // see `leveledFrameMatrix`. `update` reads the pose back through the same
+    // levelling, so the two stay consistent with each other regardless of
+    // any tilt the frame's ancestors carry.
+    const leveled = leveledFrameMatrix(frame, parent);
+    const parentLocal = new THREE.Vector3()
+      .setFromMatrixPosition(parent.matrixWorld)
+      .applyMatrix4(leveled.clone().invert());
     const toParent = new THREE.Vector3(parentLocal.x, 0, parentLocal.z);
     // A frame sitting exactly on its parent has no bearing to resolve; any
     // horizontal will do, and +X keeps it deterministic.
@@ -248,7 +294,7 @@ export class WorldCameraManager {
     // Stand opposite the parent, so looking back at the origin looks at it.
     const localPose = toParent.clone().multiplyScalar(-offset).setY(altitude);
 
-    this.surface = { frame };
+    this.surface = { frame, parent };
     this.setFrameScale(shardRadius);
     // Read off the vector rather than assembling the angles by hand. Spherical
     // measures theta from +Z, not +X, and composing that by hand is exactly the
@@ -324,8 +370,9 @@ export class WorldCameraManager {
     // what changes is that the result is interpreted in the frame's space, and
     // therefore travels with it.
     if (this.surface) {
-      const frame = this.surface.frame;
+      const { frame, parent } = this.surface;
       frame.updateWorldMatrix(true, false);
+      parent.updateWorldMatrix(true, false);
 
       this.spherical.theta = THREE.MathUtils.lerp(this.spherical.theta, this.sphericalTarget.theta, lerpRate);
       this.spherical.phi = THREE.MathUtils.lerp(this.spherical.phi, this.sphericalTarget.phi, lerpRate);
@@ -334,9 +381,11 @@ export class WorldCameraManager {
       const target = new THREE.Vector3().setFromMatrixPosition(frame.matrixWorld);
       this.currentPose.target.copy(target);
       this.target.copy(target);
+      // Same levelling as `landOnSurface`: the live bearing to the parent
+      // carries the camera around the orbit, the frame's own tilt does not.
       this.camera.position
         .setFromSpherical(this.spherical)
-        .applyMatrix4(frame.matrixWorld);
+        .applyMatrix4(leveledFrameMatrix(frame, parent));
       this.camera.lookAt(target);
       return;
     }

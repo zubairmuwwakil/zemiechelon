@@ -122,7 +122,13 @@ describe("a landed frame that moves under the camera", () => {
     for (const seconds of [15, 30, 60]) {
       orbit(seconds);
       settle();
-      expect(offAxisDeg(worldPos(builder.groupFor(PRODUCTS)))).toBeCloseTo(first, 3);
+      // Not float-exact any more: an inclined orbit (motion design §3.5)
+      // gives the moon a real, small bob in height above its planet, so the
+      // parent's angle in frame wobbles by a fraction of a degree as the moon
+      // rides it — measured up to ~0.5° at MAX_INCLINATION. The ceiling here
+      // is that wobble with headroom, wide enough to still catch the failure
+      // that prompted this test: the parent drifting out of frame entirely.
+      expect(Math.abs(offAxisDeg(worldPos(builder.groupFor(PRODUCTS))) - first)).toBeLessThan(2);
       expect(inFrustum(worldPos(builder.groupFor(PRODUCTS)))).toBe(true);
     }
   });
