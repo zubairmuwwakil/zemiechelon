@@ -42,6 +42,12 @@ export interface WorldCanvasProps {
    */
   landedScope?: ScopeId | null;
   /**
+   * A frame to swing in close to without landing in it. Spec §3.3: a flyby is
+   * visibly different from a landing and honest about there being nothing to
+   * stand on.
+   */
+  flybyScope?: ScopeId | null;
+  /**
    * Scene-space anchors projected alongside the planet pins each frame. This is
    * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
    * it parallaxes when the camera orbits instead of being painted on the monitor.
@@ -91,6 +97,26 @@ function projectToScreen(
   return { x, y, depth: v.z, visible: inFront && onScreen };
 }
 
+/**
+ * How big the thing in a frame is, so the camera can size its framing to it.
+ *
+ * A planet's radius comes from the derived table; a moon's from the builder,
+ * which is the only place `MOON_SIZE` is applied. Reading it back rather than
+ * re-deriving it keeps one definition of how large a moon is drawn.
+ */
+function framedRadius(
+  builder: WorldSceneBuilder,
+  bodies: Body[],
+  scopeId: ScopeId,
+): number {
+  if (scopeId.startsWith("moon:")) {
+    const bodyId = scopeId.slice("moon:".length);
+    const body = bodies.find((b) => b.id === bodyId);
+    return body ? builder.moonDrawnRadius(body.arm) : 2;
+  }
+  return PLANET_RADII[scopeId.replace("planet:", "")] ?? 6;
+}
+
 export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(function WorldCanvas(
   {
     bodies,
@@ -101,6 +127,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onProjectPins,
     clockDay = Infinity,
     landedScope = null,
+    flybyScope = null,
     anchors,
     onProjectAnchors,
   },
@@ -479,9 +506,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const builder = sceneBuilderRef.current;
     const camera = cameraManagerRef.current;
     if (!builder || !camera) return;
-    if (landedScope && builder.scopeGroups.has(landedScope)) {
-      const arm = landedScope.replace("planet:", "");
-      camera.descend(builder.groupFor(landedScope), PLANET_RADII[arm] ?? 6);
+    // A landing wins over a flyby if both are somehow set: you cannot be
+    // standing on a surface and swinging past it at the same time.
+    const frame = landedScope ?? flybyScope;
+    if (frame && builder.scopeGroups.has(frame)) {
+      camera.descend(builder.groupFor(frame), framedRadius(builder, bodies, frame));
     } else if (cameraPreset === "galaxy" || cameraPreset === "overview") {
       camera.ascend();
     } else {
@@ -491,7 +520,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
   useEffect(() => {
     frameRef.current();
-  }, [landedScope, cameraPreset]);
+  }, [landedScope, flybyScope, cameraPreset]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 size-full overflow-hidden touch-none">

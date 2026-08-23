@@ -17,6 +17,7 @@ import { TimelineTransport } from "@/components/hud/TimelineTransport";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
+import { resolveBodySelection } from "@/lib/atlas/navigation";
 import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 
@@ -45,6 +46,13 @@ export default function HomePage() {
 
   // The scope the camera has descended into, or null for the galaxy.
   const [activeLandingPlanet, setActiveLandingPlanet] = useState<ScopeId | null>(null);
+  /**
+   * The moon the camera has swung in close to, and the frame leaving it returns
+   * to. A flyby is not a landing: the scene stays live, no console opens, and
+   * ascending goes one level to the planet rather than all the way out (§2).
+   */
+  const [flybyScope, setFlybyScope] = useState<ScopeId | null>(null);
+  const [flybyReturn, setFlybyReturn] = useState<ScopeId | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -79,10 +87,27 @@ export default function HomePage() {
   );
 
   // Celestial Body Selection Handler
-  const handleSelectBody = useCallback((bodyId: string) => {
-    sound.playClick(700, 0.05);
-    setSelectedBodyId(bodyId);
-  }, []);
+  const handleSelectBody = useCallback(
+    (bodyId: string) => {
+      sound.playClick(700, 0.05);
+      // What a tap means is a rule about the body, not a branch here.
+      const selection = resolveBodySelection(bodyId, bodies);
+      setSelectedBodyId(selection.cardId);
+      setFlybyScope(selection.flyTo);
+      setFlybyReturn(selection.ascendTo);
+    },
+    [bodies],
+  );
+
+  /** Closing a flyby's card ascends one level, to the planet it flew from. */
+  const closeBodyCard = useCallback(() => {
+    setSelectedBodyId(null);
+    if (flybyScope && flybyReturn) {
+      setActivePreset(flybyReturn.replace("planet:", ""));
+    }
+    setFlybyScope(null);
+    setFlybyReturn(null);
+  }, [flybyScope, flybyReturn]);
 
   // Reset to Galaxy Orbit
   const resetView = useCallback(() => {
@@ -90,6 +115,8 @@ export default function HomePage() {
     setActivePreset("galaxy");
     setSelectedBodyId(null);
     setActiveLandingPlanet(null);
+    setFlybyScope(null);
+    setFlybyReturn(null);
   }, []);
 
   const selectedBody = useMemo(
@@ -110,6 +137,7 @@ export default function HomePage() {
         onProjectPins={setScreenPoints}
         clockDay={clockDay}
         landedScope={activeLandingPlanet}
+        flybyScope={flybyScope}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
       />
@@ -192,7 +220,7 @@ export default function HomePage() {
 
       {/* 10. Selected Celestial Body Card Modal */}
       {selectedBody && (
-        <BodyCard body={selectedBody} onClose={() => setSelectedBodyId(null)} />
+        <BodyCard body={selectedBody} onClose={closeBodyCard} />
       )}
     </main>
   );

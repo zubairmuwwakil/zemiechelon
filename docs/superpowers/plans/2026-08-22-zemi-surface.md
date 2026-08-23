@@ -581,7 +581,38 @@ time — measured 120.2 fps with it and 120.1 without."
 
 ---
 
-## Phases 1–3 — not yet written
+## Phase 1 — Frames (Tasks 3-5) — BUILT
+
+Landed on main. Recorded here as built rather than as a forecast; the code and
+its tests are the specification now.
+
+| Task | Commit | Delivered |
+|---|---|---|
+| 3 · Moon scopes derived | `8da307e` | `deriveMoonScopes` over `kind === "system"`; `moonScopeId` in `galaxy.ts` to avoid the `scopes -> moons -> scopes` cycle; `surfaces.ts` deriving which scopes you can stand on. |
+| 4 · Moon groups and hit proxies | `f6417da` | Moon body in its own group on the orbit pivot, registered as its scope; 2.6x pick proxy; hit position is the moon's own, not its planet's. |
+| 5 · Flybys | this commit | `resolveBodySelection` as a pure rule; `flybyScope` on `WorldCanvas`; closing a flyby's card ascends one level to the planet. |
+
+**The decision that mattered in Task 3.** "Only PickMe gets a surface" is derived,
+not authored: a body earns one when its `consoleId` names an engine that ships.
+Inunity carries a `consoleId` and stays a flyby because nothing ships behind it,
+and a planet earns a ground when something in its arm has evidence — which gives
+Products and not Labs, matching the reasoning §7 already made. Spec §3.3's
+closing promise ("when one earns evidence, its flyby becomes a landing") is now
+literally true. `surfaces.test.ts` pins the engine registry against the
+directories on disk so the predicate cannot go stale silently.
+
+**Deviation from the plan as written.** Task 5 makes *every* moon a flyby,
+including PickMe. `LandedConsolePanel` resolves its arm with
+`scopeId.replace("planet:", "")`, so handing it `moon:PickMe` reproduces exactly
+the "landed panel renders empty at moon scale" bug §2 recorded. PickMe becomes a
+landing in Task 6, through surface state that does not go through that panel.
+
+**Found while verifying, not yet acted on.** `deepLink.ts` is consumed only by
+`AtlasStage.tsx`; `page.tsx` renders `WorldCanvas` directly and never reads the
+hash. Spec §7 risk 2 mitigates depth-cost with "the deep link lands directly on
+the console" — that mitigation does not currently exist on the live page.
+
+## Phases 2–3 — not yet written
 
 Tasks 3–10 (moon scopes, hit proxies, flybys, the surface camera, the shard,
 scope culling at depth, Products' ground, the orrery) are deliberately unwritten
