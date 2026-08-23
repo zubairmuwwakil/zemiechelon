@@ -151,6 +151,16 @@ export class WorldCameraManager {
    */
   private surface: { frame: THREE.Object3D; parent: THREE.Object3D } | null = null;
 
+  /**
+   * The frame the camera is FRAMING, or null when it is not framing one.
+   *
+   * Held rather than snapshotted for the same reason `surface` is: `descend`
+   * used to read `getWorldPosition()` once and freeze the pose, so flying to an
+   * orbiting moon aimed at where the moon had been at the moment of the click.
+   * A turning galaxy makes that true of planets too.
+   */
+  private descended: { frame: THREE.Object3D; radius: number } | null = null;
+
   // Orbit state
   private spherical = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
   private sphericalTarget = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
@@ -184,6 +194,10 @@ export class WorldCameraManager {
   }
 
   public setPreset(presetKey: CameraTargetPreset, customPose?: CameraPose): void {
+    // An explicit preset always wins: it is a request to look somewhere else,
+    // so whatever the camera was following stops being followed.
+    this.descended = null;
+
     if (customPose) {
       this.desiredPose = {
         position: customPose.position.clone(),
@@ -295,6 +309,7 @@ export class WorldCameraManager {
     const localPose = toParent.clone().multiplyScalar(-offset).setY(altitude);
 
     this.surface = { frame, parent };
+    this.descended = null;
     this.setFrameScale(shardRadius);
     // Read off the vector rather than assembling the angles by hand. Spherical
     // measures theta from +Z, not +X, and composing that by hand is exactly the
@@ -315,17 +330,41 @@ export class WorldCameraManager {
    */
   public descend(target: THREE.Object3D, radius: number): void {
     this.surface = null;
+    this.descended = { frame: target, radius };
     this.setFrameScale(radius);
-    const center = target.getWorldPosition(new THREE.Vector3());
-    this.setPreset("", {
-      position: new THREE.Vector3(center.x, radius * 3.6, center.z + radius * 4.8),
-      target: new THREE.Vector3(center.x, radius * 0.3, center.z),
-    });
+    this.aimAtDescendedFrame();
+
+    // The orbit offset is set HERE and only here — deliberately not in
+    // `aimAtDescendedFrame`, which runs every frame. `onPointerDrag` and
+    // `onWheelZoom` write to this same spherical, so re-deriving it per frame
+    // would overwrite the visitor's input on the very next one and quietly
+    // remove orbit and zoom for as long as anything was being framed.
+    const offset = new THREE.Vector3().subVectors(this.desiredPose.position, this.desiredPose.target);
+    this.sphericalTarget.setFromVector3(offset);
+    if (this.reducedMotion) this.snap();
+  }
+
+  /**
+   * Re-derive the desired pose from the frame's CURRENT world matrix.
+   *
+   * Only the pose — where the camera looks and the canonical position that
+   * implies. The spherical offset the visitor steers is left alone; see
+   * `descend`. That split is what lets the camera follow a moving frame and
+   * still be draggable while it does.
+   */
+  private aimAtDescendedFrame(): void {
+    if (!this.descended) return;
+    const { frame, radius } = this.descended;
+    frame.updateWorldMatrix(true, false);
+    const center = new THREE.Vector3().setFromMatrixPosition(frame.matrixWorld);
+    this.desiredPose.position.set(center.x, radius * 3.6, center.z + radius * 4.8);
+    this.desiredPose.target.set(center.x, radius * 0.3, center.z);
   }
 
   /** The named inverse of descend: back to the frame the scope sits in. */
   public ascend(): void {
     this.surface = null;
+    this.descended = null;
     this.setFrameScale(ASTROLABE_OUTER);
     this.setPreset("galaxy");
   }
@@ -389,6 +428,10 @@ export class WorldCameraManager {
       this.camera.lookAt(target);
       return;
     }
+
+    // The frame may have travelled since the descent began — an orbiting moon,
+    // or the whole pattern turning. Re-derive rather than lerp toward a stale point.
+    this.aimAtDescendedFrame();
 
     // Smooth target lookAt lerp
     this.currentPose.target.lerp(this.desiredPose.target, lerpRate);

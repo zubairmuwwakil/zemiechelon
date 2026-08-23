@@ -119,3 +119,84 @@ describe("camera depth follows the frame it is in", () => {
     expect(manager.depth.minDistance).toBeLessThan(5.92);
   });
 });
+
+describe("descending onto something that moves", () => {
+  it("follows the frame rather than the place the frame used to be", () => {
+    const scene = new THREE.Scene();
+    const manager = new WorldCameraManager(1200, 800);
+    const frame = new THREE.Group();
+    frame.position.set(100, 0, 0);
+    scene.add(frame);
+
+    manager.descend(frame, 6);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    const framedFirst = manager.target.clone();
+    expect(framedFirst.distanceTo(new THREE.Vector3(100, 0, 0))).toBeLessThan(6);
+
+    // The frame travels, as an orbiting moon or a turning galaxy carries it.
+    frame.position.set(-100, 0, 40);
+    frame.updateWorldMatrix(true, false);
+    for (let i = 0; i < 180; i++) manager.update(1 / 60);
+
+    expect(manager.target.distanceTo(new THREE.Vector3(-100, 0, 40))).toBeLessThan(6);
+    expect(manager.target.distanceTo(framedFirst)).toBeGreaterThan(50);
+  });
+
+  it("lets go of the frame when the camera ascends", () => {
+    const scene = new THREE.Scene();
+    const manager = new WorldCameraManager(1200, 800);
+    const frame = new THREE.Group();
+    frame.position.set(100, 0, 0);
+    scene.add(frame);
+
+    manager.descend(frame, 6);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    manager.ascend();
+    for (let i = 0; i < 240; i++) manager.update(1 / 60);
+
+    frame.position.set(-100, 0, 40);
+    frame.updateWorldMatrix(true, false);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    // Back at the galaxy pose, which is the origin — not chasing the frame.
+    expect(manager.target.length()).toBeLessThan(1);
+  });
+
+  it("still lets the visitor orbit and zoom the thing it is following", () => {
+    // Re-aiming a frame means re-deriving where the camera LOOKS, never where
+    // the visitor has dragged it to. `onPointerDrag` and `onWheelZoom` write to
+    // the same spherical the framing pose is derived into, so re-deriving that
+    // spherical every frame silently takes the controls away from a visitor for
+    // as long as they are looking at anything — which is most of the session.
+    const scene = new THREE.Scene();
+    const manager = new WorldCameraManager(1200, 800);
+    const frame = new THREE.Group();
+    frame.position.set(100, 0, 0);
+    scene.add(frame);
+
+    manager.descend(frame, 6);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    const framed = manager.camera.position.clone().sub(manager.target);
+
+    manager.onPointerDrag(220, 0);
+    manager.onWheelZoom(-400);
+    for (let i = 0; i < 120; i++) manager.update(1 / 60);
+    const dragged = manager.camera.position.clone().sub(manager.target);
+
+    // Turned around the frame, and pulled in toward it.
+    const bearing = (v: THREE.Vector3) => Math.atan2(v.z, v.x);
+    const turn = Math.abs(Math.atan2(
+      Math.sin(bearing(dragged) - bearing(framed)),
+      Math.cos(bearing(dragged) - bearing(framed)),
+    ));
+    expect(turn).toBeGreaterThan(0.5);
+    expect(dragged.length()).toBeLessThan(framed.length() - 1);
+
+    // And the drag survives the frame travelling, rather than being reset by it.
+    frame.position.set(-100, 0, 40);
+    frame.updateWorldMatrix(true, false);
+    for (let i = 0; i < 120; i++) manager.update(1 / 60);
+    const travelled = manager.camera.position.clone().sub(manager.target);
+    expect(manager.target.distanceTo(new THREE.Vector3(-100, 0, 40))).toBeLessThan(6);
+    expect(travelled.distanceTo(dragged)).toBeLessThan(0.5);
+  });
+});
