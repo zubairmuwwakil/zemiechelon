@@ -142,20 +142,35 @@ rootGroup                      L1: rotation.y = Ωₚ·t
 ├── astrolabe rings            rides L1; rotationally symmetric, so invisible
 ├── bodies, trails, core
 └── planet:<arm>               LEVEL — camera frame, unchanged
-    └── tilt:<arm>             NEW — L2 lives here and only here
-        ├── planet instance    tilted spin axis
-        ├── ideals rings       existing lean, now relative to the tilt
-        └── moon pivot         L3, inclined
-            └── moon:<id>      counter-levelled — landing frame, unchanged
+    ├── tilt:<arm>             NEW — L2 lives here and only here
+    │   ├── planet instance    tilted spin axis
+    │   ├── pick sphere        rides the tilt
+    │   ├── annotation         rides the tilt
+    │   └── ideals rings       existing lean, now relative to the tilt
+    └── moon pivot             OUTSIDE the tilt. L3 inclines this, and only this
+        └── moon:<id>          rides the incline — landing frame, unchanged
 ```
 
-This **honours** the axis-aligned decision rather than reversing it. Both frames
-the camera uses stay level, so `descend()`, `landOnSurface()` and every
-assertion in `surfaceCamera.test.ts` are untouched by the tilt. A moon rides an
-inclined orbit while its own ground stays level underfoot — which is also the
-correct visitor experience, since `landOnSurface` composes its pose in frame-
-local space and `camera.lookAt` resolves roll against world up. A tilted landing
-frame would present the shard as a slope.
+This **honours** the axis-aligned decision rather than reversing it. `planet:<arm>`
+stays level, so `descend()` is untouched by the tilt.
+
+**The moon pivots stay outside `tilt:<arm>`, and that is not an oversight.**
+Obliquity must not reach the moon frames, because those frames are what a
+visitor lands on. Two invariants forbid it:
+
+- `moonFrames.test.ts` asserts a moon group's local **−X points at its planet,
+  whatever the orbit phase**, to four decimal places — the property that makes a
+  tracked camera free. Measured: a frame that *rides* its inclined orbit holds
+  `dot = 1.000000` at every phase, while a counter-levelled frame falls to
+  `0.978148` at 90° and fails the assertion.
+- `landOnSurface` composes its pose in frame-local space and `camera.lookAt`
+  resolves roll against world up, so tilt in a landing frame presents the shard
+  as a slope. Obliquity reaches 28°; adding it under a moon would put a visitor
+  on a hillside.
+
+So L2 stops at the planet's own furniture, and L3 applies its own, much smaller
+inclination to the moon pivot — where riding it preserves the −X invariant
+exactly and the ground tilts by at most the inclination ceiling.
 
 The planet's tilt costs nothing in the shader. `PlanetSurfaces` notes that "the
 sphere is rotationally symmetric, so spinning the pattern and spinning the sphere
@@ -316,7 +331,9 @@ last so it lands against a scene already proven alive.
 | Placement parity | `sceneParity.test.ts` golden unchanged. It captures before `update()` — as its own comment records, "a golden taken after a frame would encode elapsed time" — so any layer that shifts a *placement* fails here |
 | L1 is rigid | after 60 s of `update()`, every pairwise angle between bodies is unchanged and every radius from the core is unchanged, to within float tolerance |
 | Sky is fixed | after 60 s, `background-field` world positions are unchanged while a body's are not — this is the test that catches the cancellation in §2 |
-| Camera frames level | `planet:<arm>` and `moon:<id>` world quaternions stay identity-about-Y; `surfaceCamera.test.ts` passes unmodified |
+| Camera frames level | `planet:<arm>` world quaternion stays identity; obliquity never appears above a moon pivot; `descent.test.ts` passes unmodified |
+| Moon −X invariant | `moonFrames.test.ts` passes **unmodified** after inclination — a moon frame riding its incline holds `dot(−X, towardPlanet) = 1` at every phase |
+| Landed pose survives inclination | `surfaceCamera.test.ts`'s 15°-off-axis assertion is the ceiling gate for `MAX_INCLINATION`, not an afterthought |
 | Obliquity bounded | every derived tilt and inclination is within its stated ceiling, for all five arms and for a synthetic sixth |
 | `descend()` tracks | descending onto an orbiting moon, then advancing the clock, leaves the moon within the frustum and near frame centre |
 | Field order | arm dust buffer is byte-identical after L5; `cullAndClock.test.ts` drawRange gating unaffected |
@@ -334,7 +351,8 @@ last so it lands against a scene already proven alive.
 | 3 | **A reparent moves something by a fraction of a unit.** Track A moves three object sets into a new group; drift is invisible per frame and fatal to a map claiming to be derived. | The parity golden is the acceptance criterion, not a nicety — the same rule `2026-08-20-zemi-scope-nesting-design.md` §6 set for the previous reparent. | Medium, caught. |
 | 4 | **L5 reorders the arm dust buffer** and the timeline gate silently starts drawing the wrong points. | Phase as a parallel attribute; displacement in-shader; buffer read-only to L5, asserted byte-identical. | Low, caught. |
 | 5 | **Frame budget.** L5 adds a custom shader over 16,500 points; L4 adds shadow work. | The field is already `frustumCulled = false` and measured at 120 fps; shadow map is already allocated. Measure before and after Track C and Track B. | Low. |
-| 6 | **Tilt makes moon labels harder to read**, having been fanned on a flat plane to separate them. | Track D bounds inclination and re-checks label separation at galaxy framing, where the fan was tuned. | Medium. |
+| 6 | **Inclination tilts the ground a visitor lands on**, and may push the parent past `surfaceCamera.test.ts`'s 15°-off-axis limit. | `MAX_INCLINATION` is not a taste decision: Track D lowers the ceiling until that assertion passes, and the test is the acceptance gate. Obliquity is kept out of moon frames entirely (§3.5). | Medium, gated. |
+| 7 | **Tilt makes moon labels harder to read**, having been fanned on a flat plane to separate them. | Track D re-checks label separation at galaxy framing, where the fan was tuned. Inclination is fanned across each arm's moons like `phase` already is, so it separates them rather than merely tilting them together. | Medium. |
 
 ---
 
