@@ -1399,9 +1399,21 @@ export class WorldSceneBuilder {
       // asks for the registered one, so the moons' local coordinates, which
       // were already relative to the planet, mean what they say.
       const group = this.groupFor(planetScopeId(moon.arm));
-      // The orbit line is drawn flat and the moon rides it, so the path a
-      // visitor sees is the path the moon is actually on.
-      const orbitRing = this.addHairlineRing(group, orbitRadius, 0.4, DIRECTION_A.rule);
+
+      // Ring and pivot together on one inclined group, so the path a visitor
+      // sees is the path the moon is actually on. The inclination goes HERE and
+      // not on the planet scope group: that group is the frame the camera
+      // descends into, and `moonFrames.test.ts` pins that a moon group's local
+      // -X points at its planet whatever the phase — a property a frame riding
+      // its own inclined orbit holds exactly (dot = 1.000000 at every phase)
+      // and a counter-levelled one loses (0.978148 at ninety degrees).
+      const orbit = new THREE.Group();
+      orbit.name = `orbit:${moon.id}`;
+      orbit.rotation.z = moon.inclination;
+      group.add(orbit);
+
+      const orbitRing = this.addHairlineRing(orbit, orbitRadius, 0.4, DIRECTION_A.rule);
+      orbitRing.name = `orbit-ring:${moon.id}`;
 
       const pivot = new THREE.Group();
       pivot.rotation.y = moon.phase;
@@ -1429,7 +1441,7 @@ export class WorldSceneBuilder {
       body.name = `moon-body:${moon.id}`;
       moonGroup.add(body);
       pivot.add(moonGroup);
-      group.add(pivot);
+      orbit.add(pivot);
       this.scopeGroups.set(moonGroup.name, moonGroup);
       this.moonDrawnRadii.set(moon.arm, moonRadius);
 

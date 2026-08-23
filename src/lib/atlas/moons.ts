@@ -1,5 +1,6 @@
 import type { Body } from "./types";
 import { GALAXY_ZEMI, type Scope } from "./scopes";
+import { MAX_INCLINATION } from "./motion";
 
 export interface MoonPlacement {
   id: string;
@@ -11,6 +12,14 @@ export interface MoonPlacement {
   phase: number;
   /** Radians per second. Outer orbits are slower. */
   rate: number;
+  /**
+   * Radians the orbit plane tilts off its planet's own. Fanned across the arm's
+   * moons, not authored and not hashed — the same rule `phase` follows, and for
+   * the same reason: only knowing the neighbours can guarantee they do not
+   * stack. Fanning also separates the labels in depth, which a shared tilt
+   * would not.
+   */
+  inclination: number;
 }
 
 /**
@@ -61,6 +70,9 @@ export function deriveMoons(bodies: Body[], scope: Scope = GALAXY_ZEMI): MoonPla
         // Kepler: further out is slower. Nothing here is fast enough to notice
         // moving, only fast enough to have moved.
         rate: BASE_RATE * Math.pow(MOON_ORBIT.inner / orbit, 1.5),
+        // `t` already runs 0..1 across the arm's set. Mapped to -1..1 so the
+        // fan straddles the planet's plane rather than leaning off one side.
+        inclination: MAX_INCLINATION * (systems.length === 1 ? 0 : t * 2 - 1),
       });
     });
   }
