@@ -444,6 +444,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
       // Update controllers
       dayNight.update(delta);
+      // The sun travels, so the planets are told where it is every frame.
+      sceneBuilder.setLightDirection(dayNight.sunDirection());
       cameraManager.update(delta);
       sceneBuilder.update(elapsed, delta);
 

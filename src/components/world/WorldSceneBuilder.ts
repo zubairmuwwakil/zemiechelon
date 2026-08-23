@@ -1176,6 +1176,17 @@ export class WorldSceneBuilder {
     for (const label of this.paperLabels) label.paint(mode);
   }
 
+  /**
+   * Point the planets at the scene's sun. Called every frame from the render
+   * loop, because the sun travels — see `DayNightController.sunDirection`.
+   */
+  public setLightDirection(direction: THREE.Vector3): void {
+    if (!this.planetMaterial) return;
+    (this.planetMaterial.uniforms.uLightDir.value as THREE.Vector3)
+      .copy(direction)
+      .normalize();
+  }
+
   /** Called on mount and on every resize. See `resolution`. */
   public setResolution(width: number, height: number): void {
     this.resolution.set(width, height);

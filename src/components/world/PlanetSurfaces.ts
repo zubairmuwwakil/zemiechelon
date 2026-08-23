@@ -86,7 +86,12 @@ export const PLANET_ATTRIBUTES = {
  */
 export function createPlanetMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      // Seeded to the day palette's own bearing so the first frame is lit
+      // before `setLightDirection` has ever been called.
+      uLightDir: { value: new THREE.Vector3(30, 60, 30).normalize() },
+    },
     vertexShader: /* glsl */ `
       attribute float aPattern;
       attribute float aSpin;
@@ -97,6 +102,7 @@ export function createPlanetMaterial(): THREE.ShaderMaterial {
       varying vec3 vBase;
       varying vec3 vAccent;
       varying vec3 vNormal;
+      varying vec3 vWorldNormal;
       varying vec3 vLocal;
       void main() {
         vPattern = aPattern;
@@ -109,17 +115,22 @@ export function createPlanetMaterial(): THREE.ShaderMaterial {
         // lit by the old expression is lit as though it were upright.
         // (No backticks in here: this is inside a JS template literal.)
         vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
+        // World space, so the lit side belongs to the sun rather than to the
+        // viewer. vNormal stays view-space for the engraved raking term.
+        vWorldNormal = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
         vLocal = position;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
       uniform float uTime;
+      uniform vec3 uLightDir;
       varying float vPattern;
       varying float vSpin;
       varying vec3 vBase;
       varying vec3 vAccent;
       varying vec3 vNormal;
+      varying vec3 vWorldNormal;
       varying vec3 vLocal;
 
       float bands(float y, float freq) {
@@ -184,7 +195,10 @@ export function createPlanetMaterial(): THREE.ShaderMaterial {
         }
 
         // Raking light rather than emission: this treatment is engraved, not lit.
-        float lambert = clamp(dot(vNormal, normalize(vec3(0.6, 0.7, 0.4))), 0.0, 1.0);
+        // The scene's actual sun, not a direction typed into a shader. This is
+        // what gives every planet a terminator that crawls -- and what puts the
+        // planets and the MeshStandardMaterial moons under one light at last.
+        float lambert = clamp(dot(normalize(vWorldNormal), uLightDir), 0.0, 1.0);
         vec3 albedo = mix(vBase, vAccent, clamp(mixAmount, 0.0, 1.0));
         gl_FragColor = vec4(albedo * (0.55 + 0.45 * lambert), 1.0);
       }
