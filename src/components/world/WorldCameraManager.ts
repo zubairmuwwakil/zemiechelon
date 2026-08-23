@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
 import { loadBodies } from "@/lib/atlas/bodies";
+import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
 export type CameraTargetPreset =
   | "galaxy"
@@ -95,6 +96,18 @@ export class WorldCameraManager {
     position: GALAXY_POSE.position.clone(),
     target: GALAXY_POSE.target.clone(),
   };
+
+  /**
+   * The frame the camera is standing in, or null when it is not on a surface.
+   *
+   * The pose lives in this frame's LOCAL space, and that is the whole design.
+   * A moon group rides its orbit pivot, so a camera placed relative to it is
+   * carried around by the orbit and keeps its bearing on the parent without a
+   * follow controller, a lerp, or any per-frame arithmetic beyond one matrix
+   * multiply. The previous attempt stored a world pose captured on arrival and
+   * lost the parent about twenty seconds later.
+   */
+  private surface: { frame: THREE.Object3D } | null = null;
 
   // Orbit state
   private spherical = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
@@ -194,6 +207,58 @@ export class WorldCameraManager {
   }
 
   /**
+   * Come down onto a surface inside `frame`, looking across it at `parent`.
+   *
+   * Spec §3.1: landing is not close orbit. The camera sits low, looks across
+   * rather than down, and orbits a point *on* the surface — so the target is
+   * the frame's own origin and the pose is a low, shallow offset from it.
+   *
+   * The direction is computed rather than passed. The horizontal bearing to the
+   * parent is resolved in the frame's local space, and the camera is placed
+   * opposite it: for a moon that lands on the outward radial, and for a planet
+   * it faces the galaxy, with no second code path and nothing that assumes the
+   * galaxy is the root.
+   *
+   * Ratios rather than lengths, because the landed frame is scale-invariant in
+   * the shard's radius — the camera scales with the ground, so the composition
+   * is identical at any size. See `surfaces.ts` for what the numbers mean.
+   */
+  public landOnSurface(
+    frame: THREE.Object3D,
+    parent: THREE.Object3D,
+    shardRadius: number,
+    opts: { altitudeRatio?: number; offsetRatio?: number } = {},
+  ): void {
+    const altitude = shardRadius * (opts.altitudeRatio ?? SURFACE_ALTITUDE_RATIO);
+    const offset = shardRadius * (opts.offsetRatio ?? SURFACE_OFFSET_RATIO);
+
+    frame.updateWorldMatrix(true, false);
+    parent.updateWorldMatrix(true, false);
+
+    // Where the parent lies, expressed in the frame's own coordinates.
+    const parentLocal = frame.worldToLocal(
+      new THREE.Vector3().setFromMatrixPosition(parent.matrixWorld),
+    );
+    const toParent = new THREE.Vector3(parentLocal.x, 0, parentLocal.z);
+    // A frame sitting exactly on its parent has no bearing to resolve; any
+    // horizontal will do, and +X keeps it deterministic.
+    if (toParent.lengthSq() < 1e-9) toParent.set(1, 0, 0);
+    toParent.normalize();
+
+    // Stand opposite the parent, so looking back at the origin looks at it.
+    const localPose = toParent.clone().multiplyScalar(-offset).setY(altitude);
+
+    this.surface = { frame };
+    this.setFrameScale(shardRadius);
+    // Read off the vector rather than assembling the angles by hand. Spherical
+    // measures theta from +Z, not +X, and composing that by hand is exactly the
+    // error that put the spike's first landing ninety degrees off its parent —
+    // a frame that looked entirely plausible and was wrong.
+    this.sphericalTarget.setFromVector3(localPose);
+    if (this.reducedMotion) this.spherical.copy(this.sphericalTarget);
+  }
+
+  /**
    * Frame any object in the scene graph. Takes the object and its size, not a
    * scope id: the camera never needs to know what a scope is, only where a
    * frame sits and how big it is. That is what lets a `universe` root use this
@@ -203,6 +268,7 @@ export class WorldCameraManager {
    * two deep is composed by Object3D rather than by arithmetic here.
    */
   public descend(target: THREE.Object3D, radius: number): void {
+    this.surface = null;
     this.setFrameScale(radius);
     const center = target.getWorldPosition(new THREE.Vector3());
     this.setPreset("", {
@@ -213,6 +279,7 @@ export class WorldCameraManager {
 
   /** The named inverse of descend: back to the frame the scope sits in. */
   public ascend(): void {
+    this.surface = null;
     this.setFrameScale(ASTROLABE_OUTER);
     this.setPreset("galaxy");
   }
@@ -251,6 +318,28 @@ export class WorldCameraManager {
 
   public update(deltaSeconds: number): void {
     const lerpRate = Math.min(1, deltaSeconds * 3.8);
+
+    // A landed camera is driven from its frame's matrix, not from a world pose
+    // captured on arrival. The orbit still lerps, so dragging feels the same;
+    // what changes is that the result is interpreted in the frame's space, and
+    // therefore travels with it.
+    if (this.surface) {
+      const frame = this.surface.frame;
+      frame.updateWorldMatrix(true, false);
+
+      this.spherical.theta = THREE.MathUtils.lerp(this.spherical.theta, this.sphericalTarget.theta, lerpRate);
+      this.spherical.phi = THREE.MathUtils.lerp(this.spherical.phi, this.sphericalTarget.phi, lerpRate);
+      this.spherical.radius = THREE.MathUtils.lerp(this.spherical.radius, this.sphericalTarget.radius, lerpRate);
+
+      const target = new THREE.Vector3().setFromMatrixPosition(frame.matrixWorld);
+      this.currentPose.target.copy(target);
+      this.target.copy(target);
+      this.camera.position
+        .setFromSpherical(this.spherical)
+        .applyMatrix4(frame.matrixWorld);
+      this.camera.lookAt(target);
+      return;
+    }
 
     // Smooth target lookAt lerp
     this.currentPose.target.lerp(this.desiredPose.target, lerpRate);
