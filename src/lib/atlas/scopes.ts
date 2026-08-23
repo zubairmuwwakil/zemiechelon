@@ -1,9 +1,9 @@
 import type { Body, ScopeId } from "./types";
-import { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import { GALAXY_ZEMI, moonScopeId, planetScopeId, type Scope } from "./galaxy";
 import { loadBodies } from "./bodies";
 import { ARM_META } from "@/data/arms";
 
-export { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
+export { GALAXY_ZEMI, moonScopeId, planetScopeId, type Scope } from "./galaxy";
 
 /**
  * A planet is a frame as soon as something shipped in its arm.
@@ -34,9 +34,36 @@ export function derivePlanetScopes(bodies: Body[] = loadBodies()): Scope[] {
     }));
 }
 
+/**
+ * A shipped system is a frame, by the same rule that makes a planet one.
+ *
+ * Stated over `kind === "system"` rather than as a list, so a fifth venture
+ * becomes a frame by adding a row — the same predicate `deriveMoons` uses, and
+ * `bodies.test.ts` already holds the two together. The epoch is the body's own
+ * birth, so `radiusScale` restarts cleanly inside the moon rather than
+ * inheriting a galaxy epoch that means nothing there.
+ */
+export function deriveMoonScopes(bodies: Body[] = loadBodies()): Scope[] {
+  return bodies
+    .filter((body) => body.kind === "system")
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((body) => ({
+      id: moonScopeId(body.id),
+      kind: "system" as const,
+      parent: planetScopeId(body.arm),
+      label: body.label || body.id,
+      epoch: body.bornAt,
+      // Named for the galaxy arm so a body's own `arm` still resolves and
+      // `placeBodies` runs unchanged in the frame, exactly as planet scopes do.
+      arms: { [body.arm]: 0 },
+      windRate: GALAXY_ZEMI.windRate,
+    }));
+}
+
 export const SCOPES: Record<ScopeId, Scope> = {
   [GALAXY_ZEMI.id]: GALAXY_ZEMI,
   ...Object.fromEntries(derivePlanetScopes().map((s) => [s.id, s])),
+  ...Object.fromEntries(deriveMoonScopes().map((s) => [s.id, s])),
 };
 
 export function getScope(id: ScopeId): Scope {

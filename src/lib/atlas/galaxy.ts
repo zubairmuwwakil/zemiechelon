@@ -38,3 +38,9 @@ export const GALAXY_ZEMI: Scope = {
 export function planetScopeId(arm: string): ScopeId {
   return `planet:${arm}`;
 }
+
+/** e.g. moonScopeId("PickMe") -> "moon:PickMe". Here, not in moons.ts, so that
+ * scopes.ts can spell a moon's id without importing the module that imports it. */
+export function moonScopeId(bodyId: string): ScopeId {
+  return `moon:${bodyId}`;
+}
