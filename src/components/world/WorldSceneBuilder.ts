@@ -11,6 +11,7 @@ import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
+import { obliquityFor } from "@/lib/atlas/motion";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { surfaceScopeIds } from "@/lib/atlas/surfaces";
 import { buildSurface, type SurfaceHandle } from "./SurfaceBuilder";
@@ -318,7 +319,13 @@ export class WorldSceneBuilder {
   private readonly idealGates: Array<{ id: string; day: number; objects: THREE.Object3D[] }> = [];
   private readonly visibleIdealIds = new Set<string>();
   /** Each arm's frozen centre and instance index in the shared planet mesh. */
-  private readonly planetInstances: Array<{ arm: string; index: number; center: THREE.Vector3 }> = [];
+  private readonly planetInstances: Array<{
+    arm: string;
+    index: number;
+    center: THREE.Vector3;
+    /** L2. Held here because `setClockDay` rebuilds the matrix and must re-compose it. */
+    tilt: THREE.Quaternion;
+  }> = [];
   private readonly visiblePlanetArms = new Set<string>();
   /** Arm dust, sorted by its anchor's birth day so a draw range can gate it without reordering. */
   private armDustGeometry: THREE.BufferGeometry | null = null;
@@ -777,8 +784,21 @@ export class WorldSceneBuilder {
 
       const center = toScene(planet.center);
       const radius = planet.radius * SCENE_SCALE;
-      matrix.makeScale(radius, radius, radius);
-      matrix.setPosition(center.x, PLANET_Y, center.z);
+      // Read the pole off a vector rather than assembling Euler angles by hand.
+      // Composing angles by hand is exactly the error that put the surface
+      // spike's first landing ninety degrees off its parent.
+      const lean = obliquityFor(planet.arm);
+      const pole = new THREE.Vector3(
+        Math.sin(lean.magnitude) * Math.cos(lean.azimuth),
+        Math.cos(lean.magnitude),
+        Math.sin(lean.magnitude) * Math.sin(lean.azimuth),
+      );
+      const tilt = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), pole);
+      matrix.compose(
+        new THREE.Vector3(center.x, PLANET_Y, center.z),
+        tilt,
+        new THREE.Vector3(radius, radius, radius),
+      );
       mesh.setMatrixAt(i, matrix);
       this.planetInstanceIndices.set(planet.arm, i);
       this.planetInstanceMatrices[i] = matrix.clone();
@@ -822,7 +842,12 @@ export class WorldSceneBuilder {
 
       // The centre is frozen here, from the full-set derivation. `setClockDay`
       // only ever rewrites this instance's scale, never its position.
-      this.planetInstances.push({ arm: planet.arm, index: i, center: new THREE.Vector3(center.x, PLANET_Y, center.z) });
+      this.planetInstances.push({
+        arm: planet.arm,
+        index: i,
+        center: new THREE.Vector3(center.x, PLANET_Y, center.z),
+        tilt,
+      });
     });
 
     geometry.setAttribute(PLANET_ATTRIBUTES.pattern, new THREE.InstancedBufferAttribute(pattern, 1));
@@ -1279,8 +1304,14 @@ export class WorldSceneBuilder {
       for (const instance of this.planetInstances) {
         const growth = growthByArm.get(instance.arm);
         const radius = growth?.visible ? growth.radius * SCENE_SCALE : 0;
-        const matrix = new THREE.Matrix4().makeScale(radius, radius, radius);
-        matrix.setPosition(instance.center);
+        // Composed, not scaled-then-positioned: the instance carries an L2 tilt
+        // and this method runs last in `build()`, so a matrix rebuilt without
+        // the rotation would erase the tilt before the first frame.
+        const matrix = new THREE.Matrix4().compose(
+          instance.center,
+          instance.tilt,
+          new THREE.Vector3(radius, radius, radius),
+        );
         // The clock owns the matrix, not the draw: `applyPlanetInstances`
         // below composes it with the cull and with standing.
 

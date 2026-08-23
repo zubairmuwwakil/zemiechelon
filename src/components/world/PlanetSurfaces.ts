@@ -103,7 +103,12 @@ export function createPlanetMaterial(): THREE.ShaderMaterial {
         vSpin = aSpin;
         vBase = aBase;
         vAccent = aAccent;
-        vNormal = normalize(normalMatrix * normal);
+        // Through instanceMatrix as well. normalMatrix alone is correct only
+        // while instances are pure scale and translation -- uniform scale does
+        // not change a normal's direction, but a tilt does, and a tilted planet
+        // lit by the old expression is lit as though it were upright.
+        // (No backticks in here: this is inside a JS template literal.)
+        vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
         vLocal = position;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
       }
