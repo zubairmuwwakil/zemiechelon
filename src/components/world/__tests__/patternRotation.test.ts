@@ -3,7 +3,13 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { PATTERN_PERIOD_SECONDS, obliquityFor, patternAngle } from "@/lib/atlas/motion";
+import {
+  PATTERN_PERIOD_SECONDS,
+  PATTERN_RATE,
+  obliquityFor,
+  patternAngle,
+} from "@/lib/atlas/motion";
+import { ASTROLABE_OUTER } from "../WorldCameraManager";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { deriveMoons } from "@/lib/atlas/moons";
 
@@ -189,5 +195,33 @@ describe("reduced motion", () => {
       obliquityFor("products").magnitude,
       6,
     );
+  });
+});
+
+describe("the pattern is perceptible, and no faster", () => {
+  /**
+   * Pixels per scene unit at the derived galaxy pose: the camera sits at
+   * (0, 0.9R, 1.12R) looking at the origin, with a 42-degree vertical FOV, on
+   * an 800 px viewport. This is the framing every visitor lands on.
+   */
+  const CAMERA_DISTANCE = Math.hypot(ASTROLABE_OUTER * 0.9, ASTROLABE_OUTER * 1.12);
+  const VIEWPORT_HEIGHT = 800;
+  const FOV = (42 * Math.PI) / 180;
+  const PX_PER_UNIT = VIEWPORT_HEIGHT / (2 * CAMERA_DISTANCE * Math.tan(FOV / 2));
+
+  it("moves the rim fast enough to see", () => {
+    // Smooth-motion detection sits near 1 px/s. Below it a visitor registers
+    // that something HAS moved but never sees it moving.
+    const speed = PATTERN_RATE * ASTROLABE_OUTER * PX_PER_UNIT;
+    expect(speed).toBeGreaterThan(1.5);
+  });
+
+  it("moves the rim slowly enough to click", () => {
+    // A planet pin is on the order of 100 px wide. ORRERY_RATE was cut from
+    // 0.28 to 0.1 because a bead "slid out from under the pointer"; this is the
+    // same failure mode one altitude up.
+    const speed = PATTERN_RATE * ASTROLABE_OUTER * PX_PER_UNIT;
+    expect(speed).toBeLessThan(4);
+    expect(100 / speed).toBeGreaterThan(25);
   });
 });
