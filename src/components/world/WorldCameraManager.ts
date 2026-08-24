@@ -52,14 +52,32 @@ export const PLANET_CENTERS: Record<string, THREE.Vector3> = {
   ...Object.fromEntries(derived.map((p) => [p.arm, toScene(p.center)])),
 };
 
-/** Frame a planet from just outside its own rim, so framing scales with mass. */
+/**
+ * Frame a body of `radius` centred at `center`, from just outside its own rim,
+ * so framing scales with mass.
+ *
+ * One function because there is one framing, and it is reached two ways:
+ * `CAMERA_PRESETS` builds it once at module load from the layout constant, and
+ * `aimAtDescendedFrame` rebuilds it every frame from a live world matrix. When
+ * the ratios were typed into both, nothing said so — the two would simply drift
+ * apart, and a planet reached from the nav would sit at a different distance
+ * from the same planet reached by clicking it.
+ *
+ * Writes into `out` rather than allocating: the per-frame caller is the reason
+ * this exists at all.
+ */
+function framePose(center: THREE.Vector3, radius: number, out: CameraPose): CameraPose {
+  out.position.set(center.x, radius * 3.6, center.z + radius * 4.8);
+  out.target.set(center.x, radius * 0.3, center.z);
+  return out;
+}
+
+/** The layout-time framing of a planet, for the preset table. */
 function orbitPose(arm: string): CameraPose {
-  const center = PLANET_CENTERS[arm];
-  const r = PLANET_RADII[arm];
-  return {
-    position: new THREE.Vector3(center.x, r * 3.6, center.z + r * 4.8),
-    target: new THREE.Vector3(center.x, r * 0.3, center.z),
-  };
+  return framePose(PLANET_CENTERS[arm], PLANET_RADII[arm], {
+    position: new THREE.Vector3(),
+    target: new THREE.Vector3(),
+  });
 }
 
 /**
@@ -80,6 +98,27 @@ export const CAMERA_PRESETS: Record<string, CameraPose> = {
   // Retained alias: the HUD and page.tsx both still dispatch "founder".
   founder: orbitPose("self"),
 };
+
+/**
+ * The arm a preset NAMES, or null for a preset that names a place instead.
+ *
+ * This is the distinction §3.7 never drew, and it is the whole of the drift.
+ * `galaxy` and `overview` name the origin the pattern turns about, which by
+ * construction does not move. Every other preset names a *planet*, and L1
+ * carries planets. Only the second kind has anything to follow — so only the
+ * second kind should be resolved to a live frame, and the first can go on being
+ * two frozen vectors forever without ever being wrong.
+ *
+ * Here rather than at the call site because the `founder` alias above is this
+ * module's own fiction, and a caller resolving presets to arms would have to
+ * re-derive it and could quietly get it wrong.
+ */
+export function presetArm(presetKey: CameraTargetPreset): string | null {
+  if (presetKey === "galaxy" || presetKey === "overview") return null;
+  const arm = presetKey === "founder" ? "self" : presetKey;
+  // A preset with no drawn radius is not a planet, whatever it is called.
+  return PLANET_RADII[arm] !== undefined ? arm : null;
+}
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const IDENTITY_SCALE = new THREE.Vector3(1, 1, 1);
@@ -158,8 +197,21 @@ export class WorldCameraManager {
    * used to read `getWorldPosition()` once and freeze the pose, so flying to an
    * orbiting moon aimed at where the moon had been at the moment of the click.
    * A turning galaxy makes that true of planets too.
+   *
+   * `offset` is a fixed point in the frame's LOCAL space, almost always the
+   * origin. It exists because three of the five planets have no group of their
+   * own to follow — see `planetFrames.ts` — and the honest way to name those is
+   * the layout centre plus the frame that carries it, rather than a second
+   * follow mechanism that could track differently from this one.
    */
-  private descended: { frame: THREE.Object3D; radius: number } | null = null;
+  private descended: {
+    frame: THREE.Object3D;
+    radius: number;
+    offset: THREE.Vector3;
+  } | null = null;
+
+  /** Scratch for `aimAtDescendedFrame`, which runs every frame. */
+  private readonly framedCenter = new THREE.Vector3();
 
   // Orbit state
   private spherical = new THREE.Spherical(295, Math.PI / 3.1, Math.PI / 4);
@@ -193,10 +245,27 @@ export class WorldCameraManager {
     this.camera.lookAt(this.currentPose.target);
   }
 
+  /**
+   * Look at a fixed pose. **For presets that name a place, not a body.**
+   *
+   * A preset naming a planet must not come through here, because a `CameraPose`
+   * is two frozen vectors and L1 carries planets: framing one that way frames
+   * where it stood at t=0 and walks it off centre over the pattern period. Such
+   * presets are resolved to a live frame and routed through `descend` — see
+   * `presetArm` for the split, and `planetFrames.ts` for how a planet with no
+   * scope group of its own is still named. What is left for this method is the
+   * galaxy pose, whose target is the axis the pattern turns about, and any
+   * caller-supplied `customPose`, which is a place by definition.
+   */
   public setPreset(presetKey: CameraTargetPreset, customPose?: CameraPose): void {
     // An explicit preset always wins: it is a request to look somewhere else,
-    // so whatever the camera was following stops being followed.
+    // so whatever the camera was following stops being followed. Both of them —
+    // `surface` was missed here, and it is the one that survives a lerp: a
+    // landed camera is driven entirely from its frame's matrix in `update`, so
+    // leaving it set pins the camera to the ground it was standing on and no
+    // amount of preset arriving afterwards moves it.
     this.descended = null;
+    this.surface = null;
 
     if (customPose) {
       this.desiredPose = {
@@ -327,10 +396,23 @@ export class WorldCameraManager {
    *
    * The world matrix is read rather than the local position, so a frame nested
    * two deep is composed by Object3D rather than by arithmetic here.
+   *
+   * `offset` names a fixed point inside that object, defaulting to its origin.
+   * It is what lets a body with no group of its own be followed — the layout
+   * centre pushed through the frame that carries it — without a second follow
+   * path that could track differently. It is a LOCAL point: whatever rotation
+   * the frame picks up is applied to it, which is exactly what makes a planet
+   * with no scope ride the pattern rather than sit in it.
    */
-  public descend(target: THREE.Object3D, radius: number): void {
+  public descend(target: THREE.Object3D, radius: number, offset?: THREE.Vector3): void {
     this.surface = null;
-    this.descended = { frame: target, radius };
+    this.descended = {
+      frame: target,
+      radius,
+      // Cloned: the caller's vector may be a layout constant, and this one is
+      // read every frame for as long as the descent lasts.
+      offset: offset ? offset.clone() : new THREE.Vector3(),
+    };
     this.setFrameScale(radius);
     this.aimAtDescendedFrame();
 
@@ -339,8 +421,8 @@ export class WorldCameraManager {
     // `onWheelZoom` write to this same spherical, so re-deriving it per frame
     // would overwrite the visitor's input on the very next one and quietly
     // remove orbit and zoom for as long as anything was being framed.
-    const offset = new THREE.Vector3().subVectors(this.desiredPose.position, this.desiredPose.target);
-    this.sphericalTarget.setFromVector3(offset);
+    const orbitOffset = new THREE.Vector3().subVectors(this.desiredPose.position, this.desiredPose.target);
+    this.sphericalTarget.setFromVector3(orbitOffset);
     if (this.reducedMotion) this.snap();
   }
 
@@ -354,11 +436,12 @@ export class WorldCameraManager {
    */
   private aimAtDescendedFrame(): void {
     if (!this.descended) return;
-    const { frame, radius } = this.descended;
+    const { frame, radius, offset } = this.descended;
     frame.updateWorldMatrix(true, false);
-    const center = new THREE.Vector3().setFromMatrixPosition(frame.matrixWorld);
-    this.desiredPose.position.set(center.x, radius * 3.6, center.z + radius * 4.8);
-    this.desiredPose.target.set(center.x, radius * 0.3, center.z);
+    // `applyMatrix4` on a zero offset is `setFromMatrixPosition`, so the frame's
+    // own origin needs no branch of its own.
+    const center = this.framedCenter.copy(offset).applyMatrix4(frame.matrixWorld);
+    framePose(center, radius, this.desiredPose);
   }
 
   /** The named inverse of descend: back to the frame the scope sits in. */

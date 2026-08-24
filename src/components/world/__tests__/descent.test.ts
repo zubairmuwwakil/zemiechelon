@@ -142,6 +142,41 @@ describe("descending onto something that moves", () => {
     expect(manager.target.distanceTo(framedFirst)).toBeGreaterThan(50);
   });
 
+  it("follows a fixed point inside a frame, not only the frame's own origin", () => {
+    // Three of the five planets have no group of their own, so the only way to
+    // name them is a layout centre plus the frame that carries it. The offset
+    // is LOCAL: it has to pick up the frame's rotation, or a planet named this
+    // way would sit still while the pattern turned around it.
+    const manager = new WorldCameraManager(1200, 800);
+    const root = new THREE.Group();
+    new THREE.Scene().add(root);
+    const offset = new THREE.Vector3(120, 0, 0);
+
+    manager.descend(root, 6, offset);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    expect(manager.target.distanceTo(new THREE.Vector3(120, 0, 0))).toBeLessThan(6);
+
+    // A quarter turn of the root carries the point from +X round to −Z.
+    root.rotation.y = Math.PI / 2;
+    root.updateWorldMatrix(true, false);
+    for (let i = 0; i < 180; i++) manager.update(1 / 60);
+    expect(manager.target.distanceTo(new THREE.Vector3(0, 0, -120))).toBeLessThan(6);
+  });
+
+  it("does not let a caller's offset vector be written through", () => {
+    // The offsets handed in are layout constants. Holding the caller's vector
+    // would make the camera an alias for the map's placement authority.
+    const manager = new WorldCameraManager(1200, 800);
+    const root = new THREE.Group();
+    new THREE.Scene().add(root);
+    const offset = new THREE.Vector3(120, 0, 0);
+
+    manager.descend(root, 6, offset);
+    for (let i = 0; i < 60; i++) manager.update(1 / 60);
+    expect(offset.x).toBe(120);
+    expect(offset.lengthSq()).toBe(120 * 120);
+  });
+
   it("lets go of the frame when the camera ascends", () => {
     const scene = new THREE.Scene();
     const manager = new WorldCameraManager(1200, 800);

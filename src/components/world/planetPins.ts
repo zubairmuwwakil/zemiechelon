@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { WorldSceneBuilder } from "./WorldSceneBuilder";
-import { PLANET_CENTERS } from "./WorldCameraManager";
+import { drawnWorldPosition, planetFrame } from "./planetFrames";
 
 /**
  * How high each pin floats above the body it names, in scene units.
@@ -33,37 +33,21 @@ export interface PinAnchor {
  * since a pin that has come loose from its planet still projects, still
  * renders, and still looks like a pin.
  *
- * **A planet is drawn whether or not it has a scope.** Only arms that have
- * shipped enough get a scope group — today that is `labs` and `products`, two
- * of five — while all five are drawn, as rows of the planet InstancedMesh
- * placed inside `rootGroup`. So the frame is preferred where one exists, and
- * where none does the layout constant is pushed through `rootGroup`'s own
- * matrix instead. Both are live reads: the pattern's rotation is in that
- * matrix either way (motion design §3.2), which is what §3.7 asks for. What is
- * NOT allowed is reading `PLANET_CENTERS` as a world position, which is what
- * left the pins behind when the galaxy started turning.
+ * The rule itself lives in `planetFrames` rather than here, because the camera
+ * needs the same answer: a nav preset frames a planet a pin is labelling, and
+ * the two pointing at different places is precisely the drift this file exists
+ * to prevent. What is left here is the only part that is a pin's own business —
+ * how high it floats.
  */
 export function planetPinAnchors(builder: WorldSceneBuilder): PinAnchor[] {
   builder.rootGroup.updateWorldMatrix(true, false);
   const anchors: PinAnchor[] = [];
 
   for (const [id, pinY] of Object.entries(PIN_HEIGHTS)) {
-    const anchor = new THREE.Vector3();
-    if (id === "galaxy") {
-      // The core is the galaxy's own origin, which the pattern turns about, so
-      // it is the one anchor that never moves.
-      builder.rootGroup.getWorldPosition(anchor);
-    } else {
-      const group = builder.scopeGroups.get(`planet:${id}`);
-      if (group) {
-        group.getWorldPosition(anchor);
-      } else {
-        const center = PLANET_CENTERS[id];
-        // An arm with neither a scope nor a placement is not a planet at all.
-        if (!center) continue;
-        anchor.copy(center).applyMatrix4(builder.rootGroup.matrixWorld);
-      }
-    }
+    const drawn = planetFrame(builder, id);
+    // An arm with neither a scope nor a placement is not a planet at all.
+    if (!drawn) continue;
+    const anchor = drawnWorldPosition(drawn);
     anchor.y = pinY;
     anchors.push({ id, anchor });
   }

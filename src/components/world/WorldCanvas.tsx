@@ -8,7 +8,14 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
-import { WorldCameraManager, type CameraTargetPreset, ASTROLABE_OUTER, PLANET_RADII } from "./WorldCameraManager";
+import {
+  WorldCameraManager,
+  type CameraTargetPreset,
+  ASTROLABE_OUTER,
+  PLANET_RADII,
+  presetArm,
+} from "./WorldCameraManager";
+import { planetFrame } from "./planetFrames";
 import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
@@ -600,8 +607,31 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const frame = landedScope ?? flybyScope;
     if (frame && builder.scopeGroups.has(frame)) {
       camera.descend(builder.groupFor(frame), framedRadius(builder, bodies, frame));
-    } else if (cameraPreset === "galaxy" || cameraPreset === "overview") {
+      return;
+    }
+
+    if (cameraPreset === "galaxy" || cameraPreset === "overview") {
       camera.ascend();
+      return;
+    }
+
+    // A nav preset that names a planet is a request to follow that planet, and
+    // "an explicit preset wins" is satisfied by taking the follow over rather
+    // than by dropping it: `descend` releases whatever was being tracked before
+    // it starts tracking this. Framing a planet from the preset table instead
+    // frames where it stood at t=0, which L1 then walks off centre — 31 CSS
+    // px in the first minute, a full excursion over the 30-minute period.
+    //
+    // The pose is unchanged by this: `orbitPose` and the descent's own framing
+    // are now the same function, so a planet reached from the nav is framed
+    // exactly as one reached by clicking it. What is new is that it stays there.
+    const arm = presetArm(cameraPreset);
+    const planet = arm ? planetFrame(builder, arm) : null;
+    if (arm && planet) {
+      // The same rule the pins follow: the scope group where an arm has one,
+      // and the layout centre carried by `rootGroup` where it does not — which
+      // is three of the five, and why this drift hit most of the nav.
+      camera.descend(planet.frame, PLANET_RADII[arm], planet.offset);
     } else {
       camera.setPreset(cameraPreset);
     }

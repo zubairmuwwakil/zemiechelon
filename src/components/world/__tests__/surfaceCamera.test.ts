@@ -234,6 +234,24 @@ describe("leaving a surface", () => {
     expect(pose().altitude).toBeGreaterThan(5.92);
   });
 
+  it("releases the surface when an explicit preset arrives", () => {
+    // The path `leaveSurface` actually takes off a MOON: it ascends one level,
+    // so the preset it sets names the parent planet rather than the galaxy, and
+    // nothing calls `ascend`. `setPreset` cleared `descended` but not `surface`,
+    // and a landed camera is driven entirely from its frame's matrix in
+    // `update` — so the preset arrived, lerped nothing, and the visitor stayed
+    // standing on the moon they had just asked to leave.
+    const radius = shardRadiusFor(PICKME, bodies);
+    camera.landOnSurface(builder.groupFor(PICKME), builder.groupFor(PRODUCTS), radius);
+    settle();
+    expect(pose().altitude).toBeCloseTo(radius * SURFACE_ALTITUDE_RATIO, 4);
+
+    camera.setPreset("galaxy");
+    settle();
+    expect(pose().altitude).toBeGreaterThan(radius);
+    expect(camera.target.length()).toBeLessThan(1);
+  });
+
   it("arrives without travelling when motion is reduced", () => {
     const reduced = new WorldCameraManager(1280, 800, true);
     const radius = shardRadiusFor(PICKME, bodies);
