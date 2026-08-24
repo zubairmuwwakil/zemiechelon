@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { PATTERN_PERIOD_SECONDS, patternAngle } from "@/lib/atlas/motion";
+import { PATTERN_PERIOD_SECONDS, obliquityFor, patternAngle } from "@/lib/atlas/motion";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { deriveMoons } from "@/lib/atlas/moons";
 
@@ -153,5 +153,41 @@ describe("positions are read, not remembered", () => {
     const group = builder.groupFor("planet:products");
     const world = group.getWorldPosition(new THREE.Vector3());
     expect(Math.hypot(hit.position.x - world.x, hit.position.z - world.z)).toBeLessThan(0.001);
+  });
+});
+
+describe("reduced motion", () => {
+  function still() {
+    const scene = new THREE.Scene();
+    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1, true);
+    builder.build();
+    return builder;
+  }
+
+  it("stops the pattern", () => {
+    const builder = still();
+    builder.update(900, 900);
+    expect(builder.rootGroup.rotation.y).toBe(0);
+  });
+
+  it("stops the field", () => {
+    const builder = still();
+    const dust = builder.rootGroup.getObjectByName("arm-dust") as THREE.Points;
+    builder.update(900, 900);
+    expect((dust.material as THREE.ShaderMaterial).uniforms.uTime.value).toBe(0);
+  });
+
+  it("keeps the tilt, because orientation is content and not travel", () => {
+    const builder = still();
+    const mesh = builder.rootGroup.getObjectByName("planet-surfaces") as THREE.InstancedMesh;
+    const m = new THREE.Matrix4();
+    mesh.getMatrixAt(builder.planetInstanceIndex("products"), m);
+    const q = new THREE.Quaternion();
+    m.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    const pole = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    expect(pole.angleTo(new THREE.Vector3(0, 1, 0))).toBeCloseTo(
+      obliquityFor("products").magnitude,
+      6,
+    );
   });
 });

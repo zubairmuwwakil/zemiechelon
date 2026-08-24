@@ -229,6 +229,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // Read once, here: prefers-reduced-motion decides whether the camera flies
     // or arrives, and nothing downstream needs to ask again.
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    // The sun's arc is travel, so it stops on the same preference (spec §3.10).
+    // The controller is built above; this is the first line that can ask.
+    dayNight.setReducedMotion(reduced);
     const cameraManager = new WorldCameraManager(width, height, reduced);
     cameraManagerRef.current = cameraManager;
 
@@ -252,7 +255,13 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
     // 5. Scene Builder
     const today = new Date().toISOString().slice(0, 10);
-    const sceneBuilder = new WorldSceneBuilder(scene, bodies, today, fieldDensityFor(width));
+    const sceneBuilder = new WorldSceneBuilder(
+      scene,
+      bodies,
+      today,
+      fieldDensityFor(width),
+      reduced,
+    );
     sceneBuilder.build();
     sceneBuilder.setResolution(width, height);
     sceneBuilder.setCosmicMode(cosmicMode);

@@ -353,6 +353,15 @@ export class WorldSceneBuilder {
     private today: string,
     /** Fraction of the field budget to draw. See `fieldDensityFor`. */
     private fieldDensity = 1,
+    /**
+     * OS-level `prefers-reduced-motion`. Read once, at construction, exactly as
+     * `WorldCameraManager` reads it.
+     *
+     * Removes travel, never content: L1, L4 and L5 stop, and the axial tilt
+     * stays — a tilt is orientation, and turning it off would delete something
+     * a visitor can see rather than something that moves.
+     */
+    private reducedMotion = false,
   ) {
     for (const body of bodies) this.bornDayById.set(body.id, daysSinceEpoch(body.bornAt));
   }
@@ -1589,7 +1598,7 @@ export class WorldSceneBuilder {
     // L1. One angle for the whole galaxy: rigid, so no relative angle between
     // any two bodies changes and no radius does. That is what lets the map keep
     // claiming that angle means arm and radius means time.
-    const pattern = patternAngle(elapsed);
+    const pattern = this.reducedMotion ? 0 : patternAngle(elapsed);
     this.rootGroup.rotation.y = pattern;
     // The sky is the fixed reference the pattern is seen against. It rides the
     // root like everything else, so it has to be given the rotation back.
@@ -1605,7 +1614,8 @@ export class WorldSceneBuilder {
     if (this.planetMaterial) {
       this.planetMaterial.uniforms.uTime.value = elapsed;
     }
-    for (const material of this.fieldMaterials) material.uniforms.uTime.value = elapsed;
+    const fieldTime = this.reducedMotion ? 0 : elapsed;
+    for (const material of this.fieldMaterials) material.uniforms.uTime.value = fieldTime;
     this.planetarySpheres.forEach((ps, idx) => {
       ps.rotateY(delta * (0.18 + (idx % 3) * 0.04));
     });
