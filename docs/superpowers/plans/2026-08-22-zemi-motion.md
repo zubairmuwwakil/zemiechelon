@@ -121,7 +121,7 @@ move.
   - `interface AxisTilt { magnitude: number; azimuth: number }`
   - `obliquityFor(arm: string, scope?: Scope): AxisTilt`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/atlas/__tests__/motion.test.ts`:
 
@@ -198,12 +198,12 @@ describe("obliquity", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/lib/atlas/__tests__/motion.test.ts`
 Expected: FAIL — `Failed to resolve import "../motion"`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/lib/atlas/motion.ts`:
 
@@ -303,17 +303,17 @@ export function obliquityFor(arm: string, scope: Scope = GALAXY_ZEMI): AxisTilt 
 }
 ```
 
-- [ ] **Step 4: Run it and make sure it passes**
+- [x] **Step 4: Run it and make sure it passes**
 
 Run: `npx vitest run src/lib/atlas/__tests__/motion.test.ts`
 Expected: PASS — 10 tests.
 
-- [ ] **Step 5: Confirm no three.js crept into the data layer**
+- [x] **Step 5: Confirm no three.js crept into the data layer**
 
 Run: `grep -n "three" src/lib/atlas/motion.ts`
 Expected: no output.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/atlas/motion.ts src/lib/atlas/__tests__/motion.test.ts
@@ -335,7 +335,7 @@ git commit -m "feat(motion): derive the pattern rate and every planet's lean"
 - Produces: `planetInstances` entries gain `tilt: THREE.Quaternion`. Every
   planet instance matrix now decomposes to a non-identity rotation.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/world/__tests__/tilt.test.ts`:
 
@@ -440,13 +440,13 @@ describe("axial tilt", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/tilt.test.ts`
 Expected: FAIL — the pole equals world up, so `angleTo(UP)` is 0 rather than the
 derived magnitude.
 
-- [ ] **Step 3: Compose the instance rotation into the normal**
+- [x] **Step 3: Compose the instance rotation into the normal**
 
 In `src/components/world/PlanetSurfaces.ts`, in the vertex shader, replace:
 
@@ -464,7 +464,7 @@ with:
         vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
 ```
 
-- [ ] **Step 4: Store the tilt on each instance and compose it in**
+- [x] **Step 4: Store the tilt on each instance and compose it in**
 
 In `src/components/world/WorldSceneBuilder.ts`, add to the imports:
 
@@ -528,7 +528,7 @@ and replace the `planetInstances.push` call at the end of the same loop:
       });
 ```
 
-- [ ] **Step 5: Stop the clock from erasing the tilt**
+- [x] **Step 5: Stop the clock from erasing the tilt**
 
 In `setClockDay`, replace:
 
@@ -550,7 +550,7 @@ with:
         );
 ```
 
-- [ ] **Step 6: Run the new test and the full suite**
+- [x] **Step 6: Run the new test and the full suite**
 
 Run: `npx vitest run src/components/world/__tests__/tilt.test.ts`
 Expected: PASS — 6 tests.
@@ -559,7 +559,7 @@ Run: `npm test`
 Expected: PASS. `sceneParity.test.ts` in particular must be green — Task 2
 reparents nothing, so the golden cannot have moved.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/world/PlanetSurfaces.ts src/components/world/WorldSceneBuilder.ts src/components/world/__tests__/tilt.test.ts
@@ -585,7 +585,7 @@ git commit -m "feat(motion): give every planet its own axis to turn on"
     Task 11.
   - `SUN_ARC_PERIOD_SECONDS: number` exported constant.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/world/__tests__/light.test.ts`:
 
@@ -641,12 +641,12 @@ describe("the sun moves", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts`
 Expected: FAIL — `sunDirection is not a function`.
 
-- [ ] **Step 3: Implement the arc**
+- [x] **Step 3: Implement the arc**
 
 In `src/components/world/DayNightController.ts`, add below the palette exports:
 
@@ -746,17 +746,17 @@ transition. Replace the whole method body with:
   }
 ```
 
-- [ ] **Step 4: Run it and make sure it passes**
+- [x] **Step 4: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts`
 Expected: PASS — 5 tests.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/DayNightController.ts src/components/world/__tests__/light.test.ts
@@ -778,7 +778,7 @@ git commit -m "feat(motion): let the sun travel, so a lit edge means something"
 - Produces: `WorldSceneBuilder.setLightDirection(dir: THREE.Vector3): void`.
   The planet material gains a `uLightDir` uniform and a `vWorldNormal` varying.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/components/world/__tests__/light.test.ts`:
 
@@ -819,12 +819,12 @@ describe("the planets are lit by the scene's own sun", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts -t "lit by the scene"`
 Expected: FAIL — `material.uniforms.uLightDir` is undefined.
 
-- [ ] **Step 3: Add the uniform and the world normal**
+- [x] **Step 3: Add the uniform and the world normal**
 
 In `src/components/world/PlanetSurfaces.ts`, in `createPlanetMaterial`:
 
@@ -881,7 +881,7 @@ with:
         float lambert = clamp(dot(normalize(vWorldNormal), uLightDir), 0.0, 1.0);
 ```
 
-- [ ] **Step 4: Plumb it through the builder**
+- [x] **Step 4: Plumb it through the builder**
 
 In `src/components/world/WorldSceneBuilder.ts`, add the setter next to
 `setCosmicMode`:
@@ -906,7 +906,7 @@ In `src/components/world/WorldCanvas.tsx`, inside `animate`, immediately after
       sceneBuilder.setLightDirection(dayNight.sunDirection());
 ```
 
-- [ ] **Step 5: Run it and make sure it passes**
+- [x] **Step 5: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts`
 Expected: PASS — 9 tests.
@@ -914,7 +914,7 @@ Expected: PASS — 9 tests.
 Run: `npm test && npm run lint`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/PlanetSurfaces.ts src/components/world/WorldSceneBuilder.ts src/components/world/WorldCanvas.tsx src/components/world/__tests__/light.test.ts
@@ -939,7 +939,7 @@ so `castShadow` on the planet mesh currently buys nothing. Sizing the frustum to
 the frame in view follows the rule `setFrameScale` and `setFogReference` already
 use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/components/world/__tests__/light.test.ts`:
 
@@ -973,12 +973,12 @@ describe("shadows reach what is in frame", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts -t "shadows reach"`
 Expected: FAIL — `setShadowReach is not a function`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `src/components/world/DayNightController.ts`, add to the class:
 
@@ -1014,7 +1014,7 @@ In `src/components/world/DayNightController.ts`, add to the class:
   }
 ```
 
-- [ ] **Step 4: Call it wherever the frame scale is already set**
+- [x] **Step 4: Call it wherever the frame scale is already set**
 
 In `src/components/world/WorldCanvas.tsx`, find the existing call to
 `dayNightRef.current?.setFogReference(...)` (there are two: one for a landed
@@ -1034,7 +1034,7 @@ reference the fog is given:
 Import `ASTROLABE_OUTER` from `./WorldCameraManager` if it is not already
 imported there.
 
-- [ ] **Step 5: Run it and make sure it passes**
+- [x] **Step 5: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/light.test.ts`
 Expected: PASS — 12 tests.
@@ -1042,7 +1042,7 @@ Expected: PASS — 12 tests.
 Run: `npm test && npm run lint`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/DayNightController.ts src/components/world/WorldCanvas.tsx src/components/world/__tests__/light.test.ts
@@ -1071,7 +1071,7 @@ the timeline transport can gate it with a plain `setDrawRange` prefix. **This
 task must not reorder it.** Phase rides a parallel attribute and displacement
 happens in the shader, so the position buffer is read-only here.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/world/__tests__/field.test.ts`:
 
@@ -1158,12 +1158,12 @@ describe("the field is animated", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/field.test.ts`
 Expected: FAIL — `Failed to resolve import "../FieldShader"`.
 
-- [ ] **Step 3: Write the field material**
+- [x] **Step 3: Write the field material**
 
 Create `src/components/world/FieldShader.ts`:
 
@@ -1247,7 +1247,7 @@ export function createFieldMaterial(options: FieldMaterialOptions): THREE.Shader
 }
 ```
 
-- [ ] **Step 4: Generate the phase attribute alongside the positions**
+- [x] **Step 4: Generate the phase attribute alongside the positions**
 
 In `src/components/world/WorldSceneBuilder.ts`, in `buildFieldGeometry`, add a
 phase array beside `armDustDays`. Declare it next to the other buffers:
@@ -1268,7 +1268,7 @@ and add it to the returned object:
 Return `{ positions, armDustDays, phases }` — update the return statement and
 the function's return type annotation to match.
 
-- [ ] **Step 5: Use the material and carry the phase into both layers**
+- [x] **Step 5: Use the material and carry the phase into both layers**
 
 In `buildBackgroundField`, destructure the new field:
 
@@ -1328,7 +1328,7 @@ Add the import at the top of the file:
 import { createFieldMaterial } from "./FieldShader";
 ```
 
-- [ ] **Step 6: Fix the two places that spoke to `PointsMaterial`**
+- [x] **Step 6: Fix the two places that spoke to `PointsMaterial`**
 
 Change the field material list's type:
 
@@ -1354,7 +1354,7 @@ In `update`, advance the field clock — add beside the planet material's `uTime
     for (const material of this.fieldMaterials) material.uniforms.uTime.value = elapsed;
 ```
 
-- [ ] **Step 7: Run it and make sure it passes**
+- [x] **Step 7: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/field.test.ts`
 Expected: PASS — 7 tests.
@@ -1363,7 +1363,7 @@ Run: `npm test && npm run lint`
 Expected: PASS. `cullAndClock.test.ts` and `density.test.ts` both exercise the
 field's draw ranges and must stay green.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/components/world/FieldShader.ts src/components/world/WorldSceneBuilder.ts src/components/world/__tests__/field.test.ts
@@ -1391,7 +1391,7 @@ off-axis from a landed pose. A moon frame rides its incline, so the landed
 ground tilts with it. **If that assertion fails, lower `MAX_INCLINATION` in
 `motion.ts` until it passes** — the ceiling is gated by the test, not chosen.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/world/__tests__/inclination.test.ts`:
 
@@ -1462,12 +1462,12 @@ describe("moon orbits are inclined", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/inclination.test.ts`
 Expected: FAIL — `moon.inclination` is `undefined`.
 
-- [ ] **Step 3: Derive the inclination**
+- [x] **Step 3: Derive the inclination**
 
 In `src/lib/atlas/moons.ts`, add to the import line:
 
@@ -1496,7 +1496,7 @@ Inside the `systems.forEach` callback, add to the pushed object:
         inclination: MAX_INCLINATION * (systems.length === 1 ? 0 : t * 2 - 1),
 ```
 
-- [ ] **Step 4: Hang the ring and the pivot on one inclined group**
+- [x] **Step 4: Hang the ring and the pivot on one inclined group**
 
 In `src/components/world/WorldSceneBuilder.ts`, in `buildMoons`, replace:
 
@@ -1540,7 +1540,7 @@ and replace the later `group.add(pivot);` with:
       orbit.add(pivot);
 ```
 
-- [ ] **Step 5: Run the new test, then the acceptance gate**
+- [x] **Step 5: Run the new test, then the acceptance gate**
 
 Run: `npx vitest run src/components/world/__tests__/inclination.test.ts`
 Expected: PASS — 4 tests.
@@ -1551,7 +1551,7 @@ Expected: PASS, **unmodified**. If the 15°-off-axis assertion in
 `src/lib/atlas/motion.ts` (try 8°, then 6°) and re-run until it passes. Do not
 edit the assertion.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `npm test && npm run lint`
 Expected: PASS, including `sceneParity.test.ts` — moons are drawn by
@@ -1559,7 +1559,7 @@ Expected: PASS, including `sceneParity.test.ts` — moons are drawn by
 fail the golden. It does not: the orbit group's rotation is applied about the
 planet's centre and the moon starts at phase zero on the inclined circle.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/atlas/moons.ts src/components/world/WorldSceneBuilder.ts src/components/world/__tests__/inclination.test.ts
@@ -1582,7 +1582,7 @@ git commit -m "feat(motion): incline each moon's orbit, and draw the ring on it"
 
 **Read Trap 2 above before starting.**
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/world/__tests__/patternRotation.test.ts`:
 
@@ -1705,12 +1705,12 @@ describe("the pattern is rigid", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts`
 Expected: FAIL — `rootGroup.rotation.y` stays 0.
 
-- [ ] **Step 3: Keep a handle on the sky shell**
+- [x] **Step 3: Keep a handle on the sky shell**
 
 In `src/components/world/WorldSceneBuilder.ts`, add the import:
 
@@ -1736,7 +1736,7 @@ In `buildBackgroundField`, inside the `layer` helper, immediately after
       if (name === "background-field") this.skyShell = points;
 ```
 
-- [ ] **Step 4: Turn the pattern in `update`**
+- [x] **Step 4: Turn the pattern in `update`**
 
 At the top of `update`, before the corona rings:
 
@@ -1751,7 +1751,7 @@ At the top of `update`, before the corona rings:
     if (this.skyShell) this.skyShell.rotation.y = -pattern;
 ```
 
-- [ ] **Step 5: Run it and make sure it passes**
+- [x] **Step 5: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts`
 Expected: PASS — 7 tests.
@@ -1761,7 +1761,7 @@ Expected: PASS. `sceneParity.test.ts` must be green — it captures before
 `update()` is called, so the pattern angle is still zero when the golden is
 read.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/WorldSceneBuilder.ts src/components/world/__tests__/patternRotation.test.ts
@@ -1784,7 +1784,7 @@ git commit -m "feat(motion): wheel the galaxy against a sky that stays put"
   `mesh.matrixWorld`, so it stays true under motion. `WorldCanvas` reads planet
   pin anchors from `builder.groupFor(...)` rather than from `PLANET_CENTERS`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/components/world/__tests__/patternRotation.test.ts`:
 
@@ -1821,12 +1821,12 @@ describe("positions are read, not remembered", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts -t "read, not remembered"`
 Expected: FAIL — the frozen position no longer matches the moved world position.
 
-- [ ] **Step 3: Make `position` a getter on the moon and planet hit objects**
+- [x] **Step 3: Make `position` a getter on the moon and planet hit objects**
 
 In `src/components/world/WorldSceneBuilder.ts`, in `buildMoons`, replace:
 
@@ -1889,7 +1889,7 @@ with:
       });
 ```
 
-- [ ] **Step 4: Project the pins from the scene graph**
+- [x] **Step 4: Project the pins from the scene graph**
 
 In `src/components/world/WorldCanvas.tsx`, replace the `planetPins` array and
 its `forEach` with a version that reads live world positions. The per-planet Y
@@ -1925,7 +1925,7 @@ and z now come from the scene:
 Remove `PLANET_CENTERS` from the import on line 11 if nothing else in the file
 uses it. `PLANET_RADII` is still used by `framedRadius` and stays.
 
-- [ ] **Step 5: Run it and make sure it passes**
+- [x] **Step 5: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts`
 Expected: PASS — 9 tests.
@@ -1935,7 +1935,7 @@ Expected: PASS. `moonFrames.test.ts`'s "carries the moon's own position" case
 must still pass — the getter returns the same value at build time that the
 frozen vector did.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/WorldSceneBuilder.ts src/components/world/WorldCanvas.tsx src/components/world/__tests__/patternRotation.test.ts
@@ -1961,7 +1961,7 @@ git commit -m "feat(motion): read positions off the scene rather than rememberin
 pose. Moons already orbit today, so clicking a moon flies the camera to where
 it *was* at the moment of the click. L1 makes this bad for planets too.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/components/world/__tests__/descent.test.ts`:
 
@@ -2009,12 +2009,12 @@ describe("descending onto something that moves", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/descent.test.ts -t "something that moves"`
 Expected: FAIL — the target stays near the frame's original position.
 
-- [ ] **Step 3: Hold the frame instead of a snapshot of it**
+- [x] **Step 3: Hold the frame instead of a snapshot of it**
 
 In `src/components/world/WorldCameraManager.ts`, add the field beside `surface`:
 
@@ -2090,7 +2090,7 @@ block:
     this.aimAtDescendedFrame();
 ```
 
-- [ ] **Step 4: Run it and make sure it passes**
+- [x] **Step 4: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/descent.test.ts`
 Expected: PASS — all existing cases plus the 2 new ones.
@@ -2098,7 +2098,7 @@ Expected: PASS — all existing cases plus the 2 new ones.
 Run: `npm test && npm run lint`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/world/WorldCameraManager.ts src/components/world/__tests__/descent.test.ts
@@ -2121,7 +2121,7 @@ git commit -m "fix(camera): aim at the frame, not at where the frame was"
   — a fifth optional parameter, defaulting to `false` so every existing call
   site and test is unchanged.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/components/world/__tests__/patternRotation.test.ts`:
 
@@ -2165,12 +2165,12 @@ describe("reduced motion", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts -t "reduced motion"`
 Expected: FAIL — the pattern still turns.
 
-- [ ] **Step 3: Take the flag and gate the travelling layers**
+- [x] **Step 3: Take the flag and gate the travelling layers**
 
 In `src/components/world/WorldSceneBuilder.ts`, add the constructor parameter
 after `fieldDensity`:
@@ -2203,7 +2203,7 @@ and the field clock from Task 6 with:
     for (const material of this.fieldMaterials) material.uniforms.uTime.value = fieldTime;
 ```
 
-- [ ] **Step 4: Pass it in, and stop the sun too**
+- [x] **Step 4: Pass it in, and stop the sun too**
 
 In `src/components/world/WorldCanvas.tsx`, find where `WorldSceneBuilder` is
 constructed and where the reduced-motion preference is already read for
@@ -2214,7 +2214,7 @@ day/night controller:
       dayNight.setReducedMotion(prefersReducedMotion);
 ```
 
-- [ ] **Step 5: Run it and make sure it passes**
+- [x] **Step 5: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts`
 Expected: PASS — 12 tests.
@@ -2222,7 +2222,7 @@ Expected: PASS — 12 tests.
 Run: `npm test && npm run lint`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/world/WorldSceneBuilder.ts src/components/world/WorldCanvas.tsx src/components/world/__tests__/patternRotation.test.ts
@@ -2246,7 +2246,7 @@ rim at the derived galaxy pose. Too slow and the work ships invisible; too fast
 and pins slide out from under the pointer, which the orrery already hit once.
 Neither failure is caught by any other test.
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Append to `src/components/world/__tests__/patternRotation.test.ts`:
 
@@ -2283,17 +2283,17 @@ describe("the pattern is perceptible, and no faster", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and make sure it passes**
+- [x] **Step 2: Run it and make sure it passes**
 
 Run: `npx vitest run src/components/world/__tests__/patternRotation.test.ts -t "perceptible"`
 Expected: PASS — 2 tests, with the measured speed at about 2.53 px/s.
 
-- [ ] **Step 3: Run the whole suite and the linter one last time**
+- [x] **Step 3: Run the whole suite and the linter one last time**
 
 Run: `npm test && npm run lint`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/world/__tests__/patternRotation.test.ts
