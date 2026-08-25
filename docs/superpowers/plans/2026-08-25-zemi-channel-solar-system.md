@@ -1337,13 +1337,67 @@ describe("the galaxy frame", () => {
 Run: `npx vitest run src/components/world/__tests__/galaxyFrame.test.ts`
 Expected: FAIL — cannot resolve `../GalaxyBuilder`.
 
-- [ ] **Step 3: Write `GalaxyBuilder`**
+- [ ] **Step 3: Write `GalaxyBuilder` — read this before touching the field**
 
-Create `src/components/world/GalaxyBuilder.ts`. Move the sky-shell half of
-`WorldSceneBuilder.buildBackgroundField` here verbatim — the `THREE.Points`
-built from `BACKGROUND_STAR_COUNT`, its geometry, its material and its
-`scene`/`rootGroup` parenting. Leave the arm dust where it is; that belongs to
-a solar system.
+**Do NOT move the sky half of `buildFieldGeometry`.** Stars and dust are drawn
+from ONE `mulberry32` stream, stars first (`WorldSceneBuilder.ts:79-88`, then
+`:110-138`). Splitting the function would have the dust loop start from a
+stream that has not advanced 36,000 times, and **every dust mote in both
+systems would move** — visibly, with no test to catch it.
+
+Instead:
+
+1. `buildFieldGeometry` stays **byte-identical**. It keeps generating the star
+   positions; `WorldSceneBuilder` simply stops *drawing* them.
+2. In `WorldSceneBuilder.buildBackgroundField`, delete the `layer` helper
+   (`:619-657`) and its single call (`:659`). The arm-dust block below it
+   (`:660` onward) is untouched, and so is its stream position.
+3. `GalaxyBuilder` grows its **own** shell generator with its own seed, sized
+   to `GALAXY_REACH` rather than to one system's reach:
+
+```ts
+/**
+ * The galaxy's own sky.
+ *
+ * Generated here rather than moved out of `buildFieldGeometry`, and that is
+ * deliberate: stars and arm dust share one `mulberry32` stream there, stars
+ * first, so lifting the star loop out would leave the dust drawing from a
+ * stream 36,000 draws earlier and move every mote in the map. The solar-system
+ * builder therefore keeps generating star positions it no longer draws — a few
+ * hundred microseconds at construction, against a field that stays exactly
+ * where it is.
+ *
+ * The radius is a multiple of `GALAXY_REACH`, not of one system's own reach.
+ * A sky sized to the atlas would leave the channel outside it.
+ */
+function buildGalaxySky(reach: number, seed: number): THREE.BufferGeometry {
+  const rand = mulberry32(seed);
+  const positions = new Float32Array(BACKGROUND_STAR_COUNT * 3);
+  let i = 0;
+  for (let n = 0; n < BACKGROUND_STAR_COUNT; n++) {
+    const theta = rand() * Math.PI * 2;
+    const phi = Math.acos(2 * rand() - 1);
+    const r = reach * (1.5 + rand() * 1.3);
+    positions[i++] = Math.sin(phi) * Math.cos(theta) * r;
+    positions[i++] = Math.cos(phi) * r;
+    positions[i++] = Math.sin(phi) * Math.sin(theta) * r;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  return geometry;
+}
+```
+
+`mulberry32` and `BACKGROUND_STAR_COUNT` are already exported from
+`WorldSceneBuilder.ts` — export `mulberry32` if it is not.
+
+Reuse the star material verbatim from the deleted `layer` call (size 1.6,
+opacity 0.5, `frustumCulled = false`), and push it onto a local
+`fieldMaterials` array so `setCosmicMode` can still reach it.
+
+**This is a visible change:** the sky gets larger, because it now surrounds the
+galaxy rather than the atlas. Expected, and the reason step 6 takes a
+screenshot.
 
 ```ts
 import * as THREE from "three";
@@ -1526,11 +1580,25 @@ In `src/components/world/WorldSceneBuilder.ts`:
 2. In `registerScopeGroups`, replace both uses of `SOLAR_SYSTEM_ZEMI` with
    `this.scope`, and pass `this.scope` to `derivePlanets` and
    `derivePlanetScopes`.
-3. Replace every remaining `SOLAR_SYSTEM_ZEMI` in the file — lines 67, 470,
-   521, 746, 840, 916, 917, 1113, 1124, 1159 in the pre-change file — with
-   `this.scope`. Line 67's is a module-level default on
-   `buildFieldGeometry`; leave that signature default alone and pass
-   `this.scope` at the call site instead.
+3. Replace every remaining `SOLAR_SYSTEM_ZEMI` in the file. Run
+   `grep -n SOLAR_SYSTEM_ZEMI src/components/world/WorldSceneBuilder.ts` first
+   and expect exactly these, pre-change:
+
+   | Line | What it is | Action |
+   |---|---|---|
+   | 9 | the import | keep — `buildFieldGeometry`'s default still needs it |
+   | 67 | `buildFieldGeometry`'s signature default | **leave**; pass `this.scope` at the call site |
+   | 407, 408 | `rootGroup.name` and its `scopeGroups` key | `this.scope.id` |
+   | 470 | `deriveRingAnnotation` | `this.scope` |
+   | 521 | `deriveRingAnnotation` (frontier) | `this.scope` |
+   | 607 | a comment | update the prose |
+   | 746 | `derivePlanetAnnotation` (core) | `this.scope` |
+   | 840 | `derivePlanetAnnotation` (planet) | `this.scope` |
+   | 916, 917 | ideal-ring lean, reads `arms[planet.arm]` | `this.scope.arms[...]` |
+   | 1113, 1124, 1159 | arm-dust pick targets, base angle and wind rate | `this.scope` |
+
+   If the grep returns a line not in this table, the file has moved since the
+   plan was written — report it rather than guessing.
 4. Replace the Task 5 placeholder in `setClockDate` with `this.scope.epoch`.
 5. Pass `this.scope` as the second argument to `deriveWorldRadius`,
    `derivePlanets`, `planetGrowthAt`, `deriveMoons`, `placeBodies` and
