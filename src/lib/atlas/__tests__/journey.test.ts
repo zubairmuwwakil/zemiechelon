@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { moonScopeId, planetScopeId } from "../galaxy";
-import { SCOPES, SOLAR_SYSTEM_ZEMI } from "../scopes";
+import { SCOPES, SOLAR_SYSTEM_ZEMI, scopeChain } from "../scopes";
 import { declaresSurface } from "../surfaces";
 import {
   AT_SOLAR_SYSTEM,
@@ -127,11 +127,16 @@ describe("ascending is one level, and the level comes from the scope tree", () =
     // this same answer, and the copy is what went stale. If the scope tree ever
     // gains a level, this fails rather than the camera quietly ascending too far.
     for (const scope of Object.values(SCOPES)) {
-      // The solar system itself is excluded: it has a parent (the galaxy), but
+      // Every solar system is excluded: each has a parent (the galaxy), but
       // `Position` has no galaxy-level state to ascend into yet — that state is
-      // deliberately deferred until a second solar system exists to navigate
-      // between. See docs/superpowers/plans/... galaxy wrapper notes.
-      if (!scope.parent || scope.id === SOLAR_SYSTEM_ZEMI.id) continue;
+      // deliberately deferred until the journey model itself grows a galaxy
+      // level. See docs/superpowers/plans/... galaxy wrapper notes.
+      if (!scope.parent || scope.kind === "solarSystem") continue;
+      // A planet or moon outside the atlas is excluded too: `ascendFrom` and
+      // `scopeIdFor` do not yet know which solar system a "planet" or
+      // "solarSystem" position belongs to — they answer for the atlas only,
+      // until `Position` grows an identified solar system of its own.
+      if (!scopeChain(scope.id).includes(SOLAR_SYSTEM_ZEMI)) continue;
       const parent = ascendFrom(positionFor(scope.id), bodies);
       expect(scopeIdFor(parent), scope.id).toBe(scope.parent);
     }

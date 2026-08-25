@@ -1,4 +1,5 @@
 import type { Body, ScopeId } from "./types";
+import { CHANNEL_ARM_IDS, CHANNEL_ITEMS, channelEpoch } from "@/data/channel";
 
 /**
  * A coordinate frame. Bodies are laid out within their parent's frame, and the
@@ -44,13 +45,38 @@ export const SOLAR_SYSTEM_ZEMI: Scope = {
 };
 
 /**
+ * The channel: the second solar system in the Zemí galaxy.
+ *
+ * Its arms are spaced evenly from `CHANNEL_ARM_IDS`, so a fifth arm is one row
+ * in that list and nobody chooses an angle. Its epoch is its oldest item's
+ * date — derived, exactly as a planet's epoch is derived from its oldest
+ * child — so the first video is the origin of this system's time.
+ *
+ * `windRate` matches the atlas's. One wind rate for the whole map: the arms of
+ * two systems seen together in one frame must curve the same way, or the
+ * spiral stops reading as a property of the map and starts reading as a
+ * property of whichever system you are in.
+ */
+export const SOLAR_SYSTEM_CHANNEL: Scope = {
+  id: "solarSystem:channel",
+  kind: "solarSystem",
+  parent: GALAXY_ID,
+  label: "The Channel",
+  epoch: channelEpoch(CHANNEL_ITEMS),
+  arms: Object.fromEntries(
+    CHANNEL_ARM_IDS.map((arm, i) => [arm, (i / CHANNEL_ARM_IDS.length) * 2 * Math.PI]),
+  ),
+  windRate: SOLAR_SYSTEM_ZEMI.windRate,
+};
+
+/**
  * Every solar system in the galaxy, in the order they were founded.
  *
  * The registry is the single place a system is declared. `GALAXY_ZEMI.arms`,
  * `SCOPES` and the uniqueness guard are all folds over this array, so a second
  * system is one row rather than an edit in four files.
  */
-export const SOLAR_SYSTEMS: Scope[] = [SOLAR_SYSTEM_ZEMI];
+export const SOLAR_SYSTEMS: Scope[] = [SOLAR_SYSTEM_ZEMI, SOLAR_SYSTEM_CHANNEL];
 
 /** e.g. solarSystemScopeId("atlas") -> "solarSystem:atlas". One spelling, one place. */
 export function solarSystemScopeId(name: string): ScopeId {

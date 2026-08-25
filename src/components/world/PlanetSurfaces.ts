@@ -12,16 +12,18 @@ export interface SurfaceFamily {
 }
 
 /**
- * Five places, not five colours of one object.
+ * One entry per arm across the whole galaxy, not five colours of one object.
  *
  * Foundations carries banded sediment because ZemiMark.tsx is already a
  * stratified cross-section with obsidian at its base — putting that geology on
  * the origin planet makes the mark and the map say the same thing.
  *
- * Labs and Creative share a base and an accent, and that is the palette's limit
- * rather than an oversight: Direction A has five hues for five planets, one of
- * which is the ground itself. They are told apart by surface and by rate, which
- * is what §5.1 asks identity to come from.
+ * Direction A has five hues for five atlas planets, one of which is the
+ * ground itself, so Labs and Creative already share a base and an accent —
+ * the palette's limit rather than an oversight. The channel's four arms reuse
+ * that same five-hue set rather than widening the palette, for the same
+ * reason. Every arm is still told apart by surface pattern and rotation rate,
+ * which is what §5.1 asks identity to come from.
  */
 export const SURFACE_FAMILIES: Record<string, SurfaceFamily> = {
   foundations: {
@@ -58,6 +60,34 @@ export const SURFACE_FAMILIES: Record<string, SurfaceFamily> = {
     rotationRate: 0.026,
     baseColor: DIRECTION_A.oxide,
     accentColor: DIRECTION_A.gold,
+  },
+  vlogs: {
+    arm: "vlogs",
+    pattern: 0, // banded sediment strata
+    rotationRate: 0.006,
+    baseColor: DIRECTION_A.verdigris,
+    accentColor: DIRECTION_A.rule,
+  },
+  shorts: {
+    arm: "shorts",
+    pattern: 3, // ocean and cloud
+    rotationRate: 0.022,
+    baseColor: DIRECTION_A.gold,
+    accentColor: DIRECTION_A.ink,
+  },
+  tutorials: {
+    arm: "tutorials",
+    pattern: 1, // gas-giant bands
+    rotationRate: 0.009,
+    baseColor: DIRECTION_A.oxide,
+    accentColor: DIRECTION_A.gold,
+  },
+  devlogs: {
+    arm: "devlogs",
+    pattern: 2, // fractured crystalline shell
+    rotationRate: 0.014,
+    baseColor: DIRECTION_A.ink,
+    accentColor: DIRECTION_A.verdigris,
   },
 };
 

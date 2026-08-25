@@ -75,6 +75,46 @@ export const ARMS: ArmMeta[] = [
       "The smallest arm — two bodies, one of them private. Notes, longform and the vault that never became a product.",
     themeColor: DIRECTION_A.oxide,
   },
+  {
+    id: "vlogs",
+    name: "Vlogs",
+    shortName: "Vlogs",
+    icon: "Video",
+    tagline: "Talking, unedited",
+    description:
+      "The channel's least produced arm: what the week was, said out loud. Shortest to make and the first thing anyone watches.",
+    themeColor: DIRECTION_A.verdigris,
+  },
+  {
+    id: "shorts",
+    name: "Shorts",
+    shortName: "Shorts",
+    icon: "Zap",
+    tagline: "One idea, under a minute",
+    description:
+      "A single technique with nothing around it. The arm reads small on the map because runtime is what sizes a body, and that is exactly right.",
+    themeColor: DIRECTION_A.gold,
+  },
+  {
+    id: "tutorials",
+    name: "Tutorials",
+    shortName: "Tutorials",
+    icon: "GraduationCap",
+    tagline: "Long-form, start to finish",
+    description:
+      "The heaviest bodies in the channel. A tutorial is measured in tens of minutes, and the map says so without being told.",
+    themeColor: DIRECTION_A.oxide,
+  },
+  {
+    id: "devlogs",
+    name: "Dev-logs",
+    shortName: "Dev-logs",
+    icon: "Hammer",
+    tagline: "The work as it happens",
+    description:
+      "The arm that points back at the repository atlas: the same systems, being built, narrated while they are still wrong.",
+    themeColor: DIRECTION_A.ink,
+  },
 ];
 
 export const ARM_META: Record<ArmId, ArmMeta> = Object.fromEntries(

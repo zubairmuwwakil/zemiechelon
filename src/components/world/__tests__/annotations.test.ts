@@ -2,7 +2,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { ARMS } from "@/data/arms";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 
 const bodies = loadBodies();
@@ -36,8 +36,11 @@ describe("element annotations and hit testing", () => {
 
     const armHits = builder.hitObjects.filter((h) => h.type === "arm");
     expect(armHits).toHaveLength(5);
-    for (const arm of ARMS) {
-      expect(armHits.map((h) => h.id)).toContain(`arm-${arm.id}`);
+    // The builder still draws only the atlas — `ARMS` is galaxy-wide since the
+    // channel registered its own arms, so the arms this builder can possibly
+    // hit-test are the atlas's own, not every arm in the galaxy.
+    for (const arm of Object.keys(SOLAR_SYSTEM_ZEMI.arms)) {
+      expect(armHits.map((h) => h.id)).toContain(`arm-${arm}`);
     }
 
     for (const arm of armHits) {

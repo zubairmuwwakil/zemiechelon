@@ -5,7 +5,7 @@ import { deriveWorldRadius, derivePlanets, type PlanetPlacement } from "./planet
 import { deriveMoons, type MoonPlacement } from "./moons";
 import { daysSinceEpoch, radiusScale } from "./position";
 import { IDEALS, type Ideal } from "./ideals";
-import { ARMS, ARM_META } from "@/data/arms";
+import { ARM_META } from "@/data/arms";
 
 /**
  * Astrolabe month boundary cadence in days per ring.
@@ -185,7 +185,11 @@ export function deriveLegendFigures(
     }
   }
 
-  const arms: ArmFigure[] = ARMS.map((meta) => {
+  // Scoped to this system's own arms, not every arm the galaxy declares —
+  // `ARMS` is galaxy-wide now that the channel has registered its own, and
+  // this figure set must stay consistent with `armCount` above.
+  const arms: ArmFigure[] = armKeys.map((armId) => {
+    const meta = ARM_META[armId];
     const armBodies = bodies.filter((b) => b.arm === meta.id);
     const shippedCount = armBodies.filter((b) => b.kind === "moon").length;
     const dwarfPlanetCount = armBodies.length - shippedCount;

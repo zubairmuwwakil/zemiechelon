@@ -1,8 +1,15 @@
 import generated from "@/data/bodies.generated.json";
 import { OVERRIDES } from "@/data/bodies.overrides";
 import type { Body } from "./types";
-import { SOLAR_SYSTEMS, SOLAR_SYSTEM_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import {
+  SOLAR_SYSTEMS,
+  SOLAR_SYSTEM_CHANNEL,
+  SOLAR_SYSTEM_ZEMI,
+  planetScopeId,
+  type Scope,
+} from "./galaxy";
 import type { ScopeId } from "./types";
+import { loadChannelBodies } from "./channel";
 
 /** Re-exported from the galaxy scope so the epoch is declared once. */
 export const EPOCH = SOLAR_SYSTEM_ZEMI.epoch;
@@ -69,6 +76,7 @@ export function loadBodies(): Body[] {
  */
 const BODY_SOURCES: Record<ScopeId, () => Body[]> = {
   [SOLAR_SYSTEM_ZEMI.id]: loadBodies,
+  [SOLAR_SYSTEM_CHANNEL.id]: loadChannelBodies,
 };
 
 /** One solar system's own bodies. Loud rather than empty: a system with no

@@ -16,6 +16,10 @@ export const PIN_HEIGHTS: Record<string, number> = {
   products: 7.8,
   labs: 6.8,
   creative: 5.6,
+  vlogs: 5.6,
+  shorts: 5.2,
+  tutorials: 6.4,
+  devlogs: 6.0,
 };
 
 /** A pin's live world anchor: the HUD label's attachment point in the scene. */

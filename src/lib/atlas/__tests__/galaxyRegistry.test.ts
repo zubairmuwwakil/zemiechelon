@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   GALAXY_ZEMI,
   SOLAR_SYSTEMS,
+  SOLAR_SYSTEM_CHANNEL,
   SOLAR_SYSTEM_ZEMI,
   solarSystemScopeId,
   systemName,
   validateGalaxy,
   type Scope,
 } from "../galaxy";
-import { loadBodies } from "../bodies";
+import { CHANNEL_ARM_IDS } from "@/data/channel";
+import { bodiesFor, loadBodies } from "../bodies";
 import type { Body } from "../types";
 
 /** A minimal solar system, for collision cases the real registry cannot produce. */
@@ -102,5 +104,43 @@ describe("validateGalaxy", () => {
     expect(() =>
       validateGalaxy([system("first", { shared: 0 }), system("second", { shared: 0 })], []),
     ).toThrow(/first.*second|second.*first/);
+  });
+});
+
+describe("the channel solar system", () => {
+  it("is registered as the galaxy's second system", () => {
+    expect(SOLAR_SYSTEMS[1]).toBe(SOLAR_SYSTEM_CHANNEL);
+    expect(SOLAR_SYSTEM_CHANNEL.parent).toBe(GALAXY_ZEMI.id);
+  });
+
+  it("declares exactly the channel's arms, evenly spaced", () => {
+    const arms = Object.keys(SOLAR_SYSTEM_CHANNEL.arms);
+    expect(arms.sort()).toEqual([...CHANNEL_ARM_IDS].sort());
+    CHANNEL_ARM_IDS.forEach((arm, i) => {
+      expect(SOLAR_SYSTEM_CHANNEL.arms[arm]).toBeCloseTo(
+        (i / CHANNEL_ARM_IDS.length) * 2 * Math.PI,
+        10,
+      );
+    });
+  });
+
+  it("takes its epoch from its oldest item, not from a typed date", () => {
+    const oldest = bodiesFor(SOLAR_SYSTEM_CHANNEL)
+      .map((b) => b.bornAt)
+      .sort()[0];
+    expect(SOLAR_SYSTEM_CHANNEL.epoch).toBe(oldest);
+  });
+
+  it("collides with nothing the atlas declares", () => {
+    // The guard would have thrown at import. This states why it matters.
+    const atlasArms = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
+    for (const arm of Object.keys(SOLAR_SYSTEM_CHANNEL.arms)) {
+      expect(atlasArms, arm).not.toContain(arm);
+    }
+  });
+
+  it("serves its own bodies through bodiesFor", () => {
+    expect(bodiesFor(SOLAR_SYSTEM_CHANNEL).length).toBeGreaterThan(0);
+    expect(bodiesFor(SOLAR_SYSTEM_CHANNEL)).not.toEqual(bodiesFor(SOLAR_SYSTEM_ZEMI));
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEMS } from "@/lib/atlas/scopes";
 import { ARMS } from "@/data/arms";
 import { SURFACE_FAMILIES } from "../PlanetSurfaces";
 
@@ -7,11 +7,19 @@ const families = Object.values(SURFACE_FAMILIES);
 
 describe("surface families", () => {
   it("covers every arm the galaxy declares", () => {
-    expect(Object.keys(SURFACE_FAMILIES).sort()).toEqual(Object.keys(SOLAR_SYSTEM_ZEMI.arms).sort());
+    const declared = SOLAR_SYSTEMS.flatMap((s) => Object.keys(s.arms));
+    expect(Object.keys(SURFACE_FAMILIES).sort()).toEqual(declared.sort());
   });
 
-  it("gives every planet a distinct pattern, so none are twins", () => {
-    expect(new Set(families.map((f) => f.pattern)).size).toBe(families.length);
+  it("gives every planet within a solar system a distinct pattern, so none are twins", () => {
+    // Scoped per system, not across the whole galaxy: the shader has five
+    // patterns and the channel deliberately reuses them (see PlanetSurfaces.ts)
+    // rather than growing a sixth. Twins are only a problem for planets that
+    // are ever drawn together, which today means within one system.
+    for (const system of SOLAR_SYSTEMS) {
+      const patterns = Object.keys(system.arms).map((arm) => SURFACE_FAMILIES[arm].pattern);
+      expect(new Set(patterns).size, system.id).toBe(patterns.length);
+    }
   });
 
   it("gives every planet its own rotation rate", () => {
