@@ -26,6 +26,14 @@ export interface Body {
   consoleId?: string;
   /** Editorial caption for a moment the timeline transport marks. Never a date or a count. */
   milestone?: string;
+  /**
+   * Seconds of finished runtime, for a body that is a recording rather than a
+   * repository. Read by `magnitude`: a video is published once and never
+   * touched, so its lifespan is zero by construction and cannot be the honest
+   * signal that lifespan is for a repository. Absent for an idea, because
+   * nothing has been made yet.
+   */
+  runtimeSeconds?: number;
 }
 
 export interface Vec3 {
