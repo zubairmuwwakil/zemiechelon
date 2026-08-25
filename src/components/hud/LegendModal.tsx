@@ -264,9 +264,9 @@ export function LegendModal({
                   />
                   <span>
                     <strong className={`font-semibold ${isDay ? "text-zinc-900" : "text-zinc-100"}`}>
-                      {figures.shippedSystemsCount} Gold Dots
+                      {figures.shippedMoonsCount} Gold Dots
                     </strong>{" "}
-                    · Shipped systems and production ventures.
+                    · Shipped moons and production ventures.
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -276,9 +276,9 @@ export function LegendModal({
                   />
                   <span>
                     <strong className={`font-semibold ${isDay ? "text-zinc-900" : "text-zinc-100"}`}>
-                      {figures.learnedStarsCount} Verdigris Dots
+                      {figures.learnedDwarfPlanetsCount} Verdigris Dots
                     </strong>{" "}
-                    · Learned supporting repositories, libraries and tools.
+                    · Dwarf planets: learned supporting repositories, libraries and tools.
                   </span>
                 </div>
               </div>
@@ -305,21 +305,21 @@ export function LegendModal({
             </div>
             <div className="space-y-2 text-xs sm:text-sm leading-relaxed">
               <p>
-                Planet radius comes from what its arm holds (weighted by system magnitude), not flat
+                Planet radius comes from what its arm holds (weighted by moon magnitude), not flat
                 count.{" "}
                 <strong className={`font-bold ${isDay ? "text-zinc-950" : "text-white"}`}>
                   {figures.products.name}
                 </strong>{" "}
                 is largest ({figures.products.planetRadius.toFixed(2)} layout radius) holding{" "}
-                {figures.products.total} repositories ({figures.products.systems} shipped systems,{" "}
-                {figures.products.stars} supporting stars).
+                {figures.products.total} repositories ({figures.products.shipped} shipped moons,{" "}
+                {figures.products.dwarfPlanets} supporting dwarf planets).
               </p>
               <p>
                 <strong className={`font-bold ${isDay ? "text-zinc-950" : "text-white"}`}>
                   {figures.totalMoons} Moons
                 </strong>{" "}
-                orbit overhead: shipped systems orbit their arm&apos;s planet, while supporting work
-                remains on the arm ground.
+                orbit overhead: shipped moons orbit their arm&apos;s planet, while supporting dwarf
+                planets remain on the arm ground.
               </p>
             </div>
           </div>
@@ -428,7 +428,7 @@ export function LegendModal({
                         isDay ? "text-amber-700" : "text-amber-400"
                       }`}
                     >
-                      {arm.systemCount}
+                      {arm.shippedCount}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -438,7 +438,7 @@ export function LegendModal({
                         isDay ? "text-emerald-700" : "text-emerald-400"
                       }`}
                     >
-                      {arm.starCount}
+                      {arm.dwarfPlanetCount}
                     </span>
                   </div>
                   <div className="flex justify-between">

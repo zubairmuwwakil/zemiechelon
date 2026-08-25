@@ -18,7 +18,7 @@ import { TimelineTransport } from "@/components/hud/TimelineTransport";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
 import {
-  AT_GALAXY,
+  AT_SOLAR_SYSTEM,
   activeArm,
   framingFor,
   journeyReducer,
@@ -47,7 +47,7 @@ export default function HomePage() {
    * naming the frame just departed. Everything below is now derived from this,
    * so there is nothing left to keep in step by hand.
    */
-  const [journey, travel] = useReducer(journeyReducer, AT_GALAXY);
+  const [journey, travel] = useReducer(journeyReducer, AT_SOLAR_SYSTEM);
 
   /** What the camera should do about where the visitor is. */
   const framing = useMemo(() => framingFor(journey), [journey]);

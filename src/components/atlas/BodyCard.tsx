@@ -59,12 +59,12 @@ export function BodyCard({ body, onClose }: BodyCardProps) {
             <div className="flex items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-medium border ${
-                  body.kind === "system"
+                  body.kind === "moon"
                     ? "bg-amber-50 text-amber-800 border-amber-200"
                     : "bg-zinc-100 text-zinc-700 border-zinc-200"
                 }`}
               >
-                {body.kind === "system" && (
+                {body.kind === "moon" && (
                   <span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />
                 )}
                 <span className="capitalize">{body.kind}</span> · {body.arm}

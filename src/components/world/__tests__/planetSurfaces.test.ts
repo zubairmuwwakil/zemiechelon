@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GALAXY_ZEMI } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 import { ARMS } from "@/data/arms";
 import { SURFACE_FAMILIES } from "../PlanetSurfaces";
 
@@ -7,7 +7,7 @@ const families = Object.values(SURFACE_FAMILIES);
 
 describe("surface families", () => {
   it("covers every arm the galaxy declares", () => {
-    expect(Object.keys(SURFACE_FAMILIES).sort()).toEqual(Object.keys(GALAXY_ZEMI.arms).sort());
+    expect(Object.keys(SURFACE_FAMILIES).sort()).toEqual(Object.keys(SOLAR_SYSTEM_ZEMI.arms).sort());
   });
 
   it("gives every planet a distinct pattern, so none are twins", () => {

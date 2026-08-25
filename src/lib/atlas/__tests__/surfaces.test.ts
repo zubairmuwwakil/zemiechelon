@@ -21,7 +21,7 @@ const bodies = loadBodies();
 
 describe("moon scopes", () => {
   it("makes one scope per shipped system, and nothing else", () => {
-    const systems = bodies.filter((b) => b.kind === "system");
+    const systems = bodies.filter((b) => b.kind === "moon");
     expect(deriveMoonScopes(bodies).map((s) => s.id).sort()).toEqual(
       systems.map((b) => moonScopeId(b.id)).sort(),
     );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
-import { GALAXY_ZEMI } from "../scopes";
+import { SOLAR_SYSTEM_ZEMI } from "../scopes";
 import { daysSinceEpoch } from "../position";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "../planets";
 
@@ -11,7 +11,7 @@ const dist = (p: { x: number; z: number }) => Math.hypot(p.x, p.z);
 
 describe("derivePlanets", () => {
   it("returns one planet per declared arm", () => {
-    expect(planets.map((p) => p.arm).sort()).toEqual(Object.keys(GALAXY_ZEMI.arms).sort());
+    expect(planets.map((p) => p.arm).sort()).toEqual(Object.keys(SOLAR_SYSTEM_ZEMI.arms).sort());
   });
 
   it("counts every body into exactly one planet", () => {

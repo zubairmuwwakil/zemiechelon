@@ -57,7 +57,7 @@ describe("element annotations and hit testing", () => {
     const planetHits = builder.hitObjects.filter((h) => h.type === "planet");
     // 5 planets + 1 central anchor core
     expect(planetHits.length).toBeGreaterThanOrEqual(6);
-    expect(planetHits.map((h) => h.id)).toContain("galaxy");
+    expect(planetHits.map((h) => h.id)).toContain("solarSystem");
     expect(planetHits.map((h) => h.id)).toContain("products");
   });
 

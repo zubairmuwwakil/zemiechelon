@@ -8,7 +8,7 @@ import { loadBodies } from "@/lib/atlas/bodies";
 import { patternAngle } from "@/lib/atlas/motion";
 
 const bodies = loadBodies();
-const PLANETS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "galaxy");
+const PLANETS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "solarSystem");
 
 function built() {
   const builder = new WorldSceneBuilder(new THREE.Scene(), bodies, "2026-08-22", 1);
@@ -72,7 +72,7 @@ describe("planet pins are anchored to planets", () => {
 
   it("holds the core pin at the axis the pattern turns about", () => {
     const builder = built();
-    const core = anchorsAt(builder, 900).get("galaxy")!;
+    const core = anchorsAt(builder, 900).get("solarSystem")!;
     expect(Math.hypot(core.x, core.z)).toBeLessThan(1e-6);
   });
 

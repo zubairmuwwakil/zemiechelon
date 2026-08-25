@@ -77,7 +77,7 @@ export function surfaceScopeIds(bodies: Body[] = loadBodies()): ScopeId[] {
 
   for (const body of bodies) {
     if (!hasEvidence(body)) continue;
-    if (body.kind === "system") ids.push(moonScopeId(body.id));
+    if (body.kind === "moon") ids.push(moonScopeId(body.id));
     // A planet earns a ground when something in it has evidence — which is the
     // reasoning §7 already gave for why Products gets a diorama and the others
     // do not, stated as a rule rather than restated as a decision.
@@ -205,7 +205,7 @@ export function surfacePropsFor(
     const arm = scopeId.slice("planet:".length);
     entries.push(
       ...bodies
-        .filter((b) => b.arm === arm && b.kind !== "system")
+        .filter((b) => b.arm === arm && b.kind !== "moon")
         .sort((a, b) => a.bornAt.localeCompare(b.bornAt) || a.id.localeCompare(b.id))
         .map((b) => ({ id: b.id, label: b.label, anonymous: b.anonymous })),
     );

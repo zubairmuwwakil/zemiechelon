@@ -12,7 +12,7 @@ describe("WorldHUD", () => {
   const defaultProps = {
     cosmicMode: "day" as const,
     onToggleCosmicMode: vi.fn(),
-    activePreset: "galaxy" as const,
+    activePreset: "solarSystem" as const,
     onSelectPreset: vi.fn(),
     onResetView: vi.fn(),
     isDossierOpen: false,

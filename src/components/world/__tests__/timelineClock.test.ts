@@ -104,7 +104,7 @@ describe("WorldSceneBuilder.setClockDay — hit-test gating", () => {
   it("keeps the galaxy core always hittable", () => {
     const builder = build();
     builder.setClockDay(0);
-    const core = builder.hitObjects.find((h) => h.id === "galaxy")!;
+    const core = builder.hitObjects.find((h) => h.id === "solarSystem")!;
     expect(builder.isHitVisible(core)).toBe(true);
   });
 

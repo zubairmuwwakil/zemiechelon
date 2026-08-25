@@ -6,7 +6,7 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Body, ScopeId } from "@/lib/atlas/types";
 import { BULGE, daysSinceEpoch, placeBodies, radiusScale } from "@/lib/atlas/position";
-import { GALAXY_ZEMI, derivePlanetScopes, planetScopeId, scopeChain, type Scope } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI, derivePlanetScopes, planetScopeId, scopeChain, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
@@ -64,7 +64,7 @@ export function buildFieldGeometry(
   bodies: Body[],
   seed: number,
   scale = 1,
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): { positions: Float32Array; armDustDays: Float32Array; phases: Float32Array } {
   const rand = mulberry32(seed);
   const positions = new Float32Array((BACKGROUND_STAR_COUNT + ARM_DUST_COUNT) * 3);
@@ -404,8 +404,8 @@ export class WorldSceneBuilder {
    * ideals' lean stays on the ring group inside.
    */
   private registerScopeGroups(): void {
-    this.rootGroup.name = GALAXY_ZEMI.id;
-    this.scopeGroups.set(GALAXY_ZEMI.id, this.rootGroup);
+    this.rootGroup.name = SOLAR_SYSTEM_ZEMI.id;
+    this.scopeGroups.set(SOLAR_SYSTEM_ZEMI.id, this.rootGroup);
 
     const centers = new Map(
       derivePlanets(this.bodies).map((p) => [p.arm, toScene(p.center)]),
@@ -467,7 +467,7 @@ export class WorldSceneBuilder {
       pick.rotation.x = -Math.PI / 2;
       this.rootGroup.add(pick);
 
-      const ann = deriveRingAnnotation(month, this.bodies, GALAXY_ZEMI, DAYS_PER_MONTH);
+      const ann = deriveRingAnnotation(month, this.bodies, SOLAR_SYSTEM_ZEMI, DAYS_PER_MONTH);
       const label = this.createAnnotationLabel(ann.title, ann.subtitle);
       label.position.set(0, 0.8, -rScene);
       label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -518,7 +518,7 @@ export class WorldSceneBuilder {
     frontierPick.rotation.x = -Math.PI / 2;
     this.rootGroup.add(frontierPick);
 
-    const frontierAnn = deriveRingAnnotation("frontier", this.bodies, GALAXY_ZEMI);
+    const frontierAnn = deriveRingAnnotation("frontier", this.bodies, SOLAR_SYSTEM_ZEMI);
     const frontierLabel = this.createAnnotationLabel(frontierAnn.title, frontierAnn.subtitle);
     frontierLabel.position.set(0, 0.8, -frontierR);
     frontierLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -604,7 +604,7 @@ export class WorldSceneBuilder {
   /**
    * 2. The deep field. Dark points on a light ground: engraved, not emitted.
    *
-   * The old haze re-derived the spiral from `GALAXY_ZEMI.arms` and then rotated
+   * The old haze re-derived the spiral from `SOLAR_SYSTEM_ZEMI.arms` and then rotated
    * itself in `update()`, so within two minutes the drawn arms had slid off the
    * repositories they were drawing. This one is anchored on the placements and
    * does not move.
@@ -743,17 +743,17 @@ export class WorldSceneBuilder {
     corePick.position.set(0, 0, 0);
     sunGroup.add(corePick);
 
-    const coreAnn = derivePlanetAnnotation("galaxy", this.bodies, GALAXY_ZEMI);
+    const coreAnn = derivePlanetAnnotation("solarSystem", this.bodies, SOLAR_SYSTEM_ZEMI);
     const coreLabel = this.createAnnotationLabel(coreAnn.title, coreAnn.subtitle);
     coreLabel.position.set(0, 1.2, CORE_RADIUS + 4.2);
     coreLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
     coreLabel.material.opacity = 0;
     this.rootGroup.add(coreLabel);
-    this.planetAnnotations.set("galaxy", coreLabel);
+    this.planetAnnotations.set("solarSystem", coreLabel);
     this.planetAnnotations.set(coreAnn.id, coreLabel);
 
     this.hitObjects.push({
-      id: "galaxy",
+      id: "solarSystem",
       name: "Ancestral Anchor Core",
       type: "planet",
       mesh: corePick,
@@ -837,7 +837,7 @@ export class WorldSceneBuilder {
       pickSphere.position.set(center.x, PLANET_Y, center.z);
       this.rootGroup.add(pickSphere);
 
-      const ann = derivePlanetAnnotation(planet.arm, this.bodies, GALAXY_ZEMI);
+      const ann = derivePlanetAnnotation(planet.arm, this.bodies, SOLAR_SYSTEM_ZEMI);
       const label = this.createAnnotationLabel(ann.title, ann.subtitle);
       label.position.set(center.x, PLANET_Y, center.z + radius + 4.5);
       label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -913,8 +913,8 @@ export class WorldSceneBuilder {
       // Derived, not authored: the old per-planet `tilt` was a typed table.
       // Reading the arm's own base angle gives every planet a different plane,
       // and a sixth arm gets one without anybody choosing a number.
-      group.rotation.x = -Math.PI / 2 + GALAXY_ZEMI.arms[planet.arm] * 0.28;
-      group.rotation.y = GALAXY_ZEMI.arms[planet.arm] * 0.14;
+      group.rotation.x = -Math.PI / 2 + SOLAR_SYSTEM_ZEMI.arms[planet.arm] * 0.28;
+      group.rotation.y = SOLAR_SYSTEM_ZEMI.arms[planet.arm] * 0.14;
 
       for (const ideal of ideals) {
         const r = radius * (1.6 + ideal.ordinal * 0.36);
@@ -1110,7 +1110,7 @@ export class WorldSceneBuilder {
     const segments = 36;
     for (const [arm, span] of spans.entries()) {
       const ann = deriveArmAnnotation(arm, this.bodies);
-      const baseAngle = GALAXY_ZEMI.arms[arm];
+      const baseAngle = SOLAR_SYSTEM_ZEMI.arms[arm];
       if (baseAngle === undefined) continue;
 
       const rMin = Math.max(BULGE, span.min * 0.85);
@@ -1121,7 +1121,7 @@ export class WorldSceneBuilder {
       for (let s = 0; s <= segments; s++) {
         const t = s / segments;
         const r = rMin + t * (rMax - rMin);
-        const theta = baseAngle + GALAXY_ZEMI.windRate * Math.log(1 + r);
+        const theta = baseAngle + SOLAR_SYSTEM_ZEMI.windRate * Math.log(1 + r);
         const dTheta = 0.35 + r * 0.012;
 
         const rScene = r * SCENE_SCALE;
@@ -1156,7 +1156,7 @@ export class WorldSceneBuilder {
       this.rootGroup.add(pickMesh);
 
       const rMid = (rMin + rMax) / 2;
-      const thetaMid = baseAngle + GALAXY_ZEMI.windRate * Math.log(1 + rMid);
+      const thetaMid = baseAngle + SOLAR_SYSTEM_ZEMI.windRate * Math.log(1 + rMid);
       const labelPos = new THREE.Vector3(
         Math.cos(thetaMid) * rMid * SCENE_SCALE,
         1.2,
@@ -1385,7 +1385,7 @@ export class WorldSceneBuilder {
    */
   public isHitVisible(hit: InteractiveHitObject): boolean {
     if (hit.type === "planet") {
-      return hit.id === "galaxy" || this.visiblePlanetArms.has(hit.id);
+      return hit.id === "solarSystem" || this.visiblePlanetArms.has(hit.id);
     }
     if (hit.type === "ideal") return this.visibleIdealIds.has(hit.id);
     if (hit.type === "body") return this.visibleBodyIds.has(hit.id);
@@ -1550,7 +1550,7 @@ export class WorldSceneBuilder {
       // substitution: the amber and emerald here were the pre-atlas palette,
       // and the two-kind distinction they carried is kept.
       const col = new THREE.Color(
-        body.kind === "system" ? DIRECTION_A.gold : DIRECTION_A.verdigris,
+        body.kind === "moon" ? DIRECTION_A.gold : DIRECTION_A.verdigris,
       );
 
       const bodyGroup = new THREE.Group();

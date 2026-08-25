@@ -1,4 +1,4 @@
-import { GALAXY_ZEMI, type Scope } from "./galaxy";
+import { SOLAR_SYSTEM_ZEMI, type Scope } from "./galaxy";
 
 /**
  * How the world moves, as pure numbers.
@@ -84,7 +84,7 @@ function baseAngle(arm: string, scope: Scope): number {
  * `[0.45, 1] * MAX_OBLIQUITY` so no planet is left upright and none is knocked
  * over; azimuth is the arm angle itself, so no two lean the same way.
  */
-export function obliquityFor(arm: string, scope: Scope = GALAXY_ZEMI): AxisTilt {
+export function obliquityFor(arm: string, scope: Scope = SOLAR_SYSTEM_ZEMI): AxisTilt {
   const base = baseAngle(arm, scope);
   const turn = (base / (2 * Math.PI)) % 1;
   return {

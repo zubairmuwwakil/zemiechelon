@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/placement-golden.json";
 import { loadBodies } from "../bodies";
-import { GALAXY_ZEMI } from "../scopes";
+import { SOLAR_SYSTEM_ZEMI } from "../scopes";
 import { derivePosition, placeBodies, trailEnd } from "../position";
 
 const EXPECTED_COUNT = 45;
@@ -19,14 +19,14 @@ describe("scope refactor is a coordinate no-op", () => {
   });
 
   it("produces byte-identical placements with the scope passed explicitly", () => {
-    expect(placeBodies(bodies, GALAXY_ZEMI)).toEqual(golden.placements);
+    expect(placeBodies(bodies, SOLAR_SYSTEM_ZEMI)).toEqual(golden.placements);
   });
 
   it("produces byte-identical derived positions and trail ends", () => {
     const derived = bodies.map((b) => ({
       id: b.id,
-      position: derivePosition(b, GALAXY_ZEMI),
-      trailEnd: trailEnd(b, GALAXY_ZEMI),
+      position: derivePosition(b, SOLAR_SYSTEM_ZEMI),
+      trailEnd: trailEnd(b, SOLAR_SYSTEM_ZEMI),
     }));
     expect(derived).toEqual(golden.derived);
   });

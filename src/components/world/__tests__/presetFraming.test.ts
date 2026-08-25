@@ -7,13 +7,13 @@ import { planetFrame, drawnWorldPosition, framedBody } from "../planetFrames";
 import { planetPinAnchors, PIN_HEIGHTS } from "../planetPins";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { patternAngle } from "@/lib/atlas/motion";
-import { AT_GALAXY, framingFor, journeyReducer } from "@/lib/atlas/journey";
+import { AT_SOLAR_SYSTEM, framingFor, journeyReducer } from "@/lib/atlas/journey";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { declaresSurface } from "@/lib/atlas/surfaces";
 
 const bodies = loadBodies();
 /** Every arm the top nav can name. */
-const ARMS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "galaxy");
+const ARMS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "solarSystem");
 
 let builder: WorldSceneBuilder;
 let camera: WorldCameraManager;
@@ -41,7 +41,7 @@ function advance(seconds: number): void {
  * about the orbit framing every arm shares.
  */
 function frameByNav(arm: string): void {
-  const journey = journeyReducer(AT_GALAXY, {
+  const journey = journeyReducer(AT_SOLAR_SYSTEM, {
     type: "selectSector", sectorId: arm, viewportWidth: 480, reducedMotion: true,
   });
   const framing = framingFor(journey);
@@ -165,7 +165,7 @@ describe("resolving a framing to something the camera can descend onto", () => {
 
   it("resolves a moon to its own group, at the radius the builder draws it", () => {
     const moon = bodies.find(
-      (b) => b.kind === "system" && !declaresSurface(moonScopeId(b.id), bodies),
+      (b) => b.kind === "moon" && !declaresSurface(moonScopeId(b.id), bodies),
     )!;
     const scope = moonScopeId(moon.id);
     const body = framedBody(builder, bodies, { kind: "moon", scope });

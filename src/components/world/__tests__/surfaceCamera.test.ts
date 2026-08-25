@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { WorldCameraManager } from "../WorldCameraManager";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { moonScopeId, planetScopeId } from "@/lib/atlas/galaxy";
+import { moonScopeId, planetScopeId, SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/galaxy";
 import {
   shardRadiusFor,
   SURFACE_ALTITUDE_RATIO,
@@ -195,7 +195,7 @@ describe("landing on a planet", () => {
     // 114.9 away, a frame fraction of 0.17, under the 0.30 floor. So the test
     // is that the galaxy is in shot, not that it fills a share of the frame.
     const radius = shardRadiusFor(PRODUCTS, bodies);
-    const galaxy = builder.groupFor("galaxy:zemi");
+    const galaxy = builder.groupFor(SOLAR_SYSTEM_ZEMI.id);
     camera.landOnSurface(builder.groupFor(PRODUCTS), galaxy, radius);
     settle();
 
@@ -205,7 +205,7 @@ describe("landing on a planet", () => {
 
   it("stands at the same ratios a moon's surface uses", () => {
     const radius = shardRadiusFor(PRODUCTS, bodies);
-    camera.landOnSurface(builder.groupFor(PRODUCTS), builder.groupFor("galaxy:zemi"), radius);
+    camera.landOnSurface(builder.groupFor(PRODUCTS), builder.groupFor(SOLAR_SYSTEM_ZEMI.id), radius);
     settle();
     expect(pose().altitude).toBeCloseTo(radius * SURFACE_ALTITUDE_RATIO, 4);
   });
@@ -246,7 +246,7 @@ describe("leaving a surface", () => {
     settle();
     expect(pose().altitude).toBeCloseTo(radius * SURFACE_ALTITUDE_RATIO, 4);
 
-    camera.setPreset("galaxy");
+    camera.setPreset("solarSystem");
     settle();
     expect(pose().altitude).toBeGreaterThan(radius);
     expect(camera.target.length()).toBeLessThan(1);

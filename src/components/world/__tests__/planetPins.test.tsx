@@ -10,7 +10,7 @@ const points = ARMS.map((arm, i) => ({ id: arm.id, x: i * 40, y: 100, visible: t
 describe("planet pins", () => {
   it("dots each pin in its own planet's colour, with no second palette", () => {
     const { container } = render(
-      <PlanetPinsOverlay points={points} activePreset="galaxy" onSelectPlanet={vi.fn()} />,
+      <PlanetPinsOverlay points={points} activePreset="solarSystem" onSelectPlanet={vi.fn()} />,
     );
 
     const dots = [...container.querySelectorAll("span[style]")];
@@ -32,7 +32,7 @@ describe("planet pins", () => {
 
   it("labels each pin from ARM_META rather than a duplicate table", () => {
     const { container } = render(
-      <PlanetPinsOverlay points={points} activePreset="galaxy" onSelectPlanet={vi.fn()} />,
+      <PlanetPinsOverlay points={points} activePreset="solarSystem" onSelectPlanet={vi.fn()} />,
     );
     const labels = [...container.querySelectorAll("button span:first-child")].map((n) => n.textContent);
     expect(labels).toEqual(ARMS.map((a) => a.shortName));

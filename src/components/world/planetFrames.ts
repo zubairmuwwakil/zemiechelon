@@ -37,9 +37,9 @@ export interface DrawnFrame {
  * is not a planet at all, and the callers would rather skip it than guess.
  */
 export function planetFrame(builder: WorldSceneBuilder, id: string): DrawnFrame | null {
-  // The core is the galaxy's own origin, which the pattern turns about, so it
-  // is the one frame whose offset is exactly zero and stays there.
-  if (id === "galaxy") return { frame: builder.rootGroup, offset: new THREE.Vector3() };
+  // The core is the solar system's own origin, which the pattern turns about,
+  // so it is the one frame whose offset is exactly zero and stays there.
+  if (id === "solarSystem") return { frame: builder.rootGroup, offset: new THREE.Vector3() };
 
   const group = builder.scopeGroups.get(`planet:${id}`);
   if (group) return { frame: group, offset: new THREE.Vector3() };

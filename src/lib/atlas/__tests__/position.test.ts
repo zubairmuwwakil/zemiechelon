@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
-import { GALAXY_ZEMI } from "../scopes";
+import { SOLAR_SYSTEM_ZEMI } from "../scopes";
 import {
   ARM_ANGLES,
   daysSinceEpoch,
@@ -40,8 +40,8 @@ describe("derivePosition", () => {
   it("places every 2025 body inside every 2026-08 body", () => {
     const oldest = bodies.filter((b) => b.bornAt < "2026-01-01");
     const newest = bodies.filter((b) => b.bornAt >= "2026-08-01");
-    const innerMax = Math.max(...oldest.map((b) => r(derivePosition(b, GALAXY_ZEMI))));
-    const outerMin = Math.min(...newest.map((b) => r(derivePosition(b, GALAXY_ZEMI))));
+    const innerMax = Math.max(...oldest.map((b) => r(derivePosition(b, SOLAR_SYSTEM_ZEMI))));
+    const outerMin = Math.min(...newest.map((b) => r(derivePosition(b, SOLAR_SYSTEM_ZEMI))));
     expect(innerMax).toBeLessThan(outerMin);
   });
 
@@ -130,7 +130,7 @@ describe("placeBodies", () => {
         const b = placed[j];
         const d = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
         const floor =
-          kind.get(a.id) === "system" && kind.get(b.id) === "system"
+          kind.get(a.id) === "moon" && kind.get(b.id) === "moon"
             ? MIN_SYSTEM_SEPARATION
             : MIN_SEPARATION;
         if (d < floor) tooClose.push(`${a.id}+${b.id} (${d.toFixed(3)} < ${floor})`);

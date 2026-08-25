@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { planetScopeId } from "../galaxy";
-import { SCOPES, derivePlanetScopes, getScope, scopeChain } from "../scopes";
+import { SCOPES, GALAXY_ZEMI, SOLAR_SYSTEM_ZEMI, derivePlanetScopes, getScope, scopeChain } from "../scopes";
 
 const bodies = loadBodies();
 const planets = derivePlanetScopes(bodies);
 
 describe("derived planet scopes", () => {
   it("registers one scope per arm that ships something, and no others", () => {
-    const armsWithSystems = new Set(bodies.filter((b) => b.kind === "system").map((b) => b.arm));
+    const armsWithSystems = new Set(bodies.filter((b) => b.kind === "moon").map((b) => b.arm));
     expect(planets.map((s) => s.id).sort()).toEqual(
       [...armsWithSystems].map(planetScopeId).sort(),
     );
@@ -18,10 +18,14 @@ describe("derived planet scopes", () => {
     expect(planets.map((s) => s.id).sort()).toEqual(["planet:labs", "planet:products"]);
   });
 
-  it("hangs every planet scope off the galaxy", () => {
+  it("hangs every planet scope off the solar system", () => {
     for (const scope of planets) {
-      expect(scope.parent).toBe("galaxy:zemi");
-      expect(scopeChain(scope.id).map((s) => s.id)).toEqual(["galaxy:zemi", scope.id]);
+      expect(scope.parent).toBe(SOLAR_SYSTEM_ZEMI.id);
+      expect(scopeChain(scope.id).map((s) => s.id)).toEqual([
+        GALAXY_ZEMI.id,
+        SOLAR_SYSTEM_ZEMI.id,
+        scope.id,
+      ]);
     }
   });
 
@@ -29,7 +33,7 @@ describe("derived planet scopes", () => {
     for (const scope of planets) {
       const arm = scope.id.replace("planet:", "");
       const oldest = bodies
-        .filter((b) => b.arm === arm && b.kind === "system")
+        .filter((b) => b.arm === arm && b.kind === "moon")
         .map((b) => b.bornAt)
         .sort()[0];
       expect(scope.epoch).toBe(oldest);

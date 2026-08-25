@@ -1,6 +1,6 @@
 import type { Body, ScopeId } from "./types";
 import { loadBodies } from "./bodies";
-import { GALAXY_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import { SOLAR_SYSTEM_ZEMI, planetScopeId, type Scope } from "./galaxy";
 import { daysSinceEpoch } from "./position";
 
 export interface Ideal {
@@ -59,7 +59,7 @@ export function idealVisibleAt(
   ideal: Ideal,
   bodies: Body[],
   clockDay: number,
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): boolean {
   const byId = new Map(bodies.map((b) => [b.id, b]));
   return ideal.evidence.every((id) => {

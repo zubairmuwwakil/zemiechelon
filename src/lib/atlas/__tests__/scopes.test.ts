@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GALAXY_ZEMI, SCOPES, getScope, scopeChain } from "../scopes";
+import { GALAXY_ZEMI, SOLAR_SYSTEM_ZEMI, SCOPES, getScope, scopeChain } from "../scopes";
 import { loadBodies } from "../bodies";
 
 describe("scope tree", () => {
@@ -30,7 +30,10 @@ describe("scope tree", () => {
   });
 
   it("returns the chain root-first", () => {
-    expect(scopeChain(GALAXY_ZEMI.id).map((s) => s.id)).toEqual([GALAXY_ZEMI.id]);
+    expect(scopeChain(SOLAR_SYSTEM_ZEMI.id).map((s) => s.id)).toEqual([
+      GALAXY_ZEMI.id,
+      SOLAR_SYSTEM_ZEMI.id,
+    ]);
   });
 
   it("throws on an unknown scope rather than defaulting", () => {

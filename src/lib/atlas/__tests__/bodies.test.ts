@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import generated from "@/data/bodies.generated.json";
 import { loadBodies, EPOCH } from "../bodies";
 import { moonIds } from "../moons";
-import { planetScopeId } from "../galaxy";
+import { planetScopeId, SOLAR_SYSTEM_ZEMI } from "../galaxy";
 
 const bodies = loadBodies();
 
@@ -73,23 +73,23 @@ describe("body parentage", () => {
   const bodies = loadBodies();
 
   it("parents every shipped system to its own planet", () => {
-    for (const body of bodies.filter((b) => b.kind === "system")) {
+    for (const body of bodies.filter((b) => b.kind === "moon")) {
       expect(body.parent, `${body.id} is not on its planet`).toBe(planetScopeId(body.arm));
     }
   });
 
-  it("leaves everything else on the galaxy", () => {
-    for (const body of bodies.filter((b) => b.kind !== "system")) {
-      expect(body.parent, `${body.id} left the galaxy`).toBe("galaxy:zemi");
+  it("leaves everything else on the solar system", () => {
+    for (const body of bodies.filter((b) => b.kind !== "moon")) {
+      expect(body.parent, `${body.id} left the solar system`).toBe(SOLAR_SYSTEM_ZEMI.id);
     }
   });
 
   it("moves exactly five bodies, so the arms keep their density", () => {
-    expect(bodies.filter((b) => b.parent !== "galaxy:zemi")).toHaveLength(5);
+    expect(bodies.filter((b) => b.parent !== SOLAR_SYSTEM_ZEMI.id)).toHaveLength(5);
   });
 
   it("agrees with deriveMoons, so the two rules cannot drift apart", () => {
-    const parented = new Set(bodies.filter((b) => b.parent !== "galaxy:zemi").map((b) => b.id));
+    const parented = new Set(bodies.filter((b) => b.parent !== SOLAR_SYSTEM_ZEMI.id).map((b) => b.id));
     expect(parented).toEqual(moonIds(bodies));
   });
 });

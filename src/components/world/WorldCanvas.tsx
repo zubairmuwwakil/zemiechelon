@@ -14,7 +14,7 @@ import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
-import { GALAXY_ZEMI, getScope } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
@@ -541,7 +541,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // that changes what the scene draws rather than only where it is seen from.
     if (framing.kind === "surface" && builder.scopeGroups.has(framing.scope)) {
       const scope = framing.scope;
-      const parentId = getScope(scope).parent ?? GALAXY_ZEMI.id;
+      const parentId = getScope(scope).parent ?? SOLAR_SYSTEM_ZEMI.id;
       const parent = builder.scopeGroups.get(parentId) ?? builder.rootGroup;
       const frameGroup = builder.groupFor(scope);
       camera.landOnSurface(frameGroup, parent, shardRadiusFor(scope, bodies));
@@ -570,7 +570,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // Back out to the galaxy: the frustum has to reach the planets again.
     dayNightRef.current?.setShadowReach(ASTROLABE_OUTER);
 
-    if (framing.kind === "galaxy") {
+    if (framing.kind === "solarSystem") {
       camera.ascend();
       return;
     }

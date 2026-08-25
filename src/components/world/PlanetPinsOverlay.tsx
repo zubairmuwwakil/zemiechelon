@@ -21,7 +21,7 @@ import type { CosmicMode } from "./DayNightController";
 const CORE_PIN = { label: "Nodes", color: DIRECTION_A.gold } as const;
 
 function pinFor(id: string): { label: string; color: string } | null {
-  if (id === "galaxy") return CORE_PIN;
+  if (id === "solarSystem") return CORE_PIN;
   const arm = ARM_META[id];
   return arm ? { label: arm.shortName, color: arm.themeColor } : null;
 }
@@ -43,9 +43,9 @@ export function PlanetPinsOverlay({
   onSelectPlanet,
   onHoverPlanet,
 }: PlanetPinsOverlayProps) {
-  // Only show planetary labels in Macro Galaxy / Overview view
-  const isGalaxyView = activePreset === "galaxy" || activePreset === "overview";
-  if (!isGalaxyView) return null;
+  // Only show planetary labels in Macro Solar System / Overview view
+  const isSolarSystemView = activePreset === "solarSystem" || activePreset === "overview";
+  if (!isSolarSystemView) return null;
 
   const isDay = cosmicMode === "day";
 

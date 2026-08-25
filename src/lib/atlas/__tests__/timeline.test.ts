@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
-import { GALAXY_ZEMI } from "../scopes";
+import { SOLAR_SYSTEM_ZEMI } from "../scopes";
 import { daysSinceEpoch } from "../position";
 import {
   advanceClockDay,
@@ -59,7 +59,7 @@ describe("advanceClockDay", () => {
 
 describe("dateAtDay", () => {
   it("returns the epoch itself at day zero", () => {
-    expect(dateAtDay(0, GALAXY_ZEMI.epoch)).toBe(GALAXY_ZEMI.epoch);
+    expect(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch)).toBe(SOLAR_SYSTEM_ZEMI.epoch);
   });
 
   it("advances the calendar date by the day count", () => {

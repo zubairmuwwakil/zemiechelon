@@ -7,7 +7,7 @@ import { IDEALS } from "@/lib/atlas/ideals";
 import { deriveLegendFigures } from "@/lib/atlas/derivedFigures";
 import { LegendModal } from "../LegendModal";
 import type { Body } from "@/lib/atlas/types";
-import { GALAXY_ZEMI } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 afterEach(() => {
   cleanup();
@@ -45,16 +45,16 @@ describe("LegendModal", () => {
       screen.getByText(new RegExp(`${figures.astrolabe.quarterRingCount} quarterly rings`)),
     ).toBeTruthy();
 
-    // 3. Celestial taxonomy: total bodies, shipped systems (gold), learned stars (verdigris)
+    // 3. Celestial taxonomy: total bodies, shipped moons (gold), dwarf planets (verdigris)
     expect(screen.getByText(new RegExp(`${figures.totalBodies} total repositories`))).toBeTruthy();
-    expect(screen.getByText(new RegExp(`${figures.shippedSystemsCount} Gold Dots`))).toBeTruthy();
-    expect(screen.getByText(new RegExp(`${figures.learnedStarsCount} Verdigris Dots`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`${figures.shippedMoonsCount} Gold Dots`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`${figures.learnedDwarfPlanetsCount} Verdigris Dots`))).toBeTruthy();
 
     // 4. Products holdings & largest planet
     expect(
       screen.getByText(
         new RegExp(
-          `${figures.products.total} repositories \\(${figures.products.systems} shipped systems, ${figures.products.stars} supporting stars\\)`,
+          `${figures.products.total} repositories \\(${figures.products.shipped} shipped moons, ${figures.products.dwarfPlanets} supporting dwarf planets\\)`,
         ),
       ),
     ).toBeTruthy();
@@ -73,12 +73,12 @@ describe("LegendModal", () => {
     const mockBodies: Body[] = [
       {
         id: "core-tool",
-        parent: GALAXY_ZEMI.id,
+        parent: SOLAR_SYSTEM_ZEMI.id,
         label: "Core Tool",
         arm: "foundations",
         bornAt: "2025-11-06",
         lastTouchedAt: "2025-11-06",
-        kind: "star",
+        kind: "dwarfPlanet",
         anonymous: false,
         links: {},
       },
@@ -89,7 +89,7 @@ describe("LegendModal", () => {
         arm: "products",
         bornAt: "2026-01-15",
         lastTouchedAt: "2026-01-15",
-        kind: "system",
+        kind: "moon",
         anonymous: false,
         links: {},
       },
@@ -100,7 +100,7 @@ describe("LegendModal", () => {
         arm: "products",
         bornAt: "2026-03-01",
         lastTouchedAt: "2026-03-01",
-        kind: "system",
+        kind: "moon",
         anonymous: false,
         links: {},
       },
@@ -115,10 +115,10 @@ describe("LegendModal", () => {
       screen.getByText(new RegExp(`${mockFigures.totalBodies} total repositories`)),
     ).toBeTruthy();
     expect(
-      screen.getByText(new RegExp(`${mockFigures.shippedSystemsCount} Gold Dots`)),
+      screen.getByText(new RegExp(`${mockFigures.shippedMoonsCount} Gold Dots`)),
     ).toBeTruthy();
     expect(
-      screen.getByText(new RegExp(`${mockFigures.learnedStarsCount} Verdigris Dots`)),
+      screen.getByText(new RegExp(`${mockFigures.learnedDwarfPlanetsCount} Verdigris Dots`)),
     ).toBeTruthy();
     expect(screen.getByText(new RegExp(`${mockFigures.totalMoons} Moons`))).toBeTruthy();
   });

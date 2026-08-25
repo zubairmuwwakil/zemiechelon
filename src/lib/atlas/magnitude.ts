@@ -1,7 +1,7 @@
 import type { Body } from "./types";
 import { daysSinceEpoch } from "./position";
 
-export const SYSTEM_MAGNITUDE = 4;
+export const MOON_MAGNITUDE = 4;
 const BASE = 0.6;
 const SATELLITE_K = 0.25;
 
@@ -16,7 +16,7 @@ const COOLING_DAYS = 180;
  * lifespan under-weights recent work (PickMe is four days old).
  */
 export function magnitude(body: Body): number {
-  if (body.kind === "system") return SYSTEM_MAGNITUDE;
+  if (body.kind === "moon") return MOON_MAGNITUDE;
   const lifespanDays = daysSinceEpoch(body.lastTouchedAt) - daysSinceEpoch(body.bornAt);
   return BASE + Math.sqrt(lifespanDays) * 0.12 + SATELLITE_K * (body.satellites?.length ?? 0);
 }

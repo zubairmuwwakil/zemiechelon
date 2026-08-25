@@ -3,7 +3,7 @@ import type { ArmId, Satellite } from "@/lib/atlas/types";
 export interface BodyOverride {
   arm: ArmId;
   label?: string;
-  kind?: "star" | "system";
+  kind?: "dwarfPlanet" | "moon";
   blurb?: string;
   stack?: string[];
   live?: string;
@@ -19,7 +19,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   MoneyTalks: {
     arm: "products",
     label: "Inunity",
-    kind: "system",
+    kind: "moon",
     consoleId: "inunity",
     milestone: "Inunity goes live",
     blurb:
@@ -36,7 +36,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   PickMe: {
     arm: "products",
     label: "PickMe",
-    kind: "system",
+    kind: "moon",
     consoleId: "pickme",
     milestone: "PickMe joins the console",
     blurb: "Offline iOS copilot that names the right card at checkout. Deterministic engine, entirely on-device.",
@@ -50,7 +50,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   marketdata: {
     arm: "products",
     label: "MarketLens",
-    kind: "system",
+    kind: "moon",
     milestone: "MarketLens reaches production",
     blurb:
       "Enterprise market data pipeline with idempotent ingestion runs, row-level quarantine for malformed upstream payloads, daily OHLCV closing candles, and BYOK routing.",
@@ -64,7 +64,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   pickleops: {
     arm: "products",
     label: "PickleOps",
-    kind: "system",
+    kind: "moon",
     milestone: "PickleOps ships to the App Store",
     blurb:
       "Full-stack tournament management, dynamic Glicko-2 / DUPR rating sync, round-robin court rotation scheduling, member check-ins, and live bracket displays.",
@@ -78,7 +78,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   "return-saas": {
     arm: "products",
     label: "Looply",
-    kind: "star",
+    kind: "dwarfPlanet",
     blurb:
       "Autonomous email-derived commerce intelligence. Direct inbox ingestion for purchase proofs, itemized receipts, return window countdowns, and trial renewal alerts.",
     stack: ["Next.js", "TypeScript", "Prisma", "PostgreSQL", "Gmail API"],
@@ -86,22 +86,22 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   BloombergProject: {
     arm: "products",
     label: "Bloomberg Project",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   Pickleball_League_Score_Tracker: {
     arm: "products",
     label: "Pickleball League Score Tracker",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "pickleball-league-template": {
     arm: "products",
     label: "Pickleball League Template",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   pb_score_keeper: {
     arm: "products",
     label: "Pickleball Score Keeper",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "market-data-pipeline": {
     arm: "products",
@@ -116,7 +116,7 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   "agent-orchestrator": {
     arm: "labs",
     label: "Agent Orchestrator",
-    kind: "system",
+    kind: "moon",
     blurb:
       "Multi-agent runtime for autonomous coding workflows, hierarchical task delegation, deterministic state machine checkpoints, and distributed tool execution.",
     stack: ["TypeScript", "Node.js", "LLM APIs", "JSON-RPC"],
@@ -124,12 +124,12 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   openclaw: {
     arm: "labs",
     label: "OpenClaw",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   mindmap: {
     arm: "labs",
     label: "MindSky",
-    kind: "star",
+    kind: "dwarfPlanet",
     blurb:
       "Visual graph architecture and interactive concept node mapping for software system design, architectural modeling, and interactive knowledge representations.",
     stack: ["React", "TypeScript", "Canvas/SVG"],
@@ -137,18 +137,18 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   "command-quest": {
     arm: "labs",
     label: "CommandQuest",
-    kind: "star",
+    kind: "dwarfPlanet",
     stack: ["Java"],
   },
   clawdbot: {
     arm: "labs",
     label: "Clawdbot",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "tb-webapps": {
     arm: "labs",
     label: "TB WebApps",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   AiMiniProj: {
     arm: "labs",
@@ -159,40 +159,40 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   zemiechelon: {
     arm: "self",
     label: "Zemí Echelon",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "Zubair-Portfolio-Website": {
     arm: "self",
     label: "Zubair Portfolio",
-    kind: "star",
+    kind: "dwarfPlanet",
     live: "https://zubairmuwwakil.com",
   },
   "Zubair-Portfolio": {
     arm: "self",
     label: "Zubair Portfolio (v1)",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   zubairmuwwakil: {
     arm: "self",
     label: "Zubair Muwwakil",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   zweb: {
     arm: "self",
     label: "zweb",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   projectswebsite: {
     arm: "self",
     label: "Projects Website",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
 
   // --- Creative (2: 1 labelled, 1 anonymous) ---
   TodayILearned: {
     arm: "creative",
     label: "Today I Learned",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   Obsidian: {
     arm: "creative",
@@ -203,88 +203,88 @@ export const OVERRIDES: Record<string, BodyOverride> = {
   AgeChecker: {
     arm: "foundations",
     label: "AgeChecker",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "C--Practice": {
     arm: "foundations",
     label: "C# Practice",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   Coin_Flipper: {
     arm: "foundations",
     label: "Coin Flipper",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   CoinFlipWebsite: {
     arm: "foundations",
     label: "Coin Flip Website",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   DebuggingTests: {
     arm: "foundations",
     label: "Debugging Tests",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   DebugofFineLegal: {
     arm: "foundations",
     label: "Debug of Fine Legal",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   HTMl_CAT_WEBSITE: {
     arm: "foundations",
     label: "HTML Cat Website",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   HTML_Recipes: {
     arm: "foundations",
     label: "HTML Recipes",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "HTML-Learning": {
     arm: "foundations",
     label: "HTML Learning",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   java: {
     arm: "foundations",
     label: "Java",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "Java-Practice": {
     arm: "foundations",
     label: "Java Practice",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   JS_Cash_Register: {
     arm: "foundations",
     label: "JS Cash Register",
-    kind: "star",
+    kind: "dwarfPlanet",
     milestone: "The first commit",
   },
   JS_Cipher: {
     arm: "foundations",
     label: "JS Cipher",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "JS_Tel-_Checker": {
     arm: "foundations",
     label: "JS Telephone Checker",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   Obsidi: {
     arm: "foundations",
     label: "Obsidi",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   Palindrome_Checker: {
     arm: "foundations",
     label: "Palindrome Checker",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   RightAngleTriangleSolver: {
     arm: "foundations",
     label: "Right Angle Triangle Solver",
-    kind: "star",
+    kind: "dwarfPlanet",
   },
   "A1.6_AI_Slop": {
     arm: "foundations",

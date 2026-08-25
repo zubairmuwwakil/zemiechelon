@@ -1,7 +1,7 @@
 import type { Body, ScopeId } from "./types";
 import { loadBodies } from "./bodies";
 import { moonScopeId, planetScopeId } from "./galaxy";
-import { GALAXY_ZEMI, SCOPES } from "./scopes";
+import { SOLAR_SYSTEM_ZEMI, SCOPES } from "./scopes";
 import { landingMode, resolveBodySelection } from "./navigation";
 
 /**
@@ -23,7 +23,7 @@ export type PlanetMode = "orbit" | "panel" | "surface";
 export type MoonMode = "flyby" | "surface";
 
 export type Position =
-  | { kind: "galaxy" }
+  | { kind: "solarSystem" }
   /**
    * An arm, whether or not it has a scope. All five planets are drawn; only the
    * arms that have shipped enough get a scope, so `arm` rather than a `ScopeId`
@@ -50,7 +50,7 @@ export interface Journey {
  * different camera path from the other three for two commits.
  */
 export type Framing =
-  | { kind: "galaxy" }
+  | { kind: "solarSystem" }
   | { kind: "planet"; arm: string }
   | { kind: "moon"; scope: ScopeId }
   | { kind: "surface"; scope: ScopeId };
@@ -64,8 +64,8 @@ export type JourneyEvent =
   | { type: "ascend" }
   | { type: "reset" };
 
-export const AT_GALAXY: Journey = {
-  position: { kind: "galaxy" },
+export const AT_SOLAR_SYSTEM: Journey = {
+  position: { kind: "solarSystem" },
   card: null,
   console: null,
 };
@@ -88,7 +88,7 @@ export function positionFor(scopeId: ScopeId): Position {
   if (scopeId.startsWith("planet:")) {
     return { kind: "planet", arm: scopeId.slice("planet:".length), mode: "orbit" };
   }
-  return { kind: "galaxy" };
+  return { kind: "solarSystem" };
 }
 
 /**
@@ -98,8 +98,8 @@ export function positionFor(scopeId: ScopeId): Position {
  */
 export function scopeIdFor(position: Position): ScopeId | null {
   switch (position.kind) {
-    case "galaxy":
-      return GALAXY_ZEMI.id;
+    case "solarSystem":
+      return SOLAR_SYSTEM_ZEMI.id;
     case "planet": {
       const id = planetScopeId(position.arm);
       return SCOPES[id] ? id : null;
@@ -121,13 +121,13 @@ export function scopeIdFor(position: Position): ScopeId | null {
  */
 export function ascendFrom(position: Position, bodies: Body[] = loadBodies()): Position {
   switch (position.kind) {
-    case "galaxy":
-      return { kind: "galaxy" };
+    case "solarSystem":
+      return { kind: "solarSystem" };
     case "planet":
-      return { kind: "galaxy" };
+      return { kind: "solarSystem" };
     case "moon": {
       const arm = bodyArm(position.bodyId, bodies);
-      return arm ? { kind: "planet", arm, mode: "orbit" } : { kind: "galaxy" };
+      return arm ? { kind: "planet", arm, mode: "orbit" } : { kind: "solarSystem" };
     }
   }
 }
@@ -136,13 +136,13 @@ export function ascendFrom(position: Position, bodies: Body[] = loadBodies()): P
 export function activeArm(journey: Journey, bodies: Body[] = loadBodies()): string {
   const { position } = journey;
   if (position.kind === "planet") return position.arm;
-  if (position.kind === "moon") return bodyArm(position.bodyId, bodies) ?? "galaxy";
-  return "galaxy";
+  if (position.kind === "moon") return bodyArm(position.bodyId, bodies) ?? "solarSystem";
+  return "solarSystem";
 }
 
 /** Whether the visitor is on the ground, at either depth. */
 export function isStanding(position: Position): boolean {
-  return position.kind !== "galaxy" && position.mode === "surface";
+  return position.kind !== "solarSystem" && position.mode === "surface";
 }
 
 /** The scope whose surface the visitor is standing on, or null in orbit. */
@@ -183,8 +183,8 @@ export function deepLinkBodyId(journey: Journey): string | null {
 export function framingFor(journey: Journey): Framing {
   const { position } = journey;
   switch (position.kind) {
-    case "galaxy":
-      return { kind: "galaxy" };
+    case "solarSystem":
+      return { kind: "solarSystem" };
     case "planet": {
       const scope = scopeIdFor(position);
       // Only a scoped arm can declare ground, so a surface always has a scope.
@@ -213,7 +213,7 @@ export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
   switch (event.type) {
     case "selectSector": {
       const arm = armOf(event.sectorId);
-      if (arm === "galaxy" || arm === "overview") return AT_GALAXY;
+      if (arm === "solarSystem" || arm === "overview") return AT_SOLAR_SYSTEM;
 
       const scopeId = planetScopeId(arm);
       // An arm that has shipped nothing has no scope to land in. Clicking it
@@ -267,6 +267,6 @@ export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
       return { position: ascendFrom(journey.position, bodies), card: null, console: null };
 
     case "reset":
-      return AT_GALAXY;
+      return AT_SOLAR_SYSTEM;
   }
 }

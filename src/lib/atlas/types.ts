@@ -17,7 +17,7 @@ export interface Body {
   arm: ArmId;
   bornAt: string;
   lastTouchedAt: string;
-  kind: "star" | "system";
+  kind: "dwarfPlanet" | "moon";
   anonymous: boolean;
   blurb?: string;
   stack?: string[];

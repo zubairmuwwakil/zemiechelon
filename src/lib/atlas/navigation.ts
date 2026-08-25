@@ -43,7 +43,7 @@ export function resolveBodySelection(
   // A shipped system is a place you can visit. Everything else on the arm is a
   // card — flying to every dot in the field would make the map twitch at every
   // click, and there is nothing there to see up close.
-  if (!body || body.kind !== "system") {
+  if (!body || body.kind !== "moon") {
     return { cardId: bodyId, flyTo: null, ascendTo: null, landed: false };
   }
 

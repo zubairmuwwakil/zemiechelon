@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
-import { magnitude, temperature, SYSTEM_MAGNITUDE } from "../magnitude";
+import { magnitude, temperature, MOON_MAGNITUDE } from "../magnitude";
 
 const bodies = loadBodies();
 const byId = (id: string) => bodies.find((b) => b.id === id)!;
 
 describe("magnitude", () => {
   it("pins every system to the same bright value", () => {
-    for (const b of bodies.filter((x) => x.kind === "system")) {
-      expect(magnitude(b), `${b.id}`).toBe(SYSTEM_MAGNITUDE);
+    for (const b of bodies.filter((x) => x.kind === "moon")) {
+      expect(magnitude(b), `${b.id}`).toBe(MOON_MAGNITUDE);
     }
   });
 

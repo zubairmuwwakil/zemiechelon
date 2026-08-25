@@ -1,5 +1,5 @@
 import type { Body } from "./types";
-import { GALAXY_ZEMI, type Scope } from "./scopes";
+import { SOLAR_SYSTEM_ZEMI, type Scope } from "./scopes";
 import { daysSinceEpoch } from "./position";
 
 /**
@@ -8,14 +8,14 @@ import { daysSinceEpoch } from "./position";
  * *whether* it is. See `placeBodies` in `position.ts`: positions come from the
  * full set, and this is the only thing the clock is allowed to touch.
  */
-export function bodyVisibleAt(body: Body, clockDay: number, scope: Scope = GALAXY_ZEMI): boolean {
+export function bodyVisibleAt(body: Body, clockDay: number, scope: Scope = SOLAR_SYSTEM_ZEMI): boolean {
   return daysSinceEpoch(body.bornAt, scope.epoch) <= clockDay;
 }
 
 export function visibleBodyIds(
   bodies: Body[],
   clockDay: number,
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): Set<string> {
   return new Set(
     bodies.filter((b) => bodyVisibleAt(b, clockDay, scope)).map((b) => b.id),

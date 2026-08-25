@@ -1,5 +1,5 @@
 import type { Body } from "./types";
-import { GALAXY_ZEMI, planetScopeId, type Scope } from "./scopes";
+import { SOLAR_SYSTEM_ZEMI, planetScopeId, type Scope } from "./scopes";
 import { loadBodies } from "./bodies";
 import { deriveWorldRadius, derivePlanets, type PlanetPlacement } from "./planets";
 import { deriveMoons, type MoonPlacement } from "./moons";
@@ -27,7 +27,7 @@ export function radiusToDays(radius: number): number {
  * This is computed from the outermost body placement via `deriveWorldRadius`,
  * ensuring it stays strictly in sync with the map's geometry without typing a literal.
  */
-export function deriveDaySpan(bodies: Body[] = loadBodies(), scope: Scope = GALAXY_ZEMI): number {
+export function deriveDaySpan(bodies: Body[] = loadBodies(), scope: Scope = SOLAR_SYSTEM_ZEMI): number {
   const reach = deriveWorldRadius(bodies, scope);
   return radiusToDays(reach);
 }
@@ -48,7 +48,7 @@ export interface AstrolabeRingsDerivation {
  */
 export function deriveAstrolabeRings(
   bodies: Body[] = loadBodies(),
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
   daysPerMonth: number = DAYS_PER_MONTH,
 ): AstrolabeRingsDerivation {
   const reach = deriveWorldRadius(bodies, scope);
@@ -80,8 +80,8 @@ export interface ArmFigure {
   tagline: string;
   themeColor: string;
   bodyCount: number;
-  systemCount: number;
-  starCount: number;
+  shippedCount: number;
+  dwarfPlanetCount: number;
   anonymousCount: number;
   planetRadius: number;
   moons: MoonPlacement[];
@@ -103,10 +103,10 @@ export interface LegendFigures {
   astrolabe: AstrolabeRingsDerivation;
   /** Total charted bodies across all arms, e.g. 45 */
   totalBodies: number;
-  /** Total shipped systems (kind: "system"), e.g. 5 */
-  shippedSystemsCount: number;
-  /** Total learned supporting repositories (kind: "star"), e.g. 40 */
-  learnedStarsCount: number;
+  /** Total shipped moons (kind: "moon"), e.g. 5 */
+  shippedMoonsCount: number;
+  /** Total learned supporting repositories (kind: "dwarfPlanet"), e.g. 40 */
+  learnedDwarfPlanetsCount: number;
   /** Anonymous/private repositories count */
   anonymousCount: number;
   /** Public repositories count */
@@ -131,16 +131,16 @@ export interface LegendFigures {
     name: string;
     radius: number;
     bodyCount: number;
-    systemCount: number;
-    starCount: number;
+    shippedCount: number;
+    dwarfPlanetCount: number;
   };
   /** Products specific figures for immediate reference */
   products: {
     arm: string;
     name: string;
     total: number;
-    systems: number;
-    stars: number;
+    shipped: number;
+    dwarfPlanets: number;
     moons: number;
     ideals: number;
     planetRadius: number;
@@ -153,7 +153,7 @@ export interface LegendFigures {
  */
 export function deriveLegendFigures(
   bodies: Body[] = loadBodies(),
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
   ideals: Ideal[] = IDEALS,
 ): LegendFigures {
   const worldRadius = deriveWorldRadius(bodies, scope);
@@ -163,8 +163,8 @@ export function deriveLegendFigures(
   const moons = deriveMoons(bodies, scope);
 
   const totalBodies = bodies.length;
-  const shippedSystemsCount = bodies.filter((b) => b.kind === "system").length;
-  const learnedStarsCount = bodies.filter((b) => b.kind === "star").length;
+  const shippedMoonsCount = bodies.filter((b) => b.kind === "moon").length;
+  const learnedDwarfPlanetsCount = bodies.filter((b) => b.kind === "dwarfPlanet").length;
   const anonymousCount = bodies.filter((b) => b.anonymous).length;
   const publicCount = totalBodies - anonymousCount;
   const armKeys = Object.keys(scope.arms);
@@ -187,8 +187,8 @@ export function deriveLegendFigures(
 
   const arms: ArmFigure[] = ARMS.map((meta) => {
     const armBodies = bodies.filter((b) => b.arm === meta.id);
-    const systemCount = armBodies.filter((b) => b.kind === "system").length;
-    const starCount = armBodies.length - systemCount;
+    const shippedCount = armBodies.filter((b) => b.kind === "moon").length;
+    const dwarfPlanetCount = armBodies.length - shippedCount;
     const anon = armBodies.filter((b) => b.anonymous).length;
     const planet = planetsByArm.get(meta.id);
     const armMoons = moonsByArm.get(meta.id) ?? [];
@@ -200,8 +200,8 @@ export function deriveLegendFigures(
       tagline: meta.tagline,
       themeColor: meta.themeColor,
       bodyCount: armBodies.length,
-      systemCount,
-      starCount,
+      shippedCount,
+      dwarfPlanetCount,
       anonymousCount: anon,
       planetRadius: planet?.radius ?? 0,
       moons: armMoons,
@@ -215,7 +215,7 @@ export function deriveLegendFigures(
   const largest = sortedPlanets[0];
   const largestArmMeta = ARM_META[largest.arm];
   const largestBodies = bodies.filter((b) => b.arm === largest.arm);
-  const largestSystems = largestBodies.filter((b) => b.kind === "system").length;
+  const largestShipped = largestBodies.filter((b) => b.kind === "moon").length;
 
   const productsArm = arms.find((a) => a.id === "products")!;
 
@@ -226,8 +226,8 @@ export function deriveLegendFigures(
     radiusFormula: "r = √days × 1.15",
     astrolabe,
     totalBodies,
-    shippedSystemsCount,
-    learnedStarsCount,
+    shippedMoonsCount,
+    learnedDwarfPlanetsCount,
     anonymousCount,
     publicCount,
     armCount,
@@ -242,15 +242,15 @@ export function deriveLegendFigures(
       name: largestArmMeta?.name ?? largest.arm,
       radius: largest.radius,
       bodyCount: largest.bodyCount,
-      systemCount: largestSystems,
-      starCount: largest.bodyCount - largestSystems,
+      shippedCount: largestShipped,
+      dwarfPlanetCount: largest.bodyCount - largestShipped,
     },
     products: {
       arm: "products",
       name: productsArm.name,
       total: productsArm.bodyCount,
-      systems: productsArm.systemCount,
-      stars: productsArm.starCount,
+      shipped: productsArm.shippedCount,
+      dwarfPlanets: productsArm.dwarfPlanetCount,
       moons: productsArm.moonCount,
       ideals: productsArm.idealCount,
       planetRadius: productsArm.planetRadius,
@@ -270,7 +270,7 @@ export interface ElementAnnotation {
 export function deriveRingAnnotation(
   month: number | "frontier",
   bodies: Body[] = loadBodies(),
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
   daysPerMonth: number = DAYS_PER_MONTH,
 ): ElementAnnotation {
   const daySpan = deriveDaySpan(bodies, scope);
@@ -290,31 +290,31 @@ export function deriveRingAnnotation(
 }
 
 /**
- * Derives what a planet is made of: its shipped systems count and learning repositories count.
+ * Derives what a planet is made of: its shipped moons count and learning repositories count.
  */
 export function derivePlanetAnnotation(
   arm: string,
   bodies: Body[] = loadBodies(),
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): ElementAnnotation {
-  if (arm === "galaxy") {
+  if (arm === "solarSystem") {
     return {
-      id: "planet-galaxy",
+      id: "planet-solarSystem",
       title: "Ancestral Anchor Core",
       subtitle: `Epoch ${scope.epoch} · Origin of time`,
     };
   }
   const meta = ARM_META[arm];
   const armBodies = bodies.filter((b) => b.arm === arm);
-  const systemCount = armBodies.filter((b) => b.kind === "system").length;
-  const starCount = armBodies.length - systemCount;
-  const sysUnit = systemCount === 1 ? "system" : "systems";
-  const starUnit = starCount === 1 ? "learning repository" : "learning repositories";
+  const moonCount = armBodies.filter((b) => b.kind === "moon").length;
+  const dwarfPlanetCount = armBodies.length - moonCount;
+  const moonUnit = moonCount === 1 ? "moon" : "moons";
+  const dwarfPlanetUnit = dwarfPlanetCount === 1 ? "learning repository" : "learning repositories";
 
   return {
     id: `planet-${arm}`,
     title: `Planet ${meta?.name ?? arm}`,
-    subtitle: `${systemCount} shipped ${sysUnit} · ${starCount} ${starUnit}`,
+    subtitle: `${moonCount} shipped ${moonUnit} · ${dwarfPlanetCount} ${dwarfPlanetUnit}`,
   };
 }
 
@@ -327,14 +327,14 @@ export function deriveArmAnnotation(
 ): ElementAnnotation {
   const meta = ARM_META[arm];
   const armBodies = bodies.filter((b) => b.arm === arm);
-  const systemCount = armBodies.filter((b) => b.kind === "system").length;
-  const starCount = armBodies.length - systemCount;
+  const moonCount = armBodies.filter((b) => b.kind === "moon").length;
+  const dwarfPlanetCount = armBodies.length - moonCount;
   const total = armBodies.length;
 
   return {
     id: `arm-${arm}`,
     title: `${meta?.name ?? arm} Arm`,
-    subtitle: `${meta?.tagline ?? ""} (${total} repos · ${systemCount} shipped, ${starCount} learned)`.trim(),
+    subtitle: `${meta?.tagline ?? ""} (${total} repos · ${moonCount} shipped, ${dwarfPlanetCount} learned)`.trim(),
   };
 }
 
@@ -358,7 +358,7 @@ export interface TimelineMilestone {
  */
 export function deriveTimelineMilestones(
   bodies: Body[] = loadBodies(),
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): TimelineMilestone[] {
   return bodies
     .filter((b): b is Body & { milestone: string } => Boolean(b.milestone))

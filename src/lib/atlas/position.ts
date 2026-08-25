@@ -1,15 +1,15 @@
 import type { Body, Vec3 } from "./types";
-import { getScope, GALAXY_ZEMI, type Scope } from "./scopes";
+import { getScope, SOLAR_SYSTEM_ZEMI, type Scope } from "./scopes";
 
 /** @deprecated Read `scope.arms` instead. Retained so the galaxy's own table stays importable. */
-export const ARM_ANGLES = GALAXY_ZEMI.arms;
+export const ARM_ANGLES = SOLAR_SYSTEM_ZEMI.arms;
 
 /** @deprecated Read `scope.windRate` instead. */
-export const WIND_RATE = GALAXY_ZEMI.windRate;
+export const WIND_RATE = SOLAR_SYSTEM_ZEMI.windRate;
 
 const MS_PER_DAY = 86_400_000;
 
-export function daysSinceEpoch(iso: string, epoch: string = GALAXY_ZEMI.epoch): number {
+export function daysSinceEpoch(iso: string, epoch: string = SOLAR_SYSTEM_ZEMI.epoch): number {
   return Math.round((Date.parse(iso) - Date.parse(epoch)) / MS_PER_DAY);
 }
 
@@ -22,7 +22,7 @@ export function radiusScale(days: number): number {
   return Math.sqrt(Math.max(0, days)) * 1.15;
 }
 
-export function polar(arm: string, radius: number, scope: Scope = GALAXY_ZEMI): Vec3 {
+export function polar(arm: string, radius: number, scope: Scope = SOLAR_SYSTEM_ZEMI): Vec3 {
   const theta = scope.arms[arm] + scope.windRate * Math.log(1 + radius);
   return { x: Math.cos(theta) * radius, y: 0, z: Math.sin(theta) * radius };
 }
@@ -64,7 +64,7 @@ export function trailEnd(body: Body, scope: Scope = getScope(body.parent)): Vec3
 /** Bodies whose radii differ by less than this are treated as one crowded run. */
 const CROWD = 1.1;
 /** World units of arc a run tries to leave around each member. */
-const ROOM = { star: 0.5, system: 1.5 } as const;
+const ROOM = { dwarfPlanet: 0.5, moon: 1.5 } as const;
 /** Radians. A fan never opens wider than this, so an arm never reaches its neighbour. */
 const MAX_LANE = 0.55;
 /** World units. Bodies born at the epoch would otherwise all share the origin. */
@@ -92,7 +92,7 @@ function at(arm: string, radius: number, lane: number, scope: Scope): Vec3 {
  * along it. A run may also be nudged radially, by at most half a day of local
  * radius — enough to unstack the epoch, negligible at the frontier.
  */
-export function placeBodies(bodies: Body[], scope: Scope = GALAXY_ZEMI): Placement[] {
+export function placeBodies(bodies: Body[], scope: Scope = SOLAR_SYSTEM_ZEMI): Placement[] {
   const out: Placement[] = [];
 
   for (const arm of Object.keys(scope.arms)) {

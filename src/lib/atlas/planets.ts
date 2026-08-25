@@ -1,5 +1,5 @@
 import type { Body, Vec3 } from "./types";
-import { GALAXY_ZEMI, type Scope } from "./scopes";
+import { SOLAR_SYSTEM_ZEMI, type Scope } from "./scopes";
 import { daysSinceEpoch, placeBodies, polar } from "./position";
 
 export interface PlanetPlacement {
@@ -22,7 +22,7 @@ export interface PlanetPlacement {
  * by its own scene scale. Sized so the widest pair of neighbours (Foundations and
  * Products, 12.6 apart) clears by an order of magnitude.
  */
-const SIZE = { base: 0.3, perSystem: 0.055, perStar: 0.006, max: 0.75 } as const;
+const SIZE = { base: 0.3, perMoon: 0.055, perDwarfPlanet: 0.006, max: 0.75 } as const;
 
 /**
  * How far the galaxy reaches, in layout units. Derived from the bodies alone —
@@ -30,13 +30,13 @@ const SIZE = { base: 0.3, perSystem: 0.055, perStar: 0.006, max: 0.75 } as const
  * someone typed when the world happened to be a different size. The renderer
  * scales its own furniture off this, so the map stays a pure function of dates.
  */
-export function deriveWorldRadius(bodies: Body[], scope: Scope = GALAXY_ZEMI): number {
+export function deriveWorldRadius(bodies: Body[], scope: Scope = SOLAR_SYSTEM_ZEMI): number {
   return Math.max(
     ...placeBodies(bodies, scope).map((p) => Math.hypot(p.position.x, p.position.z)),
   );
 }
 
-export function derivePlanets(bodies: Body[], scope: Scope = GALAXY_ZEMI): PlanetPlacement[] {
+export function derivePlanets(bodies: Body[], scope: Scope = SOLAR_SYSTEM_ZEMI): PlanetPlacement[] {
   const placements = placeBodies(bodies, scope);
   const byId = new Map(placements.map((p) => [p.id, p]));
 
@@ -57,13 +57,13 @@ export function derivePlanets(bodies: Body[], scope: Scope = GALAXY_ZEMI): Plane
         0,
       ) / Math.max(1, inArm.length);
 
-    const systems = inArm.filter((b) => b.kind === "system").length;
-    const stars = inArm.length - systems;
+    const moons = inArm.filter((b) => b.kind === "moon").length;
+    const dwarfPlanets = inArm.length - moons;
 
     return {
       arm,
       center: polar(arm, meanRadius, scope),
-      radius: Math.min(SIZE.max, SIZE.base + systems * SIZE.perSystem + stars * SIZE.perStar),
+      radius: Math.min(SIZE.max, SIZE.base + moons * SIZE.perMoon + dwarfPlanets * SIZE.perDwarfPlanet),
       bodyCount: inArm.length,
     };
   });
@@ -86,7 +86,7 @@ export interface PlanetGrowth extends PlanetPlacement {
 export function planetGrowthAt(
   bodies: Body[],
   clockDay: number,
-  scope: Scope = GALAXY_ZEMI,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
 ): PlanetGrowth[] {
   const frozen = derivePlanets(bodies, scope);
 
@@ -94,8 +94,8 @@ export function planetGrowthAt(
     const born = bodies.filter(
       (b) => b.arm === planet.arm && daysSinceEpoch(b.bornAt, scope.epoch) <= clockDay,
     );
-    const systems = born.filter((b) => b.kind === "system").length;
-    const stars = born.length - systems;
+    const moons = born.filter((b) => b.kind === "moon").length;
+    const dwarfPlanets = born.length - moons;
 
     return {
       ...planet,
@@ -103,7 +103,7 @@ export function planetGrowthAt(
       radius:
         born.length === 0
           ? 0
-          : Math.min(SIZE.max, SIZE.base + systems * SIZE.perSystem + stars * SIZE.perStar),
+          : Math.min(SIZE.max, SIZE.base + moons * SIZE.perMoon + dwarfPlanets * SIZE.perDwarfPlanet),
       visible: born.length > 0,
     };
   });

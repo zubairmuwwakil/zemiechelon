@@ -1,5 +1,5 @@
 import type { Body } from "./types";
-import { GALAXY_ZEMI, type Scope } from "./scopes";
+import { SOLAR_SYSTEM_ZEMI, type Scope } from "./scopes";
 import { MAX_INCLINATION } from "./motion";
 
 export interface MoonPlacement {
@@ -47,12 +47,12 @@ const BASE_RATE = 0.03;
  * `placeBodies` is a function of the set: only knowing the neighbours can
  * guarantee they do not stack.
  */
-export function deriveMoons(bodies: Body[], scope: Scope = GALAXY_ZEMI): MoonPlacement[] {
+export function deriveMoons(bodies: Body[], scope: Scope = SOLAR_SYSTEM_ZEMI): MoonPlacement[] {
   const out: MoonPlacement[] = [];
 
   for (const arm of Object.keys(scope.arms)) {
     const systems = bodies
-      .filter((b) => b.arm === arm && b.kind === "system")
+      .filter((b) => b.arm === arm && b.kind === "moon")
       .sort((a, b) => a.bornAt.localeCompare(b.bornAt) || a.id.localeCompare(b.id));
 
     systems.forEach((body, i) => {
@@ -81,6 +81,6 @@ export function deriveMoons(bodies: Body[], scope: Scope = GALAXY_ZEMI): MoonPla
 }
 
 /** The ids drawn in orbit rather than on the arm, so the map draws each body once. */
-export function moonIds(bodies: Body[], scope: Scope = GALAXY_ZEMI): Set<string> {
+export function moonIds(bodies: Body[], scope: Scope = SOLAR_SYSTEM_ZEMI): Set<string> {
   return new Set(deriveMoons(bodies, scope).map((m) => m.id));
 }

@@ -10,7 +10,7 @@ import { drawnWorldPosition, planetFrame } from "./planetFrames";
  * above", never "where".
  */
 export const PIN_HEIGHTS: Record<string, number> = {
-  galaxy: 8.8,
+  solarSystem: 8.8,
   self: 5.8,
   foundations: 6.2,
   products: 7.8,

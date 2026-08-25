@@ -43,7 +43,7 @@ const LABELLED: Record<string, Body[]> = Object.fromEntries(
   ARMS.map((arm) => [
     arm.id,
     BODIES.filter((b) => b.arm === arm.id && !b.anonymous).sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === "system" ? -1 : 1;
+      if (a.kind !== b.kind) return a.kind === "moon" ? -1 : 1;
       return b.lastTouchedAt.localeCompare(a.lastTouchedAt);
     }),
   ]),
@@ -148,7 +148,7 @@ export function QuickDossierModal({
                               {body.id} · touched {body.lastTouchedAt}
                             </p>
                           </div>
-                          {body.kind === "system" && (
+                          {body.kind === "moon" && (
                             <span className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold border shrink-0 bg-amber-50 text-amber-700 border-amber-200">
                               SYSTEM
                             </span>

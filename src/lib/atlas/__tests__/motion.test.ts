@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GALAXY_ZEMI } from "../galaxy";
+import { SOLAR_SYSTEM_ZEMI } from "../galaxy";
 import {
   MAX_INCLINATION,
   MAX_OBLIQUITY,
@@ -9,7 +9,7 @@ import {
   patternAngle,
 } from "../motion";
 
-const ARMS = Object.keys(GALAXY_ZEMI.arms);
+const ARMS = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
 
 describe("pattern rotation", () => {
   it("turns the galaxy exactly once per period", () => {
@@ -50,8 +50,8 @@ describe("obliquity", () => {
 
   it("gives a sixth arm one without anybody choosing a number", () => {
     const sixth = {
-      ...GALAXY_ZEMI,
-      arms: { ...GALAXY_ZEMI.arms, ventures: (10 * Math.PI) / 6 },
+      ...SOLAR_SYSTEM_ZEMI,
+      arms: { ...SOLAR_SYSTEM_ZEMI.arms, ventures: (10 * Math.PI) / 6 },
     };
     const tilt = obliquityFor("ventures", sixth);
     expect(tilt.magnitude).toBeGreaterThan(0);

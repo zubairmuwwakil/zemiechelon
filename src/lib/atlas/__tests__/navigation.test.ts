@@ -17,7 +17,7 @@ describe("selecting a body", () => {
   it("flies to a shipped system and does not land on it", () => {
     // Spec §6: tapping an unlanded moon opens its card and does not enter a
     // landed state. Every moon is a flyby until it declares a surface.
-    const moon = bodies.find((b) => b.kind === "system" && b.id !== "PickMe")!;
+    const moon = bodies.find((b) => b.kind === "moon" && b.id !== "PickMe")!;
     const selection = resolveBodySelection(moon.id, bodies);
     expect(selection.flyTo).toBe(moonScopeId(moon.id));
     expect(selection.landed).toBe(false);
@@ -27,14 +27,14 @@ describe("selecting a body", () => {
   it("returns the planet a flyby should ascend back to, not the galaxy", () => {
     // Spec §2 found that ascending one level at a time feels right. A flyby
     // adds a level, so its way out is the planet it flew from.
-    const moon = bodies.find((b) => b.kind === "system")!;
+    const moon = bodies.find((b) => b.kind === "moon")!;
     expect(resolveBodySelection(moon.id, bodies).ascendTo).toBe(planetScopeId(moon.arm));
   });
 
   it("leaves the camera alone for a repository on the arm", () => {
     // An arm body is a card, not a place. Flying to every dot in the field
     // would make the map twitch at every click.
-    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    const star = bodies.find((b) => b.kind === "dwarfPlanet" && !b.anonymous)!;
     const selection = resolveBodySelection(star.id, bodies);
     expect(selection.flyTo).toBeNull();
     expect(selection.ascendTo).toBeNull();
@@ -57,7 +57,7 @@ describe("selecting a body", () => {
 
   it("lands on exactly the moons that declare a surface, and no others", () => {
     for (const body of bodies) {
-      const expected = body.kind === "system" && declaresSurface(moonScopeId(body.id), bodies);
+      const expected = body.kind === "moon" && declaresSurface(moonScopeId(body.id), bodies);
       expect(resolveBodySelection(body.id, bodies).landed).toBe(expected);
     }
   });
@@ -97,13 +97,13 @@ describe("arriving somewhere leaves where you were", () => {
     // system body must always name one — otherwise a visitor who takes the
     // orrery from a planet to a moon keeps the planet's console open on top
     // of the moon they are now standing on.
-    for (const body of bodies.filter((b) => b.kind === "system")) {
+    for (const body of bodies.filter((b) => b.kind === "moon")) {
       expect(resolveBodySelection(body.id, bodies).flyTo).not.toBeNull();
     }
   });
 
   it("names none for a body that is only a card", () => {
-    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    const star = bodies.find((b) => b.kind === "dwarfPlanet" && !b.anonymous)!;
     expect(resolveBodySelection(star.id, bodies).flyTo).toBeNull();
   });
 });

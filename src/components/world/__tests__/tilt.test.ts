@@ -3,11 +3,11 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { GALAXY_ZEMI } from "@/lib/atlas/galaxy";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/galaxy";
 import { MAX_OBLIQUITY, obliquityFor } from "@/lib/atlas/motion";
 
 const bodies = loadBodies();
-const ARMS = Object.keys(GALAXY_ZEMI.arms);
+const ARMS = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
 const UP = new THREE.Vector3(0, 1, 0);
 
 function built() {
@@ -95,7 +95,7 @@ describe("axial tilt", () => {
   it("leaves the planet scope groups level, because the camera descends into them", () => {
     const builder = built();
     // Only arms with a shipped system get a scope group — `derivePlanetScopes`
-    // keys off `kind: "system"`, so Foundations has none.
+    // keys off `kind: "moon"`, so Foundations has none.
     const framed = ARMS.filter((arm) => builder.scopeGroups.has(`planet:${arm}`));
     expect(framed.length).toBeGreaterThan(0);
     for (const arm of framed) {

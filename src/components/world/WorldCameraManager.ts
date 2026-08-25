@@ -4,7 +4,7 @@ import { loadBodies } from "@/lib/atlas/bodies";
 import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
 export type CameraTargetPreset =
-  | "galaxy"
+  | "solarSystem"
   | "overview"
   | "products"
   | "labs"
@@ -85,15 +85,15 @@ function orbitPose(arm: string): CameraPose {
  * original pose, but the distance comes from how far the galaxy actually
  * reaches, so a later epoch reframes itself.
  */
-const GALAXY_REACH = ASTROLABE_OUTER;
-const GALAXY_POSE: CameraPose = {
-  position: new THREE.Vector3(0, GALAXY_REACH * 0.9, GALAXY_REACH * 1.12),
+const SOLAR_SYSTEM_REACH = ASTROLABE_OUTER;
+const SOLAR_SYSTEM_POSE: CameraPose = {
+  position: new THREE.Vector3(0, SOLAR_SYSTEM_REACH * 0.9, SOLAR_SYSTEM_REACH * 1.12),
   target: new THREE.Vector3(0, 0, 0),
 };
 
 export const CAMERA_PRESETS: Record<string, CameraPose> = {
-  galaxy: GALAXY_POSE,
-  overview: GALAXY_POSE,
+  solarSystem: SOLAR_SYSTEM_POSE,
+  overview: SOLAR_SYSTEM_POSE,
   ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(p.arm)])),
 };
 
@@ -146,13 +146,13 @@ export class WorldCameraManager {
   // Seeded from the derived galaxy pose rather than from a pair of numbers that
   // happened to frame the world when it was a different size.
   private currentPose: CameraPose = {
-    position: GALAXY_POSE.position.clone(),
-    target: GALAXY_POSE.target.clone(),
+    position: SOLAR_SYSTEM_POSE.position.clone(),
+    target: SOLAR_SYSTEM_POSE.target.clone(),
   };
 
   private desiredPose: CameraPose = {
-    position: GALAXY_POSE.position.clone(),
-    target: GALAXY_POSE.target.clone(),
+    position: SOLAR_SYSTEM_POSE.position.clone(),
+    target: SOLAR_SYSTEM_POSE.target.clone(),
   };
 
   /**
@@ -426,7 +426,7 @@ export class WorldCameraManager {
     this.surface = null;
     this.descended = null;
     this.setFrameScale(ASTROLABE_OUTER);
-    this.setPreset("galaxy");
+    this.setPreset("solarSystem");
   }
 
   /** Arrive rather than fly. Every pose the lerps were heading for, taken now. */

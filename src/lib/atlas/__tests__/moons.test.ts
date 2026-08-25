@@ -7,7 +7,7 @@ const moons = deriveMoons(bodies);
 
 describe("moons", () => {
   it("makes every shipped system a moon of its own arm, and nothing else", () => {
-    const systems = bodies.filter((b) => b.kind === "system");
+    const systems = bodies.filter((b) => b.kind === "moon");
     expect(moons.map((m) => m.id).sort()).toEqual(systems.map((b) => b.id).sort());
     for (const moon of moons) {
       expect(moon.arm).toBe(bodies.find((b) => b.id === moon.id)!.arm);

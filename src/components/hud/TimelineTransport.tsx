@@ -12,7 +12,7 @@ import {
   visibleBodyIds,
   type TimelineSpeed,
 } from "@/lib/atlas/timeline";
-import { GALAXY_ZEMI } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 import type { CosmicMode } from "@/components/world/DayNightController";
 import { sound } from "@/lib/audio";
 
@@ -98,7 +98,7 @@ export function TimelineTransport({ bodies, cosmicMode, onClockDayChange }: Time
     () => visibleBodyIds(bodies, clockDay).size,
     [bodies, clockDay],
   );
-  const currentDate = dateAtDay(clockDay, GALAXY_ZEMI.epoch);
+  const currentDate = dateAtDay(clockDay, SOLAR_SYSTEM_ZEMI.epoch);
 
   const handleTogglePlay = () => {
     sound.playClick(500, 0.05);

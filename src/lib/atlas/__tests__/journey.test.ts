@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { loadBodies } from "../bodies";
 import { moonScopeId, planetScopeId } from "../galaxy";
-import { SCOPES, GALAXY_ZEMI } from "../scopes";
+import { SCOPES, SOLAR_SYSTEM_ZEMI } from "../scopes";
 import { declaresSurface } from "../surfaces";
 import {
-  AT_GALAXY,
+  AT_SOLAR_SYSTEM,
   ascendFrom,
   framingFor,
   journeyReducer,
@@ -23,14 +23,14 @@ const NARROW = { viewportWidth: 480, reducedMotion: false };
 
 /** Apply a sequence of events, as a session would. */
 function walk(...events: Parameters<typeof journeyReducer>[1][]): Journey {
-  return events.reduce(journeyReducer, AT_GALAXY);
+  return events.reduce(journeyReducer, AT_SOLAR_SYSTEM);
 }
 
 describe("where the visitor starts", () => {
   it("starts at the galaxy with nothing open over it", () => {
-    expect(AT_GALAXY.position.kind).toBe("galaxy");
-    expect(AT_GALAXY.card).toBeNull();
-    expect(AT_GALAXY.console).toBeNull();
+    expect(AT_SOLAR_SYSTEM.position.kind).toBe("solarSystem");
+    expect(AT_SOLAR_SYSTEM.card).toBeNull();
+    expect(AT_SOLAR_SYSTEM.console).toBeNull();
   });
 });
 
@@ -72,14 +72,14 @@ describe("selecting an arm from the nav", () => {
   });
 
   it("goes back to the galaxy when the core is selected", () => {
-    expect(walk({ type: "selectSector", sectorId: "galaxy", ...WIDE })).toEqual(AT_GALAXY);
-    expect(walk({ type: "selectSector", sectorId: "overview", ...WIDE })).toEqual(AT_GALAXY);
+    expect(walk({ type: "selectSector", sectorId: "solarSystem", ...WIDE })).toEqual(AT_SOLAR_SYSTEM);
+    expect(walk({ type: "selectSector", sectorId: "overview", ...WIDE })).toEqual(AT_SOLAR_SYSTEM);
   });
 });
 
 describe("selecting a body", () => {
   it("flies to a shipped system and carries its card", () => {
-    const moon = bodies.find((b) => b.kind === "system" && !declaresSurface(moonScopeId(b.id), bodies))!;
+    const moon = bodies.find((b) => b.kind === "moon" && !declaresSurface(moonScopeId(b.id), bodies))!;
     const journey = walk({ type: "selectBody", bodyId: moon.id });
     expect(journey.position).toEqual({ kind: "moon", bodyId: moon.id, mode: "flyby" });
     expect(journey.card).toBe(moon.id);
@@ -92,7 +92,7 @@ describe("selecting a body", () => {
   });
 
   it("opens a card for an arm body without moving the camera", () => {
-    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    const star = bodies.find((b) => b.kind === "dwarfPlanet" && !b.anonymous)!;
     const before = walk({ type: "selectSector", sectorId: "creative", ...WIDE });
     const after = journeyReducer(before, { type: "selectBody", bodyId: star.id });
     expect(after.position).toEqual(before.position);
@@ -115,11 +115,11 @@ describe("ascending is one level, and the level comes from the scope tree", () =
       { type: "selectSector", sectorId: "products", ...WIDE },
       { type: "ascend" },
     );
-    expect(journey.position.kind).toBe("galaxy");
+    expect(journey.position.kind).toBe("solarSystem");
   });
 
   it("stays at the galaxy when there is nowhere further out to go", () => {
-    expect(journeyReducer(AT_GALAXY, { type: "ascend" })).toEqual(AT_GALAXY);
+    expect(journeyReducer(AT_SOLAR_SYSTEM, { type: "ascend" })).toEqual(AT_SOLAR_SYSTEM);
   });
 
   it("agrees with the scope tree for every scope that has a parent", () => {
@@ -127,7 +127,11 @@ describe("ascending is one level, and the level comes from the scope tree", () =
     // this same answer, and the copy is what went stale. If the scope tree ever
     // gains a level, this fails rather than the camera quietly ascending too far.
     for (const scope of Object.values(SCOPES)) {
-      if (!scope.parent) continue;
+      // The solar system itself is excluded: it has a parent (the galaxy), but
+      // `Position` has no galaxy-level state to ascend into yet — that state is
+      // deliberately deferred until a second solar system exists to navigate
+      // between. See docs/superpowers/plans/... galaxy wrapper notes.
+      if (!scope.parent || scope.id === SOLAR_SYSTEM_ZEMI.id) continue;
       const parent = ascendFrom(positionFor(scope.id), bodies);
       expect(scopeIdFor(parent), scope.id).toBe(scope.parent);
     }
@@ -148,14 +152,14 @@ describe("ascending is one level, and the level comes from the scope tree", () =
 
 describe("what is open over a position", () => {
   it("closing a flyby's card ascends to the planet it flew from", () => {
-    const moon = bodies.find((b) => b.kind === "system" && !declaresSurface(moonScopeId(b.id), bodies))!;
+    const moon = bodies.find((b) => b.kind === "moon" && !declaresSurface(moonScopeId(b.id), bodies))!;
     const journey = walk({ type: "selectBody", bodyId: moon.id }, { type: "closeCard" });
     expect(journey.card).toBeNull();
     expect(journey.position).toEqual({ kind: "planet", arm: moon.arm, mode: "orbit" });
   });
 
   it("closing a card that was not a flyby leaves the position alone", () => {
-    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    const star = bodies.find((b) => b.kind === "dwarfPlanet" && !b.anonymous)!;
     const before = walk({ type: "selectSector", sectorId: "creative", ...WIDE });
     const after = [{ type: "selectBody" as const, bodyId: star.id }, { type: "closeCard" as const }]
       .reduce(journeyReducer, before);
@@ -205,7 +209,7 @@ describe("what is open over a position", () => {
       { type: "openConsole", consoleId: "PickMe" },
       { type: "reset" },
     );
-    expect(journey).toEqual(AT_GALAXY);
+    expect(journey).toEqual(AT_SOLAR_SYSTEM);
   });
 
   it("leaves nothing open behind when the core is selected from a surface", () => {
@@ -213,9 +217,9 @@ describe("what is open over a position", () => {
     // panel but leaves `standingScope` set, so the camera never leaves.
     const journey = walk(
       { type: "selectBody", bodyId: "PickMe" },
-      { type: "selectSector", sectorId: "galaxy", ...WIDE },
+      { type: "selectSector", sectorId: "solarSystem", ...WIDE },
     );
-    expect(journey).toEqual(AT_GALAXY);
+    expect(journey).toEqual(AT_SOLAR_SYSTEM);
   });
 });
 
@@ -231,7 +235,7 @@ describe("framing is resolved in one place", () => {
   });
 
   it("frames the galaxy at the root", () => {
-    expect(framingFor(AT_GALAXY)).toEqual({ kind: "galaxy" });
+    expect(framingFor(AT_SOLAR_SYSTEM)).toEqual({ kind: "solarSystem" });
   });
 
   it("names the surface to stand on, with the scope that has the ground", () => {
@@ -240,7 +244,7 @@ describe("framing is resolved in one place", () => {
   });
 
   it("names a flyby's own frame", () => {
-    const moon = bodies.find((b) => b.kind === "system" && !declaresSurface(moonScopeId(b.id), bodies))!;
+    const moon = bodies.find((b) => b.kind === "moon" && !declaresSurface(moonScopeId(b.id), bodies))!;
     const journey = walk({ type: "selectBody", bodyId: moon.id });
     expect(framingFor(journey)).toEqual({ kind: "moon", scope: moonScopeId(moon.id) });
   });
@@ -253,7 +257,7 @@ describe("framing is resolved in one place", () => {
 
 describe("naming a position", () => {
   it("names the galaxy's own scope at the root", () => {
-    expect(scopeIdFor(AT_GALAXY.position)).toBe(GALAXY_ZEMI.id);
+    expect(scopeIdFor(AT_SOLAR_SYSTEM.position)).toBe(SOLAR_SYSTEM_ZEMI.id);
   });
 
   it("names nothing for an arm the map draws but does not scope", () => {
@@ -262,7 +266,7 @@ describe("naming a position", () => {
   });
 
   it("reports the arm the HUD should highlight, at every depth", () => {
-    expect(activeArm(AT_GALAXY)).toBe("galaxy");
+    expect(activeArm(AT_SOLAR_SYSTEM)).toBe("solarSystem");
     expect(activeArm(walk({ type: "selectBody", bodyId: "PickMe" }))).toBe("products");
     expect(activeArm(walk({ type: "selectSector", sectorId: "labs", ...WIDE }))).toBe("labs");
   });
@@ -302,11 +306,11 @@ describe("what the URL should say", () => {
   });
 
   it("names the open card when the visitor is not standing anywhere", () => {
-    const star = bodies.find((b) => b.kind === "star" && !b.anonymous)!;
+    const star = bodies.find((b) => b.kind === "dwarfPlanet" && !b.anonymous)!;
     expect(deepLinkBodyId(walk({ type: "selectBody", bodyId: star.id }))).toBe(star.id);
   });
 
   it("names nothing at the galaxy with nothing open", () => {
-    expect(deepLinkBodyId(AT_GALAXY)).toBeNull();
+    expect(deepLinkBodyId(AT_SOLAR_SYSTEM)).toBeNull();
   });
 });
