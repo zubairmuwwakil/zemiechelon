@@ -1,4 +1,4 @@
-import type { ScopeId } from "./types";
+import type { Body, ScopeId } from "./types";
 
 /**
  * A coordinate frame. Bodies are laid out within their parent's frame, and the
@@ -20,25 +20,17 @@ export interface Scope {
 }
 
 /**
- * The universe root. Holds no bodies of its own — a solar system is one row of
- * data under it, added when it is actually built, not scaffolded ahead of one
- * existing. `arms`/`windRate` sit unused here; nothing places a body directly
- * in the galaxy's own frame.
+ * Spelled before `GALAXY_ZEMI` so a solar system can name its parent without
+ * the galaxy having to exist first — which it cannot, since its own arm table
+ * is derived from the systems below.
  */
-export const GALAXY_ZEMI: Scope = {
-  id: "galaxy:zemi",
-  kind: "galaxy",
-  label: "Zemí Echelon",
-  epoch: "2025-11-06",
-  arms: {},
-  windRate: 0,
-};
+const GALAXY_ID: ScopeId = "galaxy:zemi";
 
 /** The repository atlas: the first solar system in the Zemí galaxy. */
 export const SOLAR_SYSTEM_ZEMI: Scope = {
   id: "solarSystem:atlas",
   kind: "solarSystem",
-  parent: GALAXY_ZEMI.id,
+  parent: GALAXY_ID,
   label: "Repository Atlas",
   epoch: "2025-11-06",
   arms: {
@@ -49,6 +41,55 @@ export const SOLAR_SYSTEM_ZEMI: Scope = {
     creative: (8 * Math.PI) / 5,
   },
   windRate: 0.55,
+};
+
+/**
+ * Every solar system in the galaxy, in the order they were founded.
+ *
+ * The registry is the single place a system is declared. `GALAXY_ZEMI.arms`,
+ * `SCOPES` and the uniqueness guard are all folds over this array, so a second
+ * system is one row rather than an edit in four files.
+ */
+export const SOLAR_SYSTEMS: Scope[] = [SOLAR_SYSTEM_ZEMI];
+
+/** e.g. solarSystemScopeId("atlas") -> "solarSystem:atlas". One spelling, one place. */
+export function solarSystemScopeId(name: string): ScopeId {
+  return `solarSystem:${name}`;
+}
+
+/** The inverse. Loud rather than defaulted, the rule `getScope` already follows. */
+export function systemName(scopeId: ScopeId): string {
+  if (!scopeId.startsWith("solarSystem:")) {
+    throw new Error(`scope "${scopeId}" is not a solar system`);
+  }
+  return scopeId.slice("solarSystem:".length);
+}
+
+/**
+ * The universe root, and a real frame.
+ *
+ * Its arms are **derived from the registry** — one per solar system, named for
+ * it, evenly spaced — rather than authored, so the galaxy's own table cannot
+ * fall out of step with the systems it describes. That is what lets a solar
+ * system be placed by `polar()`, the same function that places a repository on
+ * an arm and a moon around a planet: the map's one rule, that angle means arm
+ * and radius means time, now holds at every level of the tree instead of
+ * stopping one short of the root.
+ *
+ * The galaxy holds no bodies of its own. Nothing is parented here.
+ */
+export const GALAXY_ZEMI: Scope = {
+  id: GALAXY_ID,
+  kind: "galaxy",
+  label: "Zemí Echelon",
+  epoch: "2025-11-06",
+  arms: Object.fromEntries(
+    SOLAR_SYSTEMS.map((s, i) => [systemName(s.id), (i / SOLAR_SYSTEMS.length) * 2 * Math.PI]),
+  ),
+  // One wind rate for the whole map, so the galaxy's arms curve exactly as the
+  // arms inside its systems do. Unobservable while the only system sits at the
+  // core at radius zero; the first system placed off-centre is what shows it.
+  windRate: SOLAR_SYSTEM_ZEMI.windRate,
 };
 
 /** e.g. planetScopeId("products") -> "planet:products". One spelling, one place. */
@@ -62,7 +103,44 @@ export function moonScopeId(bodyId: string): ScopeId {
   return `moon:${bodyId}`;
 }
 
-/** e.g. solarSystemScopeId("atlas") -> "solarSystem:atlas". One spelling, one place. */
-export function solarSystemScopeId(name: string): ScopeId {
-  return `solarSystem:${name}`;
+/**
+ * What makes flat scope ids safe rather than lucky.
+ *
+ * `planet:products` and `moon:PickMe` carry no system segment. Two systems
+ * claiming one arm name would therefore collide on a single planet scope, and
+ * two bodies sharing an id would collide on a single moon scope *and* on the
+ * `#/<id>` deep link — a video quietly answering a repository's URL. Both are
+ * true-by-inspection today and would stay true by coincidence.
+ *
+ * So the coincidence is asserted at module load. Loud, not defaulted: the rule
+ * `loadBodies`, `getScope`, `validateIdeals` and `shardRadiusFor` already
+ * follow. Qualifying the ids instead (`planet:channel/vlogs`) is the other way
+ * to buy this, and costs a format change across the deep links, the pins and
+ * every test — worth doing at three systems, not at two.
+ */
+export function validateGalaxy(systems: Scope[], bodies: Body[]): void {
+  const armOwner = new Map<string, ScopeId>();
+  for (const system of systems) {
+    for (const arm of Object.keys(system.arms)) {
+      const owner = armOwner.get(arm);
+      if (owner !== undefined) {
+        throw new Error(
+          `arm "${arm}" is declared by both "${owner}" and "${system.id}" — ` +
+            `they would collide on the single scope "${planetScopeId(arm)}"`,
+        );
+      }
+      armOwner.set(arm, system.id);
+    }
+  }
+
+  const seen = new Set<string>();
+  for (const body of bodies) {
+    if (seen.has(body.id)) {
+      throw new Error(
+        `body "${body.id}" is declared twice in the galaxy — ` +
+          `they would collide on "${moonScopeId(body.id)}" and on the deep link "#/${body.id}"`,
+      );
+    }
+    seen.add(body.id);
+  }
 }

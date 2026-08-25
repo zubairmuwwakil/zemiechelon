@@ -1,7 +1,8 @@
 import type { Body, ScopeId } from "./types";
 import { moonScopeId, planetScopeId } from "./galaxy";
 import { loadBodies } from "./bodies";
-import { derivePlanets, deriveWorldRadius } from "./planets";
+import { derivePlanets } from "./planets";
+import { SCENE_SCALE } from "./scale";
 import { ENGINE_IDS } from "@/lib/engines/registry";
 
 /**
@@ -40,19 +41,6 @@ export const SHARD_RADIUS_MULTIPLE = 1.5;
 /** Moon drawn radius as a fraction of its planet's. Mirrors MOON_SIZE in the builder. */
 const MOON_SIZE = 0.34;
 
-/**
- * Layout units -> scene units.
- *
- * The same quotient `SCENE_SCALE` is, taken from the same function rather than
- * re-derived: a second way of computing it is a second thing to drift. It lives
- * here rather than being imported from `WorldCameraManager` only so this module
- * stays free of three.js and testable without a GL context.
- */
-const ASTROLABE_OUTER = 205;
-
-function sceneScale(bodies: Body[]): number {
-  return ASTROLABE_OUTER / deriveWorldRadius(bodies);
-}
 
 /**
  * Evidence, as a predicate rather than as a list.
@@ -106,8 +94,7 @@ export function shardRadiusFor(scopeId: ScopeId, bodies: Body[] = loadBodies()):
     throw new Error(`scope "${scopeId}" declares no surface`);
   }
 
-  const scale = sceneScale(bodies);
-  const planets = new Map(derivePlanets(bodies).map((p) => [p.arm, p.radius * scale]));
+  const planets = new Map(derivePlanets(bodies).map((p) => [p.arm, p.radius * SCENE_SCALE]));
 
   if (scopeId.startsWith("planet:")) {
     const arm = scopeId.slice("planet:".length);

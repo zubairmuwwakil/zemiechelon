@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import { derivePlanets, deriveWorldRadius } from "@/lib/atlas/planets";
-import { loadBodies } from "@/lib/atlas/bodies";
+import { derivePlanets } from "@/lib/atlas/planets";
+import { bodiesFor } from "@/lib/atlas/bodies";
+import { SOLAR_SYSTEMS, type Scope } from "@/lib/atlas/scopes";
+import { ASTROLABE_OUTER, SCENE_SCALE } from "@/lib/atlas/scale";
 import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
 export type CameraTargetPreset =
@@ -18,39 +20,56 @@ export interface CameraPose {
   target: THREE.Vector3;
 }
 
-const bodies = loadBodies();
-const derived = derivePlanets(bodies);
-
 /**
- * The drawn instrument's own size. This is the one authored length in the scene:
- * everything else is a repository date pushed through `radiusScale`.
+ * `ASTROLABE_OUTER` and `SCENE_SCALE` are re-exported rather than declared.
+ *
+ * They moved to `lib/atlas/scale.ts` when the quotient stopped being a fact
+ * about one solar system and became one about the galaxy — see that file for
+ * why there is exactly one of them. The re-export keeps this module the address
+ * the scene layer already imports them from, so the move is not also a churn of
+ * a dozen import lines.
  */
-export const ASTROLABE_OUTER = 205;
-
-/**
- * Layout units -> scene units. `radiusScale` caps the galaxy near 19.5 layout
- * units, while the astrolabe is drawn ten times wider; this is the single place
- * the two meet. Deriving it rather than typing it is what makes the outermost
- * repository land exactly on the outermost ring — the astrolabe stops being
- * decoration and becomes a scale.
- */
-export const SCENE_SCALE = ASTROLABE_OUTER / deriveWorldRadius(bodies);
+export { ASTROLABE_OUTER, SCENE_SCALE };
 
 /** Layout-unit vector -> scene-unit vector. */
 export function toScene(v: { x: number; y: number; z: number }): THREE.Vector3 {
   return new THREE.Vector3(v.x * SCENE_SCALE, v.y * SCENE_SCALE, v.z * SCENE_SCALE);
 }
 
-/** Drawn radius in scene units, per planet. */
-export const PLANET_RADII: Record<string, number> = Object.fromEntries(
-  derived.map((p) => [p.arm, p.radius * SCENE_SCALE]),
+/** Drawn radius in scene units, for one solar system's planets. */
+export function planetRadiiFor(system: Scope): Record<string, number> {
+  return Object.fromEntries(
+    derivePlanets(bodiesFor(system), system).map((p) => [p.arm, p.radius * SCENE_SCALE]),
+  );
+}
+
+/** Each planet's centre in ITS OWN solar system's local frame. */
+export function planetCentersFor(system: Scope): Record<string, THREE.Vector3> {
+  return Object.fromEntries(
+    derivePlanets(bodiesFor(system), system).map((p) => [p.arm, toScene(p.center)]),
+  );
+}
+
+/**
+ * Every planet in the galaxy, keyed by arm.
+ *
+ * Flat across solar systems, which `validateGalaxy` is what makes safe: no two
+ * systems may declare the same arm, so an arm name identifies exactly one
+ * planet. Each centre is expressed in **its own system's** local frame, which
+ * is the frame `planetFrames.ts` composes it through — so the union is correct
+ * rather than merely convenient. Reading one of these as a world position is
+ * the error that left the pins behind when the pattern started turning.
+ */
+export const PLANET_RADII: Record<string, number> = Object.assign(
+  {},
+  ...SOLAR_SYSTEMS.map(planetRadiiFor),
 );
 
-/** Derived from repository metadata. Nothing here is authored. */
-export const PLANET_CENTERS: Record<string, THREE.Vector3> = {
-  sun: new THREE.Vector3(0, 0, 0),
-  ...Object.fromEntries(derived.map((p) => [p.arm, toScene(p.center)])),
-};
+/** Derived from body metadata. Nothing here is authored. */
+export const PLANET_CENTERS: Record<string, THREE.Vector3> = Object.assign(
+  { sun: new THREE.Vector3(0, 0, 0) },
+  ...SOLAR_SYSTEMS.map(planetCentersFor),
+);
 
 /**
  * Frame a body of `radius` centred at `center`, from just outside its own rim,
@@ -80,6 +99,11 @@ function orbitPose(arm: string): CameraPose {
   });
 }
 
+/** One solar system's arm presets. Folded into `CAMERA_PRESETS` below. */
+export function presetsFor(system: Scope): Record<string, CameraPose> {
+  return Object.fromEntries(Object.keys(planetRadiiFor(system)).map((arm) => [arm, orbitPose(arm)]));
+}
+
 /**
  * Derived, not authored: the elevation and framing ratios are kept from the
  * original pose, but the distance comes from how far the galaxy actually
@@ -91,11 +115,10 @@ const SOLAR_SYSTEM_POSE: CameraPose = {
   target: new THREE.Vector3(0, 0, 0),
 };
 
-export const CAMERA_PRESETS: Record<string, CameraPose> = {
-  solarSystem: SOLAR_SYSTEM_POSE,
-  overview: SOLAR_SYSTEM_POSE,
-  ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(p.arm)])),
-};
+export const CAMERA_PRESETS: Record<string, CameraPose> = Object.assign(
+  { solarSystem: SOLAR_SYSTEM_POSE, overview: SOLAR_SYSTEM_POSE },
+  ...SOLAR_SYSTEMS.map(presetsFor),
+);
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const IDENTITY_SCALE = new THREE.Vector3(1, 1, 1);

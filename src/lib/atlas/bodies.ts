@@ -1,7 +1,8 @@
 import generated from "@/data/bodies.generated.json";
 import { OVERRIDES } from "@/data/bodies.overrides";
 import type { Body } from "./types";
-import { SOLAR_SYSTEM_ZEMI, planetScopeId } from "./galaxy";
+import { SOLAR_SYSTEMS, SOLAR_SYSTEM_ZEMI, planetScopeId, type Scope } from "./galaxy";
+import type { ScopeId } from "./types";
 
 /** Re-exported from the galaxy scope so the epoch is declared once. */
 export const EPOCH = SOLAR_SYSTEM_ZEMI.epoch;
@@ -55,4 +56,32 @@ export function loadBodies(): Body[] {
       milestone: o.milestone,
     };
   });
+}
+
+/**
+ * Where each solar system's bodies come from.
+ *
+ * A table rather than a branch, because the thing that varies between systems
+ * is only the loader: the atlas reads a generated manifest of repositories, and
+ * a later system reads a hand-maintained list. Everything downstream —
+ * placement, scoping, gating, framing — takes a `Body[]` and does not care
+ * which produced it.
+ */
+const BODY_SOURCES: Record<ScopeId, () => Body[]> = {
+  [SOLAR_SYSTEM_ZEMI.id]: loadBodies,
+};
+
+/** One solar system's own bodies. Loud rather than empty: a system with no
+ * declared source would render as a bare sun and look like a data outage. */
+export function bodiesFor(system: Scope): Body[] {
+  const source = BODY_SOURCES[system.id];
+  if (!source) {
+    throw new Error(`solar system "${system.id}" declares no body source`);
+  }
+  return source();
+}
+
+/** Every body in the galaxy. Only the uniqueness guard needs the whole set. */
+export function allBodies(): Body[] {
+  return SOLAR_SYSTEMS.flatMap(bodiesFor);
 }
