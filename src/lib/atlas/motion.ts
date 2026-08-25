@@ -14,17 +14,17 @@ import { GALAXY_ZEMI, type Scope } from "./galaxy";
  */
 
 /**
- * The galaxy's pattern period. One revolution per fifteen minutes.
+ * The galaxy's pattern period. One revolution per twenty-four minutes.
  *
  * Sized against the pointer rather than against taste. At the derived galaxy
- * pose this is 5.06 px/s at a 725 px rim, so a planet pin about 100 px wide
- * takes roughly twenty seconds to slide its own width. The binding precedent is
- * `ORRERY_RATE`, cut from 0.28 to 0.1 because a bead "crossed the frame in a
- * couple of seconds and slid out from under the pointer" — the same failure
- * mode, one altitude up. `motion.test.ts` still pins `PATTERN_RATE` under
- * 0.01 rad/s as that ceiling.
+ * pose this is 3.16 px/s at the rim, so a planet pin about 100 px wide takes
+ * roughly thirty-two seconds to slide its own width. The binding ceiling is
+ * `patternRotation.test.ts`'s "no faster" case: above 4 px/s a planet risks
+ * the same failure `ORRERY_RATE` hit at 0.28 rad/s — "a bead crossed the
+ * frame in a couple of seconds and slid out from under the pointer" — one
+ * altitude up. This keeps roughly 21% of headroom under that ceiling.
  */
-export const PATTERN_PERIOD_SECONDS = 15 * 60;
+export const PATTERN_PERIOD_SECONDS = 24 * 60;
 
 /** Radians per second. One rate for every radius: see `patternAngle`. */
 export const PATTERN_RATE = (2 * Math.PI) / PATTERN_PERIOD_SECONDS;
