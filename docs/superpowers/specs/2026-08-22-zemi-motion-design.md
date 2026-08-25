@@ -84,7 +84,7 @@ Each layer has one owner, one rate, and one switch. Nothing composes implicitly.
 
 | | Layer | What moves | Rate | Perceived | Touches placement? |
 |---|---|---|---|---|---|
-| **L1** | Pattern | all galaxy content about the core, rigidly | 30 min/rev | 2.53 px/s at rim | no |
+| **L1** | Pattern | all galaxy content about the core, rigidly | 15 min/rev | 5.06 px/s at rim | no |
 | **L2** | Obliquity | planet spin axes | static | orientation | no |
 | **L3** | System | moon orbits, now inclined | existing, retuned | 1.2 px/s and up | no |
 | **L4** | Light | the sun on an arc, its direction passed to the shader | ~8 min/circuit | terminator crawl | no |
@@ -120,15 +120,18 @@ against a structural change, for the same result.
 
 ### 3.4 Ωₚ is sized against the pointer, not against taste
 
-**Ωₚ = 30 min/rev = 0.00349 rad/s**, giving 2.53 px/s at a 725 px rim.
+**Ωₚ = 15 min/rev = 0.00698 rad/s**, giving 5.06 px/s at a 725 px rim. (Retuned
+2026-08-25 from the original 30 min/rev for more perceptible orbital motion;
+`motion.test.ts` still pins `PATTERN_RATE` under 0.01 rad/s as the ceiling this
+section's reasoning depends on.)
 
 The binding constraint is not visibility, it is whether a visitor can still hit
 what they are aiming at. `ORRERY_RATE` was cut from 0.28 to 0.1 rad/s on
 2026-08-22 with the note that at 0.28 "a bead crossed the frame in a couple of
 seconds and slid out from under the pointer." That is the same failure mode, one
-altitude up. A planet pin is on the order of 100 px wide, so at 2.53 px/s it
-takes about **40 seconds to slide its own width** — two orders of magnitude
-clear of the failure already observed.
+altitude up. A planet pin is on the order of 100 px wide, so at 5.06 px/s it
+takes about **20 seconds to slide its own width** — still comfortably clear of
+the failure already observed.
 
 ### 3.5 Obliquity is baked per instance, and never reaches a camera frame
 
