@@ -1231,6 +1231,25 @@ at that one line and leave a `// Task 7 replaces this with this.scope.` comment.
   keeps scrubbing in days internally — its slider is a day offset over the
   atlas's span — and now **reports a date**. Change its `onChange` callback
   type to emit `dateAtDay(day, SOLAR_SYSTEM_ZEMI.epoch)`.
+
+  **This is the one place the Global Constraints' "existing tests pass
+  unmodified" rule does not apply, and you must update the test.**
+  `src/components/hud/__tests__/timelineTransport.test.tsx:91` and `:103`
+  assert `toHaveBeenCalledWith(286)` and `toHaveBeenCalledWith(0)` — day
+  numbers, pinning the very interface this step changes. Update both to the
+  dates those days resolve to:
+
+```tsx
+    expect(onClockDateChange).toHaveBeenCalledWith(dateAtDay(286, SOLAR_SYSTEM_ZEMI.epoch));
+    // and, for the scrub case:
+    expect(onClockDateChange).toHaveBeenCalledWith(SOLAR_SYSTEM_ZEMI.epoch);
+```
+
+  Computed through `dateAtDay` rather than typed, so the assertion cannot
+  drift from the epoch it is about. Rename the spy and the prop from
+  `onClockDayChange` to `onClockDateChange` in the same edit. This is the
+  ONLY existing test this plan authorises changing; anywhere else, stop and
+  report.
 - `src/app/page.tsx`: change `const [clockDay, setClockDay] = useState(Infinity)`
   to `const [clockDate, setClockDate] = useState(THE_END)` and pass
   `clockDate={clockDate}` to `WorldCanvas`.
