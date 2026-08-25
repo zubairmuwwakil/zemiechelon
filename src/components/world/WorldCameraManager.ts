@@ -95,30 +95,7 @@ export const CAMERA_PRESETS: Record<string, CameraPose> = {
   galaxy: GALAXY_POSE,
   overview: GALAXY_POSE,
   ...Object.fromEntries(derived.map((p) => [p.arm, orbitPose(p.arm)])),
-  // Retained alias: the HUD and page.tsx both still dispatch "founder".
-  founder: orbitPose("self"),
 };
-
-/**
- * The arm a preset NAMES, or null for a preset that names a place instead.
- *
- * This is the distinction §3.7 never drew, and it is the whole of the drift.
- * `galaxy` and `overview` name the origin the pattern turns about, which by
- * construction does not move. Every other preset names a *planet*, and L1
- * carries planets. Only the second kind has anything to follow — so only the
- * second kind should be resolved to a live frame, and the first can go on being
- * two frozen vectors forever without ever being wrong.
- *
- * Here rather than at the call site because the `founder` alias above is this
- * module's own fiction, and a caller resolving presets to arms would have to
- * re-derive it and could quietly get it wrong.
- */
-export function presetArm(presetKey: CameraTargetPreset): string | null {
-  if (presetKey === "galaxy" || presetKey === "overview") return null;
-  const arm = presetKey === "founder" ? "self" : presetKey;
-  // A preset with no drawn radius is not a planet, whatever it is called.
-  return PLANET_RADII[arm] !== undefined ? arm : null;
-}
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const IDENTITY_SCALE = new THREE.Vector3(1, 1, 1);
@@ -252,8 +229,8 @@ export class WorldCameraManager {
    * is two frozen vectors and L1 carries planets: framing one that way frames
    * where it stood at t=0 and walks it off centre over the pattern period. Such
    * presets are resolved to a live frame and routed through `descend` — see
-   * `presetArm` for the split, and `planetFrames.ts` for how a planet with no
-   * scope group of its own is still named. What is left for this method is the
+   * `framingFor` in `journey.ts` for that split, and `planetFrames.ts` for how
+   * a planet with no scope group of its own is still named. What is left for this method is the
    * galaxy pose, whose target is the axis the pattern turns about, and any
    * caller-supplied `customPose`, which is a place by definition.
    */

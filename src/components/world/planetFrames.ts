@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import type { WorldSceneBuilder } from "./WorldSceneBuilder";
-import { PLANET_CENTERS } from "./WorldCameraManager";
+import { PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
+import type { Body } from "@/lib/atlas/types";
+import type { Framing } from "@/lib/atlas/journey";
 
 /**
  * A live handle on where a body is DRAWN: a scene-graph frame plus a fixed
@@ -56,4 +58,44 @@ export function drawnWorldPosition(
 ): THREE.Vector3 {
   drawn.frame.updateWorldMatrix(true, false);
   return out.copy(drawn.offset).applyMatrix4(drawn.frame.matrixWorld);
+}
+
+/** A drawn frame together with how large the thing in it is. */
+export interface FramedBody extends DrawnFrame {
+  radius: number;
+}
+
+/**
+ * What `descend` needs, for a framing that names a body.
+ *
+ * The camera never learns what a scope is: it is handed a frame, a point in
+ * that frame and a size, exactly as `descend` already asked for. What this adds
+ * is that **one** function answers for a planet with a scope, a planet without
+ * one, and a moon — so the canvas no longer decides between them with a
+ * fall-through chain over four props, which is where two of the five arms
+ * quietly took a different camera path from the other three.
+ *
+ * Returns null rather than throwing for anything this scene does not draw. A
+ * sixth arm named before its data ships is a quiet no-op, the same answer the
+ * pins already give.
+ */
+export function framedBody(
+  builder: WorldSceneBuilder,
+  bodies: Body[],
+  framing: Extract<Framing, { kind: "planet" | "moon" }>,
+): FramedBody | null {
+  if (framing.kind === "planet") {
+    const drawn = planetFrame(builder, framing.arm);
+    const radius = PLANET_RADII[framing.arm];
+    return drawn && radius !== undefined ? { ...drawn, radius } : null;
+  }
+
+  const group = builder.scopeGroups.get(framing.scope);
+  if (!group) return null;
+  const body = bodies.find((b) => b.id === framing.scope.slice("moon:".length));
+  if (!body) return null;
+  // Read back from the builder rather than re-derived: it is the only place
+  // `MOON_SIZE` is applied, so there stays one definition of how large a moon
+  // is drawn.
+  return { frame: group, offset: new THREE.Vector3(), radius: builder.moonDrawnRadius(body.arm) };
 }

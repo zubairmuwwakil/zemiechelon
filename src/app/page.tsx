@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { WorldCanvas, type WorldCanvasHandle, type SurfaceTargetPoint } from "@/components/world/WorldCanvas";
 import type { CosmicMode } from "@/components/world/DayNightController";
-import type { CameraTargetPreset } from "@/components/world/WorldCameraManager";
 import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
 import { WorldHUD } from "@/components/hud/WorldHUD";
 import { LandedConsolePanel } from "@/components/hud/LandedConsolePanel";
@@ -18,10 +17,17 @@ import { MiniTerminalModal } from "@/components/hud/MiniTerminalModal";
 import { TimelineTransport } from "@/components/hud/TimelineTransport";
 import { BodyCard } from "@/components/atlas/BodyCard";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { derivePlanetScopes, planetScopeId } from "@/lib/atlas/scopes";
-import { landingMode, resolveBodySelection } from "@/lib/atlas/navigation";
+import {
+  AT_GALAXY,
+  activeArm,
+  framingFor,
+  journeyReducer,
+  panelScope,
+  standingScope,
+  deepLinkBodyId,
+} from "@/lib/atlas/journey";
 import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
-import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
+import type { ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 
 export default function HomePage() {
@@ -30,38 +36,41 @@ export default function HomePage() {
 
   // States
   const [cosmicMode, setCosmicMode] = useState<CosmicMode>("day");
-  const [activePreset, setActivePreset] = useState<CameraTargetPreset>("galaxy");
-  const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
+  /**
+   * Where the visitor is, and what is open over it — one value.
+   *
+   * This replaced five `useState` slots (`activePreset`, `activeLandingPlanet`,
+   * `flybyScope`, `flybyReturn`, `standingScope`) that between them encoded the
+   * same fact. Six handlers wrote twenty-four assignments across them, each
+   * responsible for clearing the slots it was not setting, and a missed one was
+   * invisible: leaving a moon's surface cleared three and left the fourth
+   * naming the frame just departed. Everything below is now derived from this,
+   * so there is nothing left to keep in step by hand.
+   */
+  const [journey, travel] = useReducer(journeyReducer, AT_GALAXY);
+
+  /** What the camera should do about where the visitor is. */
+  const framing = useMemo(() => framingFor(journey), [journey]);
+  /** The surface underfoot, and the console panel — never both (see `journey`). */
+  const onSurface = standingScope(journey);
+  const landedPanel = panelScope(journey);
+
+  /** How the visitor's environment answers, read where an event is raised. */
+  const environment = useCallback(
+    () => ({
+      viewportWidth: window.innerWidth,
+      reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+    }),
+    [],
+  );
+
   const [screenPoints, setScreenPoints] = useState<ScreenPoint[]>([]);
   // The quote sky rides the same projection bridge as the planet pins, so the
   // stars parallax with the scene instead of sitting on the viewport.
   const [quotePoints, setQuotePoints] = useState<ScreenPoint[]>([]);
   /** The reachable things on the surface underfoot, projected each frame. */
   const [surfaceTargets, setSurfaceTargets] = useState<SurfaceTargetPoint[]>([]);
-  /** The console the visitor has switched on, or null. */
-  const [openConsoleId, setOpenConsoleId] = useState<string | null>(null);
 
-  /**
-   * The scopes there are to land in. Derived, not listed: a scope exists when an
-   * arm has shipped something, so Products and Labs have one and the other three
-   * do not. Clicking those stays a quiet no-op rather than an error.
-   */
-  const landableScopes = useMemo(
-    () => new Set(derivePlanetScopes(bodies).map((s) => s.id)),
-    [bodies],
-  );
-
-  // The scope the camera has descended into, or null for the galaxy.
-  const [activeLandingPlanet, setActiveLandingPlanet] = useState<ScopeId | null>(null);
-  /**
-   * The moon the camera has swung in close to, and the frame leaving it returns
-   * to. A flyby is not a landing: the scene stays live, no console opens, and
-   * ascending goes one level to the planet rather than all the way out (§2).
-   */
-  const [flybyScope, setFlybyScope] = useState<ScopeId | null>(null);
-  const [flybyReturn, setFlybyReturn] = useState<ScopeId | null>(null);
-  /** The surface the visitor is standing on, or null in orbit. */
-  const [standingScope, setStandingScope] = useState<ScopeId | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -70,81 +79,27 @@ export default function HomePage() {
   // everything" state either way, so there is no flash of an empty galaxy.
   const [clockDay, setClockDay] = useState(Infinity);
 
-  // Sector & Planet Landing Selection Handler
+  /**
+   * Every control below raises an event; none of them decides what the event
+   * means. `journeyReducer` owns that, which is why it can be tested without a
+   * React tree, a canvas or a WebGL context — the same reason `navigation.ts`
+   * and `planetPins.ts` already exist as their own modules.
+   */
   const handleSelectSector = useCallback(
     (sectorId: string) => {
       sound.playClick(600, 0.05);
-
-      // "planet-products", "products" and "founder" all name the same arm.
-      const arm = sectorId.replace(/^planet-/, "") === "founder"
-        ? "self"
-        : sectorId.replace(/^planet-/, "");
-
-      if (arm === "galaxy" || arm === "overview") {
-        setActivePreset("galaxy");
-        setActiveLandingPlanet(null);
-        return;
-      }
-
-      setActivePreset(arm);
-      const scopeId = planetScopeId(arm);
-      if (!landableScopes.has(scopeId)) {
-        // No scope to land in. The preset still frames the planet, which is
-        // what clicking it has always done.
-        setActiveLandingPlanet(null);
-        setStandingScope(null);
-        return;
-      }
-
-      // Spec §3.1: landing means standing on the ground, with the panel kept
-      // for the cases where flying to a surface is the wrong interaction.
-      const mode = landingMode({
-        scopeId,
-        viewportWidth: window.innerWidth,
-        reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
-        bodies,
-      });
-      setStandingScope(mode === "surface" ? scopeId : null);
-      setActiveLandingPlanet(mode === "panel" ? scopeId : null);
-      setFlybyScope(null);
-      // Leaving a planet's surface goes out to the galaxy: it is the frame the
-      // planet sits in, and the one level up from here.
-      setFlybyReturn(mode === "surface" ? null : flybyReturn);
+      travel({ type: "selectSector", sectorId, ...environment() });
     },
-    [bodies, landableScopes, flybyReturn],
+    [environment],
   );
 
-  // Celestial Body Selection Handler
-  const handleSelectBody = useCallback(
-    (bodyId: string) => {
-      sound.playClick(700, 0.05);
-      // What a tap means is a rule about the body, not a branch here.
-      const selection = resolveBodySelection(bodyId, bodies);
-      setSelectedBodyId(selection.cardId);
-      setFlybyReturn(selection.ascendTo);
-      // A landing and a flyby are different arrivals, not the same one with a
-      // flag: landing owns the camera all the way down to the ground, so the
-      // flyby framing has to be released rather than layered under it.
-      setStandingScope(selection.landed ? selection.flyTo : null);
-      setFlybyScope(selection.landed ? null : selection.flyTo);
-      // Arriving anywhere leaves the frame you were in. Without this a visitor
-      // who lands on a planet and then takes its orrery to a moon ends up
-      // standing on the moon with the planet's console still open over it —
-      // two frames claiming to be where you are.
-      if (selection.flyTo) setActiveLandingPlanet(null);
-    },
-    [bodies],
-  );
+  const handleSelectBody = useCallback((bodyId: string) => {
+    sound.playClick(700, 0.05);
+    travel({ type: "selectBody", bodyId });
+  }, []);
 
   /** Closing a flyby's card ascends one level, to the planet it flew from. */
-  const closeBodyCard = useCallback(() => {
-    setSelectedBodyId(null);
-    if (flybyScope && flybyReturn) {
-      setActivePreset(flybyReturn.replace("planet:", ""));
-    }
-    setFlybyScope(null);
-    setFlybyReturn(null);
-  }, [flybyScope, flybyReturn]);
+  const closeBodyCard = useCallback(() => travel({ type: "closeCard" }), []);
 
   /**
    * A control on the ground either switches the console on or names a body.
@@ -155,7 +110,7 @@ export default function HomePage() {
     (bodyId: string) => {
       const target = surfaceTargets.find((t) => t.bodyId === bodyId);
       if (target?.kind === "console") {
-        setOpenConsoleId(bodyId);
+        travel({ type: "openConsole", consoleId: bodyId });
         return;
       }
       handleSelectBody(bodyId);
@@ -166,23 +121,13 @@ export default function HomePage() {
   /** Leaving a surface ascends one level, to the frame it sits in. */
   const leaveSurface = useCallback(() => {
     sound.playClick(400, 0.06);
-    // One level out: a moon's surface returns to its planet, a planet's to the
-    // galaxy. Spec §2 found ascending a level at a time is what reads right.
-    setActivePreset(flybyReturn ? flybyReturn.replace("planet:", "") : "galaxy");
-    setStandingScope(null);
-    setFlybyReturn(null);
-    setOpenConsoleId(null);
-  }, [flybyReturn]);
+    travel({ type: "ascend" });
+  }, []);
 
   // Reset to Galaxy Orbit
   const resetView = useCallback(() => {
     sound.playClick(400, 0.06);
-    setActivePreset("galaxy");
-    setSelectedBodyId(null);
-    setActiveLandingPlanet(null);
-    setFlybyScope(null);
-    setFlybyReturn(null);
-    setStandingScope(null);
+    travel({ type: "reset" });
   }, []);
 
   /**
@@ -211,31 +156,26 @@ export default function HomePage() {
   }, [bodies, handleSelectBody]);
 
   useEffect(() => {
-    const id = standingScope?.startsWith("moon:")
-      ? standingScope.slice("moon:".length)
-      : standingScope
-        ? null // A planet's surface names no repository, so it names nothing.
-        : selectedBodyId;
+    // What the URL should say is a property of where the visitor is, so the
+    // journey answers it rather than this effect re-deriving it from parts.
+    const next = deepLinkBodyId(journey);
+    const hash = next ? bodyIdToHash(next) : "";
+    if (window.location.hash === hash) return;
 
-    // A hash left pointing at the last moon while the visitor stands on a
-    // planet is a link that lies about where they are. Better to say nothing.
-    const next = id ? bodyIdToHash(id) : "";
-    if (window.location.hash === next) return;
-
-    if (next) {
+    if (hash) {
       // Assigning the hash fires `hashchange`, so the listener has to be told
       // this one is ours. `replaceState` fires nothing, so flagging that case
       // would leave the guard raised and swallow the next genuine arrival —
       // which is exactly what it did.
       writingHash.current = true;
-      window.location.hash = next;
+      window.location.hash = hash;
       return;
     }
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
-  }, [selectedBodyId, standingScope]);
+  }, [journey]);
 
   useEffect(() => {
-    if (!standingScope) return;
+    if (!onSurface) return;
     const onKey = (e: KeyboardEvent) => {
       // The console handles its own Escape and stops it here, so this only
       // ever sees the key when nothing is switched on.
@@ -243,12 +183,22 @@ export default function HomePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [standingScope, leaveSurface]);
+  }, [onSurface, leaveSurface]);
 
   const selectedBody = useMemo(
-    () => (selectedBodyId ? bodies.find((b) => b.id === selectedBodyId) ?? null : null),
-    [bodies, selectedBodyId]
+    () => (journey.card ? bodies.find((b) => b.id === journey.card) ?? null : null),
+    [bodies, journey.card]
   );
+
+  /**
+   * Whether the scene is clear enough to show the ambient chrome.
+   *
+   * Named once because it was written out three times — twice as an identical
+   * five-term negation and once as a four-term variant — and every panel added
+   * since has had to be remembered at each site.
+   */
+  const sceneIsClear =
+    !landedPanel && !selectedBody && !isDossierOpen && !isLegendOpen && !isTerminalOpen;
 
   return (
     <main className="relative h-screen w-screen overflow-hidden select-none">
@@ -257,14 +207,11 @@ export default function HomePage() {
         ref={canvasHandleRef}
         bodies={bodies}
         cosmicMode={cosmicMode}
-        cameraPreset={activePreset}
+        framing={framing}
         onSelectSector={handleSelectSector}
         onSelectBody={handleSelectBody}
         onProjectPins={setScreenPoints}
         clockDay={clockDay}
-        landedScope={activeLandingPlanet}
-        flybyScope={flybyScope}
-        standingScope={standingScope}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
         onProjectSurfaceTargets={setSurfaceTargets}
@@ -276,7 +223,7 @@ export default function HomePage() {
       {/* 2. Floating Planet Pill Badges (Mockup Slides 1, 2, 4) */}
       <PlanetPinsOverlay
         points={screenPoints}
-        activePreset={activePreset}
+        activePreset={activeArm(journey)}
         cosmicMode={cosmicMode}
         bodies={bodies}
         onSelectPlanet={handleSelectSector}
@@ -295,7 +242,7 @@ export default function HomePage() {
              Suppressed on a surface: the quotes hang at galaxy distances, so from
              the ground they land as running text across the parent's face — the one
              thing §3.2 asks to keep legible. */}
-      {!standingScope && <QuoteSky cosmicMode={cosmicMode} points={quotePoints} />}
+      {!onSurface && <QuoteSky cosmicMode={cosmicMode} points={quotePoints} />}
 
       {/* 4. Top Segmented Capsule HUD (Mockup Slides 1, 2, 4) */}
       <WorldHUD
@@ -303,7 +250,7 @@ export default function HomePage() {
         onToggleCosmicMode={() =>
           setCosmicMode((prev) => (prev === "day" ? "night" : "day"))
         }
-        activePreset={activePreset}
+        activePreset={activeArm(journey)}
         onSelectPreset={handleSelectSector}
         onResetView={resetView}
         isDossierOpen={isDossierOpen}
@@ -314,33 +261,28 @@ export default function HomePage() {
       />
 
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
-      {!activeLandingPlanet && !isDossierOpen && !isLegendOpen && !isTerminalOpen && !selectedBodyId && (
-        <InteractionHintsPill cosmicMode={cosmicMode} />
-      )}
+      {sceneIsClear && <InteractionHintsPill cosmicMode={cosmicMode} />}
 
       {/* 5b. Timeline transport: play, pause, scrub and speed the galaxy's own clock */}
-      {!activeLandingPlanet && !isDossierOpen && !isLegendOpen && !isTerminalOpen && !selectedBodyId && (
+      {sceneIsClear && (
         <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDayChange={setClockDay} />
       )}
 
       {/* 6. Landed consoles. The descent is the camera's; this annotates it. */}
       <LandedConsolePanel
-        scopeId={activeLandingPlanet}
+        scopeId={landedPanel}
         cosmicMode={cosmicMode}
-        onClose={() => {
-          setActiveLandingPlanet(null);
-          setActivePreset("galaxy");
-        }}
+        onClose={() => travel({ type: "ascend" })}
         onOpenTerminal={() => setIsTerminalOpen(true)}
-        escapeEnabled={!isTerminalOpen && !isDossierOpen && !isLegendOpen && !selectedBodyId}
+        escapeEnabled={!isTerminalOpen && !isDossierOpen && !isLegendOpen && !selectedBody}
       />
 
       {/* 6b. The console, switched on. §3.1: a thing you approach and switch on,
              where approaching happens in the scene and this is the switching. */}
       <SurfaceConsolePanel
-        consoleId={openConsoleId}
+        consoleId={journey.console}
         cosmicMode={cosmicMode}
-        onClose={() => setOpenConsoleId(null)}
+        onClose={() => travel({ type: "closeConsole" })}
       />
 
       {/* 7. Global Dossier Search Modal (44 Repositories) */}

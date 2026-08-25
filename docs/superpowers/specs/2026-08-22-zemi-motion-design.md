@@ -199,7 +199,7 @@ it; at a 40 px orbit, 12° buys about 8 px of vertical separation.
 
 ### 3.7 Positions become live reads
 
-Six consumers currently treat a planet's position as a constant. L1 makes that
+Seven consumers currently treat a planet's position as a constant. L1 makes that
 false, so each reads the scene graph instead.
 
 | Consumer | Today | After |
@@ -208,6 +208,7 @@ false, so each reads the scene graph instead.
 | HTML planet pins | project from those constants | project from `groupFor(...)`'s world matrix |
 | `hitObjects[].position` | frozen at build | derived from `mesh.matrixWorld` |
 | `descend()` | snapshots a world position once | re-reads the frame's matrix each `update()` |
+| `CAMERA_PRESETS` / `setPreset()` | built from `PLANET_CENTERS` at module load | a preset naming a *body* resolves to a live frame and routes through `descend()`; only `galaxy`/`overview` stay a fixed pose |
 | planet pick spheres | static world position | already children of `rootGroup`; L1 carries them, no change |
 | planet annotations | static world position | same |
 | `landOnSurface()` | frame-local already | **unchanged** |
@@ -223,6 +224,34 @@ orbit — so clicking a moon today flies the camera to where that moon *was* at
 the moment of the click. The error is currently small (≈1.2 px/s across a ~1 s
 flight) and every layer here makes it larger. It is fixed as part of L1 because
 L1 is what makes it visible.
+
+**`setPreset()` is the same bug, and this table originally missed it.** The
+first pass fixed `descend()` and stopped there, because `descend()` is the path
+a *click* takes. But `WorldCanvas` routes framing through `descend()` only where
+`scopeGroups.has(frame)`, and only `planet:labs` and `planet:products` have scope
+groups — so `self`, `foundations` and `creative` fell through to `setPreset()`,
+which frames a `CAMERA_PRESETS` entry built from `PLANET_CENTERS` at module load.
+Measured after the fact: 31 CSS px of slide in the first minute at 1200x897, and
+a full excursion over the pattern period. Three of five planets, on the path the
+top nav takes.
+
+The distinction the table needed is **body versus place**. `galaxy` and
+`overview` name the origin L1 turns about, which by construction does not move,
+so two frozen vectors go on being right forever. Every other preset names a
+planet, and L1 carries planets. `presetArm()` is that split, made explicit.
+
+This does not weaken "an explicit preset wins": that rule is about *which* frame
+is followed, never about whether following happens. A preset naming a planet
+wins by taking the follow over — `descend()` already releases whatever was
+tracked before it starts tracking — rather than by freezing. Only a preset
+naming a place clears the follow outright.
+
+Three of the five planets have no scope group to hand `descend()`, so a frame
+alone cannot name them. `planetFrames.ts` returns the pair that can — a frame
+plus a point in its **local** space — which is the rule the pins already
+followed, now shared rather than duplicated. Local rather than world is the
+load-bearing word: a world offset would sit still while the pattern turned
+around it.
 
 ### 3.8 The light moves, and the shader is told where it is
 
@@ -339,6 +368,7 @@ last so it lands against a scene already proven alive.
 | Landed pose survives inclination | `surfaceCamera.test.ts`'s 15°-off-axis assertion is the ceiling gate for `MAX_INCLINATION`, not an afterthought |
 | Obliquity bounded | every derived tilt and inclination is within its stated ceiling, for all five arms and for a synthetic sixth |
 | `descend()` tracks | descending onto an orbiting moon, then advancing the clock, leaves the moon within the frustum and near frame centre |
+| Nav presets track | framing an arm from the top nav leaves it within half its own drawn radius of frame centre after 600 s of pattern — all five arms, including the three with no scope group. Paired with a counterfactual asserting `CAMERA_PRESETS[arm]` is by then over 4 radii off, so the guard cannot pass against a planet that never moved |
 | Field order | arm dust buffer is byte-identical after L5; `cullAndClock.test.ts` drawRange gating unaffected |
 | Reduced motion | with the flag set, L1/L4/L5 produce zero displacement after 60 s; L2 tilt is still applied |
 | Perceptibility | Ωₚ yields 2.4–2.7 px/s at the rim at the derived galaxy pose — a regression guard on the one number a visitor actually experiences |

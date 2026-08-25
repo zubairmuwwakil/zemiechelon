@@ -6,16 +6,11 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
+import type { Body, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
-import {
-  WorldCameraManager,
-  type CameraTargetPreset,
-  ASTROLABE_OUTER,
-  PLANET_RADII,
-  presetArm,
-} from "./WorldCameraManager";
-import { planetFrame } from "./planetFrames";
+import { WorldCameraManager, ASTROLABE_OUTER } from "./WorldCameraManager";
+import { framedBody } from "./planetFrames";
+import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
@@ -35,7 +30,15 @@ export interface ProjectableAnchor {
 export interface WorldCanvasProps {
   bodies: Body[];
   cosmicMode: CosmicMode;
-  cameraPreset: CameraTargetPreset;
+  /**
+   * Where the visitor is, resolved to what the camera should do about it.
+   *
+   * One prop rather than the four this replaced (`cameraPreset`, `landedScope`,
+   * `flybyScope`, `standingScope`). Four independent props meant the canvas had
+   * to re-decide precedence between them, and that decision drifted apart from
+   * the one `page.tsx` was making when it set them.
+   */
+  framing: Framing;
   onSelectSector: (sectorId: string) => void;
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
@@ -46,23 +49,6 @@ export interface WorldCanvasProps {
    * scrubbing never tears down and reconstructs the map underneath it.
    */
   clockDay?: number;
-  /**
-   * The scope the camera should be inside, or null for the galaxy. Landing is a
-   * camera move rather than an overlay: the scene stays live underneath.
-   */
-  landedScope?: ScopeId | null;
-  /**
-   * A frame to swing in close to without landing in it. Spec §3.3: a flyby is
-   * visibly different from a landing and honest about there being nothing to
-   * stand on.
-   */
-  flybyScope?: ScopeId | null;
-  /**
-   * The scope whose surface the visitor is standing on. Landing is not close
-   * orbit (§3.1): the camera comes down onto the ground, the sky thins to the
-   * frame, and the body this ground replaces stops being drawn.
-   */
-  standingScope?: ScopeId | null;
   /**
    * Scene-space anchors projected alongside the planet pins each frame. This is
    * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
@@ -126,38 +112,15 @@ function projectToScreen(
   return { x, y, depth: v.z, visible: inFront && onScreen };
 }
 
-/**
- * How big the thing in a frame is, so the camera can size its framing to it.
- *
- * A planet's radius comes from the derived table; a moon's from the builder,
- * which is the only place `MOON_SIZE` is applied. Reading it back rather than
- * re-deriving it keeps one definition of how large a moon is drawn.
- */
-function framedRadius(
-  builder: WorldSceneBuilder,
-  bodies: Body[],
-  scopeId: ScopeId,
-): number {
-  if (scopeId.startsWith("moon:")) {
-    const bodyId = scopeId.slice("moon:".length);
-    const body = bodies.find((b) => b.id === bodyId);
-    return body ? builder.moonDrawnRadius(body.arm) : 2;
-  }
-  return PLANET_RADII[scopeId.replace("planet:", "")] ?? 6;
-}
-
 export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(function WorldCanvas(
   {
     bodies,
     cosmicMode,
-    cameraPreset,
+    framing,
     onSelectSector,
     onSelectBody,
     onProjectPins,
     clockDay = Infinity,
-    landedScope = null,
-    flybyScope = null,
-    standingScope = null,
     anchors,
     onProjectAnchors,
     onProjectSurfaceTargets,
@@ -559,9 +522,12 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
    * lands the camera where the app already thinks it is instead of at the
    * galaxy.
    *
-   * A planet whose arm has shipped nothing has no scope and therefore no group;
-   * `scopeGroups.has` makes that a no-op rather than a throw, and the preset
-   * table still frames the planet as it did before.
+   * One exhaustive switch over `Framing`, not a chain of guards over four
+   * props. That is the whole reason `Framing` exists: precedence between
+   * standing, flying past and framing used to be decided here AND in
+   * `page.tsx`, and the two came apart — `scopeGroups.has` silently routed the
+   * two scoped arms down a different path from the other three. A union the
+   * compiler checks cannot grow a branch that nobody handles.
    */
   /** Rebuilt only when the standing frame changes; projected every frame. */
   const surfaceTargetsRef = useRef<SurfaceTarget[]>([]);
@@ -570,16 +536,18 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const builder = sceneBuilderRef.current;
     const camera = cameraManagerRef.current;
     if (!builder || !camera) return;
-    // Standing on a surface takes precedence over every other framing: it is
-    // the innermost frame the visitor can be in.
-    if (standingScope && builder.scopeGroups.has(standingScope)) {
-      const parentId = getScope(standingScope).parent ?? GALAXY_ZEMI.id;
+
+    // Standing on a surface is the innermost frame there is, and the only one
+    // that changes what the scene draws rather than only where it is seen from.
+    if (framing.kind === "surface" && builder.scopeGroups.has(framing.scope)) {
+      const scope = framing.scope;
+      const parentId = getScope(scope).parent ?? GALAXY_ZEMI.id;
       const parent = builder.scopeGroups.get(parentId) ?? builder.rootGroup;
-      const frameGroup = builder.groupFor(standingScope);
-      camera.landOnSurface(frameGroup, parent, shardRadiusFor(standingScope, bodies));
-      builder.setStandingOn(standingScope);
-      surfaceTargetsRef.current = builder.surfaceTargets(standingScope);
-      builder.setScopeCull(standingScope);
+      const frameGroup = builder.groupFor(scope);
+      camera.landOnSurface(frameGroup, parent, shardRadiusFor(scope, bodies));
+      builder.setStandingOn(scope);
+      surfaceTargetsRef.current = builder.surfaceTargets(scope);
+      builder.setScopeCull(scope);
       // Fog is pulled in to the distance of the parent, so it recedes the
       // galaxy without touching the frame §3.2 requires to stay legible.
       frameGroup.updateWorldMatrix(true, false);
@@ -591,7 +559,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       );
       // Shadows follow the fog down to the frame's own scale. A frustum sized
       // for the galaxy would spend the whole 2048² map on ground you cannot see.
-      dayNightRef.current?.setShadowReach(shardRadiusFor(standingScope, bodies));
+      dayNightRef.current?.setShadowReach(shardRadiusFor(scope, bodies));
       return;
     }
 
@@ -602,44 +570,30 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // Back out to the galaxy: the frustum has to reach the planets again.
     dayNightRef.current?.setShadowReach(ASTROLABE_OUTER);
 
-    // A landing wins over a flyby if both are somehow set: you cannot be
-    // standing on a surface and swinging past it at the same time.
-    const frame = landedScope ?? flybyScope;
-    if (frame && builder.scopeGroups.has(frame)) {
-      camera.descend(builder.groupFor(frame), framedRadius(builder, bodies, frame));
-      return;
-    }
-
-    if (cameraPreset === "galaxy" || cameraPreset === "overview") {
+    if (framing.kind === "galaxy") {
       camera.ascend();
       return;
     }
 
-    // A nav preset that names a planet is a request to follow that planet, and
-    // "an explicit preset wins" is satisfied by taking the follow over rather
-    // than by dropping it: `descend` releases whatever was being tracked before
-    // it starts tracking this. Framing a planet from the preset table instead
-    // frames where it stood at t=0, which L1 then walks off centre — 31 CSS
-    // px in the first minute, a full excursion over the 30-minute period.
+    // Everything else names a body, and framing a body means following it:
+    // L1 carries planets and L3 carries moons, so a pose derived once is stale
+    // by the next frame. `descend` re-aims from the frame's live matrix and
+    // releases whatever was being tracked before — which is how "an explicit
+    // preset wins" is honoured while still following.
     //
-    // The pose is unchanged by this: `orbitPose` and the descent's own framing
-    // are now the same function, so a planet reached from the nav is framed
-    // exactly as one reached by clicking it. What is new is that it stays there.
-    const arm = presetArm(cameraPreset);
-    const planet = arm ? planetFrame(builder, arm) : null;
-    if (arm && planet) {
-      // The same rule the pins follow: the scope group where an arm has one,
-      // and the layout centre carried by `rootGroup` where it does not — which
-      // is three of the five, and why this drift hit most of the nav.
-      camera.descend(planet.frame, PLANET_RADII[arm], planet.offset);
-    } else {
-      camera.setPreset(cameraPreset);
-    }
+    // `framedBody` answers for a planet with a scope, a planet without one, and
+    // a moon, so there is no branch here that could treat them differently.
+    // A `surface` whose scope this scene does not draw falls through to here
+    // too, and is framed from orbit rather than throwing.
+    const target = framedBody(builder, bodies, framing.kind === "surface"
+      ? { kind: "moon", scope: framing.scope }
+      : framing);
+    if (target) camera.descend(target.frame, target.radius, target.offset);
   };
 
   useEffect(() => {
     frameRef.current();
-  }, [landedScope, flybyScope, standingScope, cameraPreset]);
+  }, [framing]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 size-full overflow-hidden touch-none">

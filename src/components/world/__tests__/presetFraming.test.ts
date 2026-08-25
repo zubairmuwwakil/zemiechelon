@@ -2,16 +2,14 @@
 import * as THREE from "three";
 import { beforeEach, describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
-import {
-  CAMERA_PRESETS,
-  PLANET_RADII,
-  WorldCameraManager,
-  presetArm,
-} from "../WorldCameraManager";
-import { planetFrame, drawnWorldPosition } from "../planetFrames";
+import { CAMERA_PRESETS, PLANET_RADII, WorldCameraManager } from "../WorldCameraManager";
+import { planetFrame, drawnWorldPosition, framedBody } from "../planetFrames";
 import { planetPinAnchors, PIN_HEIGHTS } from "../planetPins";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { patternAngle } from "@/lib/atlas/motion";
+import { AT_GALAXY, framingFor, journeyReducer } from "@/lib/atlas/journey";
+import { moonScopeId } from "@/lib/atlas/galaxy";
+import { declaresSurface } from "@/lib/atlas/surfaces";
 
 const bodies = loadBodies();
 /** Every arm the top nav can name. */
@@ -36,36 +34,27 @@ function advance(seconds: number): void {
   for (let i = 0; i < 20; i++) camera.update(1);
 }
 
-/** Frame `arm` exactly as `WorldCanvas` does for a nav preset. */
-function frameByPreset(preset: string): void {
-  const arm = presetArm(preset);
-  expect(arm, `${preset} names no arm`).not.toBeNull();
-  const drawn = planetFrame(builder, arm!);
-  expect(drawn, `${arm} resolves to no frame`).not.toBeNull();
-  camera.descend(drawn!.frame, PLANET_RADII[arm!], drawn!.offset);
+/**
+ * Frame `arm` from the nav exactly as the app does — through the journey
+ * reducer, its framing resolver and `framedBody`, with nothing re-derived here.
+ * Narrow and reduced-motion so the landing never becomes a surface: this is
+ * about the orbit framing every arm shares.
+ */
+function frameByNav(arm: string): void {
+  const journey = journeyReducer(AT_GALAXY, {
+    type: "selectSector", sectorId: arm, viewportWidth: 480, reducedMotion: true,
+  });
+  const framing = framingFor(journey);
+  expect(framing.kind, arm).toBe("planet");
+  const target = framedBody(builder, bodies, framing as { kind: "planet"; arm: string });
+  expect(target, arm).not.toBeNull();
+  camera.descend(target!.frame, target!.radius, target!.offset);
 }
 
 /** Where the planet the preset named actually is, right now. */
 function drawnPlanet(arm: string): THREE.Vector3 {
   return drawnWorldPosition(planetFrame(builder, arm)!);
 }
-
-describe("which presets name a body", () => {
-  it("names an arm for every planet the nav can select, alias included", () => {
-    for (const arm of ARMS) expect(presetArm(arm), arm).toBe(arm);
-    // Retained alias: the HUD and page.tsx both still dispatch "founder".
-    expect(presetArm("founder")).toBe("self");
-  });
-
-  it("names no arm for the presets that name a place", () => {
-    // The origin the pattern turns about does not move, so there is nothing to
-    // follow and the two frozen vectors go on being right forever.
-    expect(presetArm("galaxy")).toBeNull();
-    expect(presetArm("overview")).toBeNull();
-    expect(presetArm("sun")).toBeNull();
-    expect(presetArm("not-a-planet")).toBeNull();
-  });
-});
 
 describe("a nav preset resolves to a drawn frame", () => {
   it("resolves all five arms, though only two have a scope of their own", () => {
@@ -94,7 +83,7 @@ describe("a nav preset frames the planet, not the place it started", () => {
     // own framing are one function now; this is the assertion that keeps them
     // one, since a drift between them would be invisible on any single frame.
     for (const arm of ARMS) {
-      frameByPreset(arm);
+      frameByNav(arm);
       advance(0);
       const preset = CAMERA_PRESETS[arm];
       expect(camera.target.distanceTo(preset.target), arm).toBeLessThan(0.01);
@@ -105,7 +94,7 @@ describe("a nav preset frames the planet, not the place it started", () => {
   it("keeps every arm centred after the pattern has turned a third of a lap", () => {
     for (const arm of ARMS) {
       camera = new WorldCameraManager(1200, 897);
-      frameByPreset(arm);
+      frameByNav(arm);
       advance(0);
       advance(600);
 
@@ -138,7 +127,7 @@ describe("a nav preset frames the planet, not the place it started", () => {
     // `descend` seeds the orbit offset once and re-aims only the pose, so
     // following must not cost the controls — the same split `descent.test.ts`
     // pins for a clicked frame, now on the path most of the nav takes.
-    frameByPreset("creative");
+    frameByNav("creative");
     advance(0);
     const framed = camera.camera.position.clone().sub(camera.target);
 
@@ -158,5 +147,37 @@ describe("a nav preset frames the planet, not the place it started", () => {
     const planet = drawnPlanet("creative");
     expect(Math.hypot(camera.target.x - planet.x, camera.target.z - planet.z))
       .toBeLessThan(PLANET_RADII.creative * 0.5);
+  });
+});
+
+describe("resolving a framing to something the camera can descend onto", () => {
+  it("resolves every arm the nav can name, scoped or not, at its drawn radius", () => {
+    for (const arm of ARMS) {
+      const body = framedBody(builder, bodies, { kind: "planet", arm });
+      expect(body, arm).not.toBeNull();
+      expect(body!.radius, arm).toBeCloseTo(PLANET_RADII[arm], 6);
+      // And it is the live frame, not the layout constant read as a world point.
+      const world = drawnWorldPosition(body!);
+      const pin = drawnWorldPosition(planetFrame(builder, arm)!);
+      expect(world.distanceTo(pin), arm).toBeLessThan(1e-6);
+    }
+  });
+
+  it("resolves a moon to its own group, at the radius the builder draws it", () => {
+    const moon = bodies.find(
+      (b) => b.kind === "system" && !declaresSurface(moonScopeId(b.id), bodies),
+    )!;
+    const scope = moonScopeId(moon.id);
+    const body = framedBody(builder, bodies, { kind: "moon", scope });
+    expect(body).not.toBeNull();
+    expect(body!.frame).toBe(builder.groupFor(scope));
+    expect(body!.radius).toBeCloseTo(builder.moonDrawnRadius(moon.arm), 6);
+  });
+
+  it("resolves nothing for a body this scene does not draw", () => {
+    // A sixth arm named before its data ships must be a quiet no-op rather
+    // than a throw, exactly as an unscoped planet already is for the pins.
+    expect(framedBody(builder, bodies, { kind: "planet", arm: "nowhere" })).toBeNull();
+    expect(framedBody(builder, bodies, { kind: "moon", scope: "moon:NotAThing" })).toBeNull();
   });
 });
