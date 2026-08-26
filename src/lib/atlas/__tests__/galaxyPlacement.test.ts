@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GALAXY_REACH, MAX_SYSTEM_TILT, placeSolarSystem, systemReach } from "../galaxyPlacement";
+import {
+  GALAXY_REACH,
+  GALAXY_SPACING_PADDING,
+  MAX_SYSTEM_TILT,
+  placeSolarSystem,
+  systemReach,
+} from "../galaxyPlacement";
 import { SOLAR_SYSTEMS, SOLAR_SYSTEM_CHANNEL, SOLAR_SYSTEM_ZEMI } from "../galaxy";
 
 const length = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
@@ -48,6 +54,21 @@ describe("placeSolarSystem", () => {
       }
     }
   });
+
+  it("clears the bare minimum by the padding, not just by it", () => {
+    // The padding is meant to be visible breathing room, not a rounding
+    // margin that the bare-minimum test above would already catch.
+    for (const a of SOLAR_SYSTEMS) {
+      for (const b of SOLAR_SYSTEMS) {
+        if (a === b) continue;
+        const ca = placeSolarSystem(a).center;
+        const cb = placeSolarSystem(b).center;
+        const gap = Math.hypot(ca.x - cb.x, ca.y - cb.y, ca.z - cb.z);
+        const bareMinimum = systemReach(a) + systemReach(b) + Math.min(systemReach(a), systemReach(b));
+        expect(gap, `${a.id} vs ${b.id}`).toBeGreaterThanOrEqual(bareMinimum * GALAXY_SPACING_PADDING - 1e-6);
+      }
+    }
+  });
 });
 
 describe("scale", () => {
@@ -67,7 +88,9 @@ describe("scale", () => {
         const ca = placeSolarSystem(a).center;
         const cb = placeSolarSystem(b).center;
         const planar = Math.hypot(ca.x - cb.x, ca.z - cb.z);
-        return planar - (systemReach(a) + systemReach(b) + Math.min(systemReach(a), systemReach(b)));
+        const need =
+          GALAXY_SPACING_PADDING * (systemReach(a) + systemReach(b) + Math.min(systemReach(a), systemReach(b)));
+        return planar - need;
       }),
     );
     expect(Math.min(...slack)).toBeCloseTo(0, 6);

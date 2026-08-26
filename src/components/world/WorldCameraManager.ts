@@ -525,13 +525,42 @@ export class WorldCameraManager {
     );
   }
 
-  public onWheelZoom(deltaY: number): void {
+  /**
+   * Accumulated scroll-out while already pinned at `maxDistance`. What turns
+   * "bumped into the ceiling" into "asked to leave it": a single wheel tick
+   * that happens to land past the limit is indistinguishable from a
+   * deliberate ask to back out of the frame entirely, so the ask has to be
+   * sustained across several ticks before `onWheelZoom` reports it.
+   */
+  private overscroll = 0;
+  private static readonly OVERSCROLL_TO_ASCEND = 600;
+
+  /**
+   * @returns whether continued scroll-out at the zoom ceiling has crossed the
+   * threshold that reads as "leave this frame" rather than "reached its
+   * edge". The caller decides what leaving means — this only reports it, the
+   * same split `onSelectSector` already keeps between reporting an event and
+   * deciding what it means.
+   */
+  public onWheelZoom(deltaY: number): boolean {
     const zoomFactor = 1 + Math.abs(deltaY) * 0.0012;
-    if (deltaY > 0) {
-      this.sphericalTarget.radius = Math.min(this.depth.maxDistance, this.sphericalTarget.radius * zoomFactor);
-    } else {
+    if (deltaY <= 0) {
+      this.overscroll = 0;
       this.sphericalTarget.radius = Math.max(this.depth.minDistance, this.sphericalTarget.radius / zoomFactor);
+      return false;
     }
+
+    const atCeiling = this.sphericalTarget.radius >= this.depth.maxDistance;
+    this.sphericalTarget.radius = Math.min(this.depth.maxDistance, this.sphericalTarget.radius * zoomFactor);
+    if (!atCeiling) {
+      this.overscroll = 0;
+      return false;
+    }
+
+    this.overscroll += deltaY;
+    if (this.overscroll < WorldCameraManager.OVERSCROLL_TO_ASCEND) return false;
+    this.overscroll = 0;
+    return true;
   }
 
   public resize(width: number, height: number): void {

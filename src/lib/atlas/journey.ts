@@ -1,7 +1,8 @@
 import type { Body, ScopeId } from "./types";
 import { allBodies } from "./bodies";
 import { moonScopeId, planetScopeId } from "./galaxy";
-import { GALAXY_ZEMI, SOLAR_SYSTEM_ZEMI, SCOPES } from "./scopes";
+import { GALAXY_ZEMI, SOLAR_SYSTEM_ZEMI, SCOPES, scopeChain } from "./scopes";
+import { ARM_META } from "@/data/arms";
 import { landingMode, resolveBodySelection } from "./navigation";
 
 /**
@@ -72,7 +73,22 @@ export type JourneyEvent =
   | { type: "closeConsole" }
   | { type: "closeCard" }
   | { type: "ascend" }
-  | { type: "reset" };
+  /**
+   * One level down, by name. The verb the wheel, the breadcrumb and the
+   * keyboard share.
+   *
+   * Without it each of those three would have to choose between
+   * `selectSector`, `selectBody` and `selectSolarSystem` by inspecting the
+   * scope id — three copies of one decision, which is exactly the shape the
+   * four camera props took before `Framing` collapsed them.
+   */
+  | { type: "descendTo"; scopeId: ScopeId }
+  /**
+   * `to` is carried on the event rather than decided in the reducer, because
+   * which stage a press lands on depends on how recently the last one did —
+   * a fact about the session, not about where the visitor is.
+   */
+  | { type: "reset"; to?: "solarSystem" | "galaxy" };
 
 export const AT_GALAXY: Journey = { position: { kind: "galaxy" }, card: null, console: null };
 
@@ -227,6 +243,65 @@ export function framingFor(journey: Journey): Framing {
 }
 
 /**
+ * Every position sharing a parent with this one, including this one, in the
+ * scope tree's own order.
+ *
+ * Derived from `ascendFrom` rather than from a list of its own: siblings are
+ * "everything whose parent is my parent", and asking the same function the
+ * ladder already uses is what keeps the two from answering differently. A
+ * stored copy of a derived fact is the shape every drift in this scene has
+ * taken.
+ *
+ * Includes the position it was asked about so a caller cycling with `[` and
+ * `]` has an index to step from. At the galaxy there is no parent, so the list
+ * is the galaxy alone and stepping sideways is inert without any call site
+ * having to special-case it.
+ */
+export function siblingsOf(position: Position, bodies: Body[] = allBodies()): Position[] {
+  if (position.kind === "galaxy") return [{ kind: "galaxy" }];
+
+  const parent = scopeIdFor(ascendFrom(position, bodies));
+  const here = scopeIdFor(position);
+
+  const siblings = Object.values(SCOPES)
+    .filter((scope) => scope.parent === parent)
+    .map((scope) => positionFor(scope.id));
+
+  // An arm the map draws without scoping has no entry in `SCOPES`, so it would
+  // otherwise be missing from its own sibling list — a `]` that steps away from
+  // a place you can never step back to.
+  return siblings.some((p) => scopeIdFor(p) === here) ? siblings : [position, ...siblings];
+}
+
+/** One step of the trail: the scope to go back to, and what to call it. */
+export interface Crumb {
+  scopeId: ScopeId;
+  label: string;
+}
+
+/**
+ * The trail from the galaxy down to where the visitor is, root-first so it can
+ * be rendered left to right without reversing.
+ *
+ * `scopeChain` is already the ancestor walk and this is that list, mapped to
+ * labels — deliberately not a second walk that could drift from it.
+ *
+ * An unscoped arm has no chain of its own, so it contributes a crumb built from
+ * the position instead of throwing. Three of the five arms are exactly that:
+ * drawn, framable, and not somewhere the tree has a node for.
+ */
+export function breadcrumbFor(position: Position): Crumb[] {
+  const scopeId = scopeIdFor(position);
+  if (scopeId) return scopeChain(scopeId).map((s) => ({ scopeId: s.id, label: s.label }));
+
+  // Unscoped: the trail is its parent's, with the arm itself named at the end.
+  const parent = scopeIdFor(ascendFrom(position));
+  const trail = parent ? scopeChain(parent).map((s) => ({ scopeId: s.id, label: s.label })) : [];
+  const arm = position.kind === "planet" ? position.arm : "";
+  return [...trail, { scopeId: planetScopeId(arm), label: ARM_META[arm]?.shortName ?? arm }];
+}
+
+/**
  * How arriving, leaving and opening things move the visitor.
  *
  * Every branch returns a whole `Journey`. That is the point: there is no way to
@@ -295,7 +370,15 @@ export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
     case "ascend":
       return { position: ascendFrom(journey.position, bodies), card: null, console: null };
 
+    case "descendTo":
+      // `positionFor` already answers each scope's outermost mode, so a moon
+      // arrives in flyby and a planet in orbit — the same arrival tapping one
+      // gives. Card and console are put down for the same reason `ascend` puts
+      // them down: what was open belonged to the level being left.
+      return { position: positionFor(event.scopeId), card: null, console: null };
+
     case "reset":
+      if (event.to === "galaxy") return { ...AT_GALAXY };
       // Spread, and the spread is load-bearing. Every other branch returns a
       // journey that differs from the one it was given, so identity takes care
       // of itself; reset is the one event whose whole job is to be a no-op as

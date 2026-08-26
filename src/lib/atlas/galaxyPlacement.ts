@@ -59,7 +59,19 @@ function direction(system: Scope): Vec3 {
  * never smaller: lifting a system out of the plane can only increase the
  * clearance this guarantees.
  */
-// Currently resolves to 40.78 against the seeded channel.
+
+/**
+ * How much clearance the solve demands beyond the bare minimum that keeps
+ * two discs from touching. 1 would place the closest pair exactly rim to
+ * rim — technically clear, visually crowded from the galaxy view the whole
+ * point of this level is to show off. This is breathing room, not a second
+ * requirement: it multiplies the same `need` the solve already clears
+ * against, so `GALAXY_SPREAD` stays a single solved quotient rather than a
+ * minimum plus an unrelated fudge applied after.
+ */
+export const GALAXY_SPACING_PADDING = 1.2;
+
+// Currently resolves to 48.94 against the seeded channel (40.78 unpadded).
 export const GALAXY_SPREAD: number = (() => {
   // Each system's direction and reach once, not once per pair. `systemReach`
   // lays out the whole body set behind it, and this runs at module load on the
@@ -86,7 +98,7 @@ export const GALAXY_SPREAD: number = (() => {
           `solar systems "${a.system.id}" and "${b.system.id}" occupy the same point in the galaxy`,
         );
       }
-      const need = a.reach + b.reach + Math.min(a.reach, b.reach);
+      const need = GALAXY_SPACING_PADDING * (a.reach + b.reach + Math.min(a.reach, b.reach));
       required = Math.max(required, need / separation);
     }
   }

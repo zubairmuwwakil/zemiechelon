@@ -85,9 +85,10 @@ function watchDisposal(resources: Set<THREE.BufferGeometry | THREE.Material | TH
 }
 
 describe("giving the GPU back", () => {
-  // `WorldCanvas` rebuilds its whole scene whenever the ground changes, so a
-  // builder is discarded on every day/night toggle and a visitor may toggle all
-  // day. What is not released here is stranded until the page is closed.
+  // `WorldCanvas` discards a builder whenever its scene-construction effect
+  // re-runs — a change of handler props or anchors, or unmount. A ground swap
+  // used to be on that list and repaints in place now, but the rest still
+  // rebuild. What is not released here is stranded until the page is closed.
   it("releases every geometry, material and texture it uploaded", () => {
     const builder = build(SOLAR_SYSTEM_ZEMI);
     const resources = gpuResources(builder.rootGroup);

@@ -24,9 +24,12 @@ import {
   journeyReducer,
   panelScope,
   scopeIdFor,
+  siblingsOf,
   standingScope,
   deepLinkBodyId,
 } from "@/lib/atlas/journey";
+import { WorldBreadcrumb } from "@/components/hud/WorldBreadcrumb";
+import { keysAreLive, navIntentFor } from "@/components/world/navKeys";
 import { SOLAR_SYSTEM_ZEMI, scopeChain } from "@/lib/atlas/scopes";
 import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
 import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
@@ -144,10 +147,53 @@ export default function HomePage() {
     travel({ type: "ascend" });
   }, []);
 
-  // Reset to Galaxy Orbit
+  /**
+   * One level out. The HUD's own nav pill and a deliberate scroll past a
+   * solar system's zoom ceiling both mean this, so both raise the same event
+   * through the same handler rather than each owning a copy of it.
+   */
+  const ascendToGalaxy = useCallback(() => travel({ type: "ascend" }), []);
+
+  /**
+   * Reset, in two stages: the solar system first, the galaxy on a second press.
+   *
+   * Which stage a press lands on depends on how recently the last one did — a
+   * fact about the session rather than about where the visitor is — so it is
+   * decided here and carried on the event, leaving the reducer pure.
+   *
+   * Outside the window a press is a first press again, so the button never
+   * surprises anyone who walked away from it and came back.
+   */
+  const lastResetAt = useRef(0);
+  const [galaxyHint, setGalaxyHint] = useState(false);
+  const GALAXY_STAGE_MS = 4000;
+
   const resetView = useCallback(() => {
     sound.playClick(400, 0.06);
+    const now = Date.now();
+    const atSolarSystem = journey.position.kind === "solarSystem";
+    const inWindow = now - lastResetAt.current < GALAXY_STAGE_MS;
+    lastResetAt.current = now;
+
+    if (atSolarSystem && inWindow) {
+      setGalaxyHint(false);
+      travel({ type: "reset", to: "galaxy" });
+      return;
+    }
     travel({ type: "reset" });
+    setGalaxyHint(true);
+  }, [journey.position.kind]);
+
+  // The hint retracts on its own, and any later press restarts the timer.
+  useEffect(() => {
+    if (!galaxyHint) return;
+    const id = window.setTimeout(() => setGalaxyHint(false), GALAXY_STAGE_MS);
+    return () => window.clearTimeout(id);
+  }, [galaxyHint]);
+
+  /** A crumb, or `]`, names a scope; arriving at one is the same verb either way. */
+  const goToScope = useCallback((scopeId: ScopeId) => {
+    travel({ type: "descendTo", scopeId });
   }, []);
 
   /**
@@ -194,16 +240,64 @@ export default function HomePage() {
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
   }, [journey]);
 
+  /**
+   * The keyboard, for the whole world rather than only for a surface.
+   *
+   * Escape used to be bound only while standing, so from a planet or a moon in
+   * orbit the key was dead and the only way back out was the mouse. It ascends
+   * from anywhere now; `ascendFrom` already answers what one level out means at
+   * every level, including that the galaxy is its own parent, so there is no
+   * level this has to special-case.
+   *
+   * What a key means lives in `navKeys` rather than in this switch — the same
+   * split `wheelRouting` keeps for the wheel, and for the same reason: it is
+   * decidable without a camera or a journey, so it is testable without either.
+   *
+   * The panels keep precedence. Each one binds its own Escape and stops
+   * propagation, so this only ever sees the key with nothing switched on.
+   */
   useEffect(() => {
-    if (!onSurface) return;
     const onKey = (e: KeyboardEvent) => {
-      // The console handles its own Escape and stops it here, so this only
-      // ever sees the key when nothing is switched on.
-      if (e.key === "Escape") leaveSurface();
+      if (!keysAreLive(e.target)) return;
+      const intent = navIntentFor(e.key, e.shiftKey);
+      if (!intent) return;
+
+      switch (intent.kind) {
+        case "ascend":
+          // A surface leaves with a sound, because leaving the ground is the
+          // one ascent that changes what is drawn rather than only where it is
+          // seen from.
+          if (onSurface) leaveSurface();
+          else travel({ type: "ascend" });
+          e.preventDefault();
+          return;
+
+        case "sibling": {
+          // Stepping sideways is only meaningful where there are siblings to
+          // step between, and standing on one is not a place you step from.
+          if (onSurface) return;
+          const ring = siblingsOf(journey.position, bodies);
+          if (ring.length < 2) return;
+          const here = ring.findIndex(
+            (p) => scopeIdFor(p) === scopeIdFor(journey.position),
+          );
+          const next = ring[(here + intent.step + ring.length) % ring.length];
+          const scopeId = scopeIdFor(next);
+          if (scopeId) goToScope(scopeId);
+          e.preventDefault();
+          return;
+        }
+
+        // Orbit and zoom are the camera's, and the camera is inside the canvas.
+        // Left unbound until `WorldCanvasHandle` can carry them — see the
+        // navigation design doc.
+        default:
+          return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onSurface, leaveSurface]);
+  }, [onSurface, leaveSurface, journey.position, bodies, goToScope]);
 
   const selectedBody = useMemo(
     () => (journey.card ? bodies.find((b) => b.id === journey.card) ?? null : null),
@@ -235,6 +329,7 @@ export default function HomePage() {
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
         onProjectSurfaceTargets={setSurfaceTargets}
+        onAscend={ascendToGalaxy}
       />
 
       {/* 2. Tactile Swiss Paper Grain & Archival Noise Overlay */}
@@ -243,7 +338,7 @@ export default function HomePage() {
       {/* 2. Floating Planet Pill Badges (Mockup Slides 1, 2, 4) */}
       <PlanetPinsOverlay
         points={screenPoints}
-        activePreset={activeArm(journey)}
+        framingKind={framing.kind}
         cosmicMode={cosmicMode}
         bodies={bodies}
         onSelectPlanet={handleSelectSector}
@@ -280,11 +375,39 @@ export default function HomePage() {
         onOpenTerminal={() => setIsTerminalOpen(true)}
         activeSystem={activeSystem}
         onSelectSolarSystem={handleSelectSolarSystem}
-        onAscendToGalaxy={() => travel({ type: "ascend" })}
+        onAscendToGalaxy={ascendToGalaxy}
       />
 
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
       {sceneIsClear && <InteractionHintsPill cosmicMode={cosmicMode} />}
+
+      {/* 5a. Where you are, and a way back up every level of it. */}
+      {sceneIsClear && (
+        <WorldBreadcrumb
+          position={journey.position}
+          cosmicMode={cosmicMode}
+          onGoTo={goToScope}
+        />
+      )}
+
+      {/* 5a-ii. What a second press of reset would do. Says so only just after
+             the first one, because that is the only moment it is true. */}
+      {galaxyHint && sceneIsClear && (
+        <div
+          role="status"
+          className="pointer-events-none fixed right-3 top-16 z-30 select-none sm:right-5 sm:top-20"
+        >
+          <span
+            className={`rounded-full border px-3 py-1.5 text-[11px] ${
+              cosmicMode === "day"
+                ? "glass-pill-day text-zinc-700"
+                : "glass-pill-night text-zinc-300"
+            }`}
+          >
+            Press again for the galaxy
+          </span>
+        </div>
+      )}
 
       {/* 5b. Timeline transport: play, pause, scrub and speed the galaxy's own clock */}
       {sceneIsClear && (

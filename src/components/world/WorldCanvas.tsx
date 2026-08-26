@@ -72,6 +72,13 @@ export interface WorldCanvasProps {
    * lets the overlay give props and the orrery real controls (§6).
    */
   onProjectSurfaceTargets?: (points: SurfaceTargetPoint[]) => void;
+  /**
+   * A deliberate scroll out past a solar system's zoom ceiling, reported by
+   * `WorldCameraManager.onWheelZoom`. Only raised while `framing.kind ===
+   * "solarSystem"` — the canvas reports the gesture, same as `onSelectSector`;
+   * what leaving means is the caller's call.
+   */
+  onAscend?: () => void;
 }
 
 /** A projected surface target: a screen point that also knows what it is. */
@@ -154,6 +161,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     anchors,
     onProjectAnchors,
     onProjectSurfaceTargets,
+    onAscend,
   },
   ref
 ) {
@@ -187,6 +195,25 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // reads the clock the transport is actually on, not the one from first mount.
   const clockDateRef = useRef(clockDate);
   clockDateRef.current = clockDate;
+  // Read inside the wheel handler below, which lives in the mount effect and
+  // must not rebuild the GL scene on every framing change — the same reason
+  // `clockDateRef` exists rather than `clockDate` in that effect's deps.
+  const framingRef = useRef(framing);
+  framingRef.current = framing;
+
+  // Read by the scene-construction effect below, which must NOT rebuild the GL
+  // scene when the ground swaps — the same reason `clockDateRef` exists.
+  //
+  // The effect only ever needs the mode to SEED what it has just constructed:
+  // on mount the dedicated effect above runs first, when every ref it writes
+  // through is still null. Everything after that is the live path's job, and
+  // the live path already covers every mode-dependent value here. Keeping
+  // `cosmicMode` in the dependencies instead cost a visitor the world: the
+  // effect disposes the renderer, the composer and the camera manager, so a
+  // toggle put whoever was standing on a surface back at the default pose and
+  // flew the entire descent again to return them to where they already were.
+  const cosmicModeRef = useRef(cosmicMode);
+  cosmicModeRef.current = cosmicMode;
 
   // Expose handle methods
   useImperativeHandle(ref, () => ({
@@ -244,14 +271,14 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = TONE_MAPPING[cosmicMode].mapping;
-    renderer.toneMappingExposure = TONE_MAPPING[cosmicMode].exposure;
+    renderer.toneMapping = TONE_MAPPING[cosmicModeRef.current].mapping;
+    renderer.toneMappingExposure = TONE_MAPPING[cosmicModeRef.current].exposure;
     rendererRef.current = renderer;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // 2. DayNight Controller
-    const dayNight = new DayNightController(scene, cosmicMode);
+    const dayNight = new DayNightController(scene, cosmicModeRef.current);
     dayNightRef.current = dayNight;
 
     // 3. Camera Manager
@@ -271,9 +298,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      BLOOM[cosmicMode].strength,
+      BLOOM[cosmicModeRef.current].strength,
       0.45, // Bloom radius
-      BLOOM[cosmicMode].threshold
+      BLOOM[cosmicModeRef.current].threshold
     );
     composer.addPass(bloomPass);
     bloomPassRef.current = bloomPass;
@@ -292,7 +319,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const galaxyBuilder = new GalaxyBuilder(scene, fieldDensityFor(width), reduced);
     galaxyBuilder.build();
     galaxyBuilder.setPixelRatio(renderer.getPixelRatio());
-    galaxyBuilder.setCosmicMode(cosmicMode);
+    galaxyBuilder.setCosmicMode(cosmicModeRef.current);
     galaxyBuilderRef.current = galaxyBuilder;
 
     // One loop over the registry, not one construction per system: a second
@@ -313,7 +340,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       builder.build();
       builder.setResolution(width, height);
       builder.setPixelRatio(renderer.getPixelRatio());
-      builder.setCosmicMode(cosmicMode);
+      builder.setCosmicMode(cosmicModeRef.current);
       // Not a dependency (see the dedicated clock effect above) — read fresh at
       // construction time only, via the ref.
       builder.setClockDate(clockDateRef.current);
@@ -505,7 +532,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const onWheel = (e: WheelEvent) => {
       if (scrollOwnerFor(e.target)) return;
       e.preventDefault();
-      cameraManager.onWheelZoom(e.deltaY);
+      const wantsToAscend = cameraManager.onWheelZoom(e.deltaY);
+      if (wantsToAscend && framingRef.current.kind === "solarSystem") onAscend?.();
     };
 
     canvas.addEventListener("pointerdown", onPointerDown);
@@ -530,7 +558,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       for (const builder of builders.values()) {
         builder.setResolution(width, height);
         builder.setPixelRatio(renderer.getPixelRatio());
-        builder.setCosmicMode(cosmicMode);
+        // Through the ref because this closure outlives the toggle now: read as
+        // a captured value it would repaint every builder back to whichever
+        // ground was current when the scene was last built.
+        builder.setCosmicMode(cosmicModeRef.current);
       }
     };
     window.addEventListener("resize", onResize);
@@ -654,10 +685,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onResize);
-      // Every system, then the frame they hang off. This effect rebuilds on a
-      // day/night toggle, so anything missed here is stranded on the GPU for
-      // the life of the page, once per toggle, for as long as a visitor keeps
-      // pressing it.
+      // Every system, then the frame they hang off. A day/night toggle no
+      // longer comes through here — that is the whole point of `cosmicModeRef`
+      // — but this still runs whenever the handler props or the anchors change,
+      // and anything missed is stranded on the GPU for the life of the page.
       for (const builder of builders.values()) builder.dispose();
       galaxyBuilder.dispose();
       composer.dispose();
@@ -674,7 +705,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     anchors,
     onProjectAnchors,
     onProjectSurfaceTargets,
-    cosmicMode,
+    onAscend,
+    // `cosmicMode` is deliberately absent, and is read through `cosmicModeRef`
+    // above: a ground swap repaints the scene it already has rather than
+    // building a new one. See that ref for what the rebuild used to cost.
   ]);
 
   /**

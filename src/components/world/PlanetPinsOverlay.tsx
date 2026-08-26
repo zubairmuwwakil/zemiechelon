@@ -7,6 +7,7 @@ import { ARM_META } from "@/data/arms";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { derivePlanetAnnotation } from "@/lib/atlas/derivedFigures";
 import { DIRECTION_A } from "@/lib/theme/directionA";
+import type { Framing } from "@/lib/atlas/journey";
 import type { CosmicMode } from "./DayNightController";
 
 /**
@@ -28,7 +29,15 @@ function pinFor(id: string): { label: string; color: string } | null {
 
 interface PlanetPinsOverlayProps {
   points: ScreenPoint[];
-  activePreset: string;
+  /**
+   * `activeArm(journey)` collapses galaxy and solarSystem positions to the
+   * same `"solarSystem"` string — right for the nav pill, wrong here, where
+   * the two have to read differently. `Framing.kind` is what still tells
+   * them apart, so labels gate on it rather than on the nav's own value: the
+   * galaxy view stays clear for its own sake, and a label is something you
+   * earn by flying into a system, not a fixed fact of the scene.
+   */
+  framingKind: Framing["kind"];
   cosmicMode?: CosmicMode;
   bodies?: Body[];
   onSelectPlanet: (id: string) => void;
@@ -37,15 +46,13 @@ interface PlanetPinsOverlayProps {
 
 export function PlanetPinsOverlay({
   points,
-  activePreset,
+  framingKind,
   cosmicMode = "day",
   bodies = loadBodies(),
   onSelectPlanet,
   onHoverPlanet,
 }: PlanetPinsOverlayProps) {
-  // Only show planetary labels in Macro Solar System / Overview view
-  const isSolarSystemView = activePreset === "solarSystem" || activePreset === "overview";
-  if (!isSolarSystemView) return null;
+  if (framingKind !== "solarSystem") return null;
 
   const isDay = cosmicMode === "day";
 

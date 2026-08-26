@@ -80,7 +80,7 @@ export function WorldHUD({
           className={`pointer-events-auto cursor-pointer flex items-center gap-3 rounded-2xl px-3.5 py-2 transition-colors duration-300 ${
             isDay ? "glass-pill-day text-zinc-900" : "glass-pill-night text-zinc-100"
           }`}
-          title="Reset to Celestial Galaxy Orbit"
+          title="Reset view — press again for the galaxy"
         >
           <div className="flex size-8 items-center justify-center rounded-xl bg-zinc-950 p-1 shadow-sm text-white">
             <ZemiMark className="size-full" />
@@ -327,7 +327,7 @@ export function WorldHUD({
                 ? "glass-pill-day text-zinc-700 hover:text-zinc-900"
                 : "glass-pill-night text-zinc-300 hover:text-white"
             }`}
-            title="Reset to Galaxy Overview"
+            title="Reset view — press again for the galaxy"
           >
             <RotateCcw className="size-3.5" />
           </motion.button>
