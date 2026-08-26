@@ -3,11 +3,16 @@ import type { WorldSceneBuilder } from "./WorldSceneBuilder";
 import { drawnWorldPosition, planetFrame } from "./planetFrames";
 
 /**
- * How high each pin floats above the body it names, in scene units.
+ * How high each pin floats above its own system's plane, in scene units.
  *
  * The one authored part of a pin. Its horizontal position is derived — read
  * through the scene graph every frame — so this table says only "how far
  * above", never "where".
+ *
+ * Above the PLANE, not above the planet. A planet's own drawn height is its
+ * business: `labs` is drawn at y = 1 and pinned at 6.8, which is 5.8 above the
+ * sphere and 6.8 above the plane it orbits in. The second reading is the one
+ * that survives a system that does not lie in the galactic plane.
  */
 export const PIN_HEIGHTS: Record<string, number> = {
   solarSystem: 8.8,
@@ -46,13 +51,29 @@ export interface PinAnchor {
 export function planetPinAnchors(builder: WorldSceneBuilder): PinAnchor[] {
   builder.rootGroup.updateWorldMatrix(true, false);
   const anchors: PinAnchor[] = [];
+  // The way back into the system's own frame. Read once rather than per pin:
+  // it is the same matrix for every pin in this scene, and inverting one per
+  // pin per frame is work the render loop cannot afford.
+  const toSystem = new THREE.Matrix4().copy(builder.rootGroup.matrixWorld).invert();
 
   for (const [id, pinY] of Object.entries(PIN_HEIGHTS)) {
     const drawn = planetFrame(builder, id);
     // An arm with neither a scope nor a placement is not a planet at all.
     if (!drawn) continue;
-    const anchor = drawnWorldPosition(drawn);
+    // Set in the system's frame and composed back out, rather than written
+    // straight onto the world position. A solar system away from the galactic
+    // core rises out of the plane AND leans, so its planets sit at a different
+    // height each — the channel's span from 70 to 96 — and one world altitude
+    // reaches none of them. Written as a world y, the channel's pins hung 64 to
+    // 90 units beneath the planets they name.
+    //
+    // Nothing moves in the atlas: its root is at the origin and turns only
+    // about +Y, and a rotation about +Y carries y through untouched, so local
+    // height and world height are the same number there. That is exactly why
+    // the distinction could not be seen while it was the only system.
+    const anchor = drawnWorldPosition(drawn).applyMatrix4(toSystem);
     anchor.y = pinY;
+    anchor.applyMatrix4(builder.rootGroup.matrixWorld);
     anchors.push({ id, anchor });
   }
 
