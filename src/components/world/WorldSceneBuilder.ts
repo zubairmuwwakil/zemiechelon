@@ -13,7 +13,7 @@ import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/pl
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
 import { obliquityFor, patternAngle } from "@/lib/atlas/motion";
-import { createFieldMaterial } from "./FieldShader";
+import { createFieldMaterial, paintField } from "./FieldShader";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { surfaceScopeIds } from "@/lib/atlas/surfaces";
 import { buildSurface, type SurfaceHandle } from "./SurfaceBuilder";
@@ -23,7 +23,7 @@ import {
   derivePlanetAnnotation,
   deriveRingAnnotation,
 } from "@/lib/atlas/derivedFigures";
-import { DIRECTION_A } from "@/lib/theme/directionA";
+import { DIRECTION_A, ruleFor } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
 import { PLANET_Y } from "@/lib/atlas/scale";
@@ -266,6 +266,17 @@ const CLAIM_LABEL_ASPECT = 3.4;
 /** Rest, hovered, and hovered-sibling. Dimming is what makes lighting mean something. */
 export const RING_OPACITY = { rest: 0.5, lit: 1, dimmed: 0.12 } as const;
 
+/**
+ * What each ground multiplies a hairline's authored weight by.
+ *
+ * The authored numbers are the night ones — that ground was never the broken
+ * half — so night is 1 and nothing about it moves. Paper asks for more because
+ * it has less to give: a rule on obsidian is a bright mark on a dark field,
+ * while a rule on cream is a dark mark inside the narrow band between `ruleDay`
+ * and `ground`, with no bloom to widen it.
+ */
+export const RULE_WEIGHT: Record<CosmicMode, number> = { day: 1.35, night: 1 };
+
 interface IdealRing {
   id: string;
   ringMaterial: LineMaterial;
@@ -349,6 +360,23 @@ export class WorldSceneBuilder {
     tilt: THREE.Quaternion;
   }> = [];
   private readonly visiblePlanetArms = new Set<string>();
+  /**
+   * Every hairline whose colour belongs to the ground rather than to the thing
+   * it draws. Registered exactly as `fieldMaterials` is, and for the same
+   * reason: `setCosmicMode` has to be able to repaint them, and a rule it does
+   * not hold is a rule stuck on whichever ground it was built for.
+   */
+  private readonly ruleMaterials: LineMaterial[] = [];
+  /**
+   * The same idea one dimension smaller: lit solids whose colour is the
+   * ground's rather than their own — the orrery's plinth and rings, a prop's
+   * plinth, the console's post. Held apart from `ruleMaterials` because only
+   * the COLOUR half of the swap applies to them. `RULE_WEIGHT` is a correction
+   * for a hairline's alpha on a ground with no bloom to widen it; these are
+   * opaque geometry lit by the scene's own sun, so weighting their opacity
+   * would either do nothing or punch a hole in the instrument.
+   */
+  private readonly ruleSolids: THREE.MeshStandardMaterial[] = [];
   /** Arm dust, sorted by its anchor's birth day so a draw range can gate it without reordering. */
   private armDustGeometry: THREE.BufferGeometry | null = null;
   private armDustSortedDays: Float32Array = new Float32Array(0);
@@ -571,18 +599,15 @@ export class WorldSceneBuilder {
     }
     const tickGeometry = new LineSegmentsGeometry();
     tickGeometry.setPositions(ticks);
-    this.rootGroup.add(
-      new LineSegments2(
-        tickGeometry,
-        new LineMaterial({
-          color: new THREE.Color(DIRECTION_A.rule).getHex(),
-          linewidth: 1.2,
-          transparent: true,
-          opacity: 0.55,
-          resolution: this.resolution,
-        }),
-      ),
-    );
+    const tickMaterial = new LineMaterial({
+      color: new THREE.Color(DIRECTION_A.rule).getHex(),
+      linewidth: 1.2,
+      transparent: true,
+      opacity: 0.55,
+      resolution: this.resolution,
+    });
+    this.trackRule(tickMaterial);
+    this.rootGroup.add(new LineSegments2(tickGeometry, tickMaterial));
   }
 
   /**
@@ -605,16 +630,18 @@ export class WorldSceneBuilder {
     }
     const geometry = new LineGeometry();
     geometry.setPositions(points);
-    const line = new Line2(
-      geometry,
-      new LineMaterial({
-        color: new THREE.Color(color).getHex(),
-        linewidth,
-        transparent: true,
-        opacity,
-        resolution: this.resolution,
-      }),
-    );
+    const material = new LineMaterial({
+      color: new THREE.Color(color).getHex(),
+      linewidth,
+      transparent: true,
+      opacity,
+      resolution: this.resolution,
+    });
+    // `DIRECTION_A.rule` at a call site means "this line belongs to the
+    // ground", not "this line is #D3CEC0" — so the ground gets to repaint it.
+    // Gold does not: gold leaf is gold on paper and on obsidian both.
+    if (color === DIRECTION_A.rule) this.trackRule(material);
+    const line = new Line2(geometry, material);
     parent.add(line);
     return line;
   }
@@ -999,6 +1026,14 @@ export class WorldSceneBuilder {
    * so on the night ground the two swap: the pill becomes ink and the text
    * becomes paper. Without that the pill is pure white against #09090b and the
    * night bloom turns every label into a solid block.
+   *
+   * The day pill takes `ground`, not `hud`. `hud` is #FFFFFF and belongs to the
+   * DOM chips, which float ABOVE the canvas and are meant to read as glass. A
+   * pill in the world is on the paper, not above it — and these sprites draw
+   * with `depthTest: false` at `renderOrder: 3`, so they paint over the
+   * graticules no matter where they sit in depth. A white card doing that on
+   * cream is a hole punched through the rings. It always was; it only became
+   * visible when the rules got dark enough to see them being interrupted.
    */
   private createPaperLabel(
     aspect: number,
@@ -1015,19 +1050,21 @@ export class WorldSceneBuilder {
     const paint = (mode: CosmicMode) => {
       if (!ctx) return;
       const day = mode === "day";
-      const ground = day ? DIRECTION_A.hud : DIRECTION_A.ink;
+      const ground = day ? DIRECTION_A.ground : DIRECTION_A.ink;
       const ink = day ? DIRECTION_A.ink : DIRECTION_A.ground;
       const pad = Math.round(canvas.height * 0.07);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
       ctx.roundRect(pad, pad, canvas.width - pad * 2, canvas.height - pad * 2, canvas.height * 0.28);
-      ctx.globalAlpha = day ? 0.94 : 0.88;
+      // Under 1 on both grounds so a rule passing behind a pill ghosts through
+      // it rather than terminating at its edge.
+      ctx.globalAlpha = day ? 0.82 : 0.88;
       ctx.fillStyle = ground;
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.lineWidth = 3;
-      ctx.strokeStyle = DIRECTION_A.rule;
+      ctx.strokeStyle = ruleFor(day ? "day" : "night");
       ctx.stroke();
 
       ctx.textAlign = "center";
@@ -1181,8 +1218,48 @@ export class WorldSceneBuilder {
     const mark = new THREE.Color(mode === "day" ? DIRECTION_A.dust : DIRECTION_A.ground);
     for (const material of this.fieldMaterials) {
       (material.uniforms.uColor.value as THREE.Color).copy(mark);
+      // Colour was never the whole of it: ink on paper carries no bloom, so the
+      // weight and the twinkle floor belong to the ground as much as the hue.
+      paintField(material, mode);
     }
+    const rule = new THREE.Color(ruleFor(mode));
+    for (const material of this.ruleMaterials) {
+      material.color.copy(rule);
+      material.opacity = Math.min(1, (material.userData.baseOpacity as number) * RULE_WEIGHT[mode]);
+    }
+    for (const material of this.ruleSolids) material.color.copy(rule);
     for (const label of this.paperLabels) label.paint(mode);
+  }
+
+  /**
+   * Hold every field layer to the canvas's device pixel ratio.
+   *
+   * Separate from `setResolution` because the two answer to different events:
+   * the resolution follows the element, this follows the SCREEN. Dragging the
+   * window to a non-retina monitor changes the ratio without changing a single
+   * CSS pixel of the canvas.
+   */
+  public setPixelRatio(ratio: number): void {
+    for (const material of this.fieldMaterials) material.uniforms.uPixelRatio.value = ratio;
+  }
+
+  /**
+   * Every tracked ground-coloured material's current colour — hairlines and
+   * solids both. For the tests that guard the swap: what they are actually
+   * asserting is that NOTHING wearing the ground's colour was left behind on
+   * the other ground, so a registry they only half-see would pass while the
+   * bug it guards is still on screen.
+   */
+  public ruleColors(): number[] {
+    return [...this.ruleMaterials, ...this.ruleSolids].map((material) =>
+      material.color.getHex(),
+    );
+  }
+
+  /** Remember a hairline's authored weight, then track it for `setCosmicMode`. */
+  private trackRule(material: LineMaterial): void {
+    material.userData.baseOpacity = material.opacity;
+    this.ruleMaterials.push(material);
   }
 
   /**
@@ -1741,12 +1818,14 @@ export class WorldSceneBuilder {
       if (!group) continue;
       const surface = buildSurface(group, scopeId, this.bodies);
       this.surfaces.set(scopeId, surface);
+      this.ruleSolids.push(...surface.ruleMaterials);
 
       // The instrument stands on the ground, so it is built into the surface
       // and inherits its visibility rather than needing its own gate.
       const orrery = buildOrrery(surface.group, scopeId, this.bodies);
       if (!orrery) continue;
       this.orreries.set(scopeId, orrery);
+      this.ruleSolids.push(...orrery.ruleMaterials);
       for (const [moonId, bead] of orrery.targets) {
         const proxy = bead.parent?.getObjectByName(`orrery-hit:${moonId}`) ?? bead;
         this.hitObjects.push({

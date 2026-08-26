@@ -8,7 +8,7 @@ import {
 } from "@/lib/atlas/galaxyPlacement";
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
-import { createFieldMaterial } from "./FieldShader";
+import { createFieldMaterial, paintField } from "./FieldShader";
 import { BACKGROUND_STAR_COUNT, mulberry32 } from "./WorldSceneBuilder";
 
 /** The shell's name in the scene graph. Renamed on the move: it is a sky now, not a backdrop. */
@@ -183,7 +183,21 @@ export class GalaxyBuilder {
     const mark = new THREE.Color(mode === "day" ? DIRECTION_A.dust : DIRECTION_A.ground);
     for (const material of this.fieldMaterials) {
       (material.uniforms.uColor.value as THREE.Color).copy(mark);
+      paintField(material, mode);
     }
+  }
+
+  /**
+   * The sky's device pixel ratio. Mirrors `WorldSceneBuilder.setPixelRatio` for
+   * the same reason the mode does: the sky is one layer of one field, and a
+   * ratio applied to the dust and not to it would split them.
+   *
+   * The sky needs this MORE than the dust does. It does not attenuate, so its
+   * size is `uSize` and nothing else — 1.6 device pixels, which on a dpr-2
+   * screen was 0.8 CSS pixels, and a sub-pixel star is a star you do not have.
+   */
+  public setPixelRatio(ratio: number): void {
+    for (const material of this.fieldMaterials) material.uniforms.uPixelRatio.value = ratio;
   }
 
   public dispose(): void {

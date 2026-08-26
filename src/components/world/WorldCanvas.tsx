@@ -12,6 +12,7 @@ import { WorldCameraManager, ASTROLABE_OUTER } from "./WorldCameraManager";
 import { framedBody, framedSystem } from "./planetFrames";
 import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
+import { scrollOwnerFor } from "./wheelRouting";
 import {
   WorldSceneBuilder,
   fieldDensityFor,
@@ -98,6 +99,26 @@ const BLOOM: Record<CosmicMode, { strength: number; threshold: number }> = {
 };
 
 /**
+ * The output curve, per ground.
+ *
+ * ACES is a film curve: it exists to roll off highlights that would otherwise
+ * blow out, which is exactly what the night ground wants under a bloom of 0.85.
+ * Day draws `strength: 0` — there is no bloom to tame, and nothing in the scene
+ * exceeds one — so all the curve does is compress the top end, where every
+ * value in an ink-on-paper treatment lives. It pulled `#F7F6F2` down to roughly
+ * `#E8E7E3` and squeezed the band the hairlines are drawn inside, while the DOM
+ * around the canvas kept the honest token. `directionA.ts` names that mismatch
+ * as the most visible way this treatment fails; this is where it came from.
+ *
+ * `OutputPass` rebuilds its defines when `renderer.toneMapping` changes, so
+ * these can be swapped live without rebuilding the scene.
+ */
+const TONE_MAPPING: Record<CosmicMode, { mapping: THREE.ToneMapping; exposure: number }> = {
+  day: { mapping: THREE.NoToneMapping, exposure: 1 },
+  night: { mapping: THREE.ACESFilmicToneMapping, exposure: 1.12 },
+};
+
+/**
  * Scene point -> viewport pixels. `visible` is false behind the camera and past
  * a small off-screen margin, so the overlay never keeps DOM nodes for stars the
  * camera has turned away from.
@@ -159,6 +180,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   const dayNightRef = useRef<DayNightController | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
   const composerRef = useRef<EffectComposer | null>(null);
+  /** Held for the mode effect: the output curve belongs to the ground. See `TONE_MAPPING`. */
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   // Read at construction time only — see the mount effect below. Kept fresh by
   // its own effect so a scene rebuild (day/night, a resized body set) always
   // reads the clock the transport is actually on, not the one from first mount.
@@ -196,6 +219,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       bloomPassRef.current.strength = BLOOM[cosmicMode].strength;
       bloomPassRef.current.threshold = BLOOM[cosmicMode].threshold;
     }
+    const renderer = rendererRef.current;
+    if (renderer) {
+      renderer.toneMapping = TONE_MAPPING[cosmicMode].mapping;
+      renderer.toneMappingExposure = TONE_MAPPING[cosmicMode].exposure;
+    }
   }, [cosmicMode]);
 
   useEffect(() => {
@@ -216,8 +244,9 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMapping = TONE_MAPPING[cosmicMode].mapping;
+    renderer.toneMappingExposure = TONE_MAPPING[cosmicMode].exposure;
+    rendererRef.current = renderer;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -262,6 +291,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     const today = new Date().toISOString().slice(0, 10);
     const galaxyBuilder = new GalaxyBuilder(scene, fieldDensityFor(width), reduced);
     galaxyBuilder.build();
+    galaxyBuilder.setPixelRatio(renderer.getPixelRatio());
     galaxyBuilder.setCosmicMode(cosmicMode);
     galaxyBuilderRef.current = galaxyBuilder;
 
@@ -282,6 +312,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       );
       builder.build();
       builder.setResolution(width, height);
+      builder.setPixelRatio(renderer.getPixelRatio());
       builder.setCosmicMode(cosmicMode);
       // Not a dependency (see the dedicated clock effect above) — read fresh at
       // construction time only, via the ref.
@@ -467,7 +498,12 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       setHovered(null, null);
     };
 
+    // On `window`, not on the canvas: the pins, surface targets and HUD are
+    // siblings of the canvas rather than children, so a wheel over any of them
+    // bubbled past it and zoom did nothing. `scrollOwnerFor` hands the event
+    // back to a panel that has its own content to scroll — see `wheelRouting`.
     const onWheel = (e: WheelEvent) => {
+      if (scrollOwnerFor(e.target)) return;
       e.preventDefault();
       cameraManager.onWheelZoom(e.deltaY);
     };
@@ -476,7 +512,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     canvas.addEventListener("pointerleave", onPointerLeave);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("wheel", onWheel, { passive: false });
 
     // 7. Resize handler
     const onResize = () => {
@@ -484,11 +520,16 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       width = container.clientWidth;
       height = container.clientHeight;
       cameraManager.resize(width, height);
+      // Dragging the window between a retina and a non-retina display fires a
+      // resize and changes the ratio without changing a CSS pixel of the canvas.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(width, height);
       composer.setSize(width, height);
       bloomPass.resolution.set(width, height);
+      galaxyBuilder.setPixelRatio(renderer.getPixelRatio());
       for (const builder of builders.values()) {
         builder.setResolution(width, height);
+        builder.setPixelRatio(renderer.getPixelRatio());
         builder.setCosmicMode(cosmicMode);
       }
     };
@@ -611,7 +652,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       canvas.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("wheel", onWheel);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onResize);
       // Every system, then the frame they hang off. This effect rebuilds on a
       // day/night toggle, so anything missed here is stranded on the GPU for
@@ -621,6 +662,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       galaxyBuilder.dispose();
       composer.dispose();
       renderer.dispose();
+      rendererRef.current = null;
     };
   }, [
     // `bodies` is deliberately absent: each system's body set now comes from

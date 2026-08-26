@@ -41,6 +41,15 @@ export interface SurfaceHandle {
   labels: Map<string, { label: string; bodyId: string }>;
   /** The console standing on this ground, if it earned one. */
   console: { id: string; object: THREE.Mesh } | null;
+  /**
+   * Every material here whose colour belongs to the GROUND rather than to the
+   * thing it draws — the named props' plinths and the console's post. Handed
+   * back for `WorldSceneBuilder.setCosmicMode` to repaint, the same way the
+   * orrery hands its own back. Gold and ink are absent on purpose: gold leaf is
+   * gold on paper and on obsidian both, and the console's desk is ink because
+   * it is the destination, not because of what it stands on.
+   */
+  ruleMaterials: THREE.MeshStandardMaterial[];
 }
 
 /**
@@ -89,12 +98,14 @@ export function buildSurface(
   // its satellites, which have no card of their own — what describes them is
   // the moon's, so that is what activating one opens.
   const owner = scopeId.startsWith("moon:") ? scopeId.slice("moon:".length) : null;
+  const ruleMaterials: THREE.MeshStandardMaterial[] = [];
   const plinthMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(DIRECTION_A.rule),
     roughness: 0.7,
     metalness: 0.08,
     flatShading: true,
   });
+  ruleMaterials.push(plinthMaterial);
   // A private repository is drawn in the ground's own material rather than the
   // ink of a named thing: present, unmistakably part of the ground, unnamed.
   const anonymousMaterial = new THREE.MeshStandardMaterial({
@@ -147,14 +158,16 @@ export function buildSurface(
     desk.rotation.z = -0.32;
     desk.castShadow = true;
 
+    const postMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(DIRECTION_A.rule),
+      roughness: 0.72,
+      metalness: 0.1,
+      flatShading: true,
+    });
+    ruleMaterials.push(postMaterial);
     const post = new THREE.Mesh(
       new THREE.CylinderGeometry(height * 0.13, height * 0.2, height, 8),
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color(DIRECTION_A.rule),
-        roughness: 0.72,
-        metalness: 0.1,
-        flatShading: true,
-      }),
+      postMaterial,
     );
     post.position.y = height * 0.5;
     surface.add(post);
@@ -163,5 +176,5 @@ export function buildSurface(
   }
 
   group.add(surface);
-  return { scopeId, group: surface, props, labels, console: consoleHandle };
+  return { scopeId, group: surface, props, labels, console: consoleHandle, ruleMaterials };
 }

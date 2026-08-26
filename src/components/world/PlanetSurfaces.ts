@@ -8,6 +8,22 @@ export interface SurfaceFamily {
   /** Radians per second. All slow: slow reads as alive, fast as a screensaver. */
   rotationRate: number;
   baseColor: string;
+  /**
+   * The pattern's second colour. Deliberately NOT swapped by ground, even where
+   * it names `DIRECTION_A.rule`.
+   *
+   * The hairlines were repainted per ground because a rule's only contrast
+   * partner is the ground behind it. An accent's partner is `baseColor` — the
+   * shader draws `mix(vBase, vAccent, …)` — and that pairing is internal to the
+   * sphere. `foundations` is pale strata inside dark ink; darkening the accent
+   * to `ruleDay` for paper would flatten the strata rather than reveal them,
+   * which is the opposite of what the day pass is for. These are lit solids
+   * with their own terminator, not hairlines depending on the ground to be
+   * legible at all.
+   *
+   * It is also a different mechanism: an accent rides an InstancedBufferAttribute
+   * (`aAccent`), so a swap would rewrite a buffer, not a material's colour.
+   */
   accentColor: string;
 }
 

@@ -209,6 +209,19 @@ describe("what is open over a position", () => {
     expect(journey).toEqual(AT_SOLAR_SYSTEM);
   });
 
+  it("hands back a fresh journey when reset from where reset lands", () => {
+    // `useReducer` bails out completely when a reducer returns the reference it
+    // was handed: no re-render, no effects, and the camera never hears the
+    // click. `reset` returning the `AT_SOLAR_SYSTEM` constant hit that on the
+    // one path a visitor takes most — load the page, drag the view around
+    // without going anywhere, press reset — and the button did nothing at all.
+    //
+    // Equality is the contract; identity is what makes the reset arrive.
+    const next = journeyReducer(AT_SOLAR_SYSTEM, { type: "reset" });
+    expect(next).toEqual(AT_SOLAR_SYSTEM);
+    expect(next).not.toBe(AT_SOLAR_SYSTEM);
+  });
+
   it("leaves nothing open behind when the core is selected from a surface", () => {
     // Today this is a no-op: selecting the core clears the preset and the
     // panel but leaves `standingScope` set, so the camera never leaves.

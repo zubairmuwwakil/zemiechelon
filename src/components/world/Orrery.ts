@@ -44,6 +44,14 @@ export interface OrreryHandle {
   pivots: THREE.Group[];
   /** Moon id -> its tappable sphere on the instrument. */
   targets: Map<string, THREE.Mesh>;
+  /**
+   * Every material here whose colour belongs to the GROUND rather than to the
+   * thing it draws — the plinth and the orbit rings. Handed back rather than
+   * repainted here because the instrument does not know which ground it is
+   * standing on; `WorldSceneBuilder.setCosmicMode` does, and it already owns
+   * this job for the hairlines. See `ruleSolids` there.
+   */
+  ruleMaterials: THREE.MeshStandardMaterial[];
 }
 
 /**
@@ -69,6 +77,8 @@ export function buildOrrery(
   // At the shard's centre: the point the camera orbits.
   group.position.set(0, size * 1.6, 0);
 
+  const ruleMaterials: THREE.MeshStandardMaterial[] = [];
+
   // The model wears the planet's own surface colour rather than a chosen one,
   // so the instrument says the same thing about the planet that the sky does.
   // Ink would read as a hole punched in the parchment at this size.
@@ -79,16 +89,22 @@ export function buildOrrery(
     metalness: 0.12,
     flatShading: true,
   });
+  // Only when there was no family to borrow from. With one, the sphere wears
+  // the planet's own colour and the ground has no claim on it; without one it
+  // is wearing the ground's, and then it swaps with the ground.
+  if (!family) ruleMaterials.push(modelMaterial);
 
   // A plinth, so the instrument stands rather than floats.
+  const stemMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(DIRECTION_A.rule),
+    roughness: 0.75,
+    metalness: 0.1,
+    flatShading: true,
+  });
+  ruleMaterials.push(stemMaterial);
   const stem = new THREE.Mesh(
     new THREE.CylinderGeometry(size * 0.16, size * 0.3, size * 1.6, 8),
-    new THREE.MeshStandardMaterial({
-      color: new THREE.Color(DIRECTION_A.rule),
-      roughness: 0.75,
-      metalness: 0.1,
-      flatShading: true,
-    }),
+    stemMaterial,
   );
   stem.position.y = -size * 0.8;
   group.add(stem);
@@ -105,13 +121,15 @@ export function buildOrrery(
     // the model says the same thing about time that the sky does.
     const radius = size * ORRERY_ORBIT * (moon.orbit / 5.6);
 
+    const ringMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(DIRECTION_A.rule),
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+    ruleMaterials.push(ringMaterial);
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(radius, size * 0.012, 6, 48),
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color(DIRECTION_A.rule),
-        roughness: 0.8,
-        metalness: 0.1,
-      }),
+      ringMaterial,
     );
     ring.rotation.x = Math.PI / 2;
     group.add(ring);
@@ -150,7 +168,7 @@ export function buildOrrery(
   }
 
   surface.add(group);
-  return { scopeId, group, pivots, targets };
+  return { scopeId, group, pivots, targets, ruleMaterials };
 }
 
 /** Advance every instrument's moons. Outer beads turn slower, as the sky does. */

@@ -30,8 +30,17 @@ export interface MoonPlacement {
  */
 export const MOON_ORBIT = { inner: 3.2, outer: 5.6 } as const;
 
-/** Radians per second for a moon at `MOON_ORBIT.inner`. All slow, like the planets. */
-const BASE_RATE = 0.03;
+/**
+ * Radians per second for a moon at `MOON_ORBIT.inner`. All slow, like the
+ * planets. `moons.test.ts`'s "orbits too fast" ceiling (0.05 rad/s) looks
+ * like the binding constraint but is not: the tighter one is
+ * `surfaceCamera.test.ts`'s "holds the parent in frame for a minute of
+ * orbit" — landing on a moon does not track the parent, so past ~0.034 here
+ * the parent drifts more than 2° off-axis within sixty seconds and the shot
+ * the previous spike paid for breaks again. This keeps real headroom under
+ * that.
+ */
+const BASE_RATE = 0.032;
 
 /**
  * A shipped system orbits its arm's planet.

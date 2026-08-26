@@ -265,8 +265,17 @@ export class WorldCameraManager {
    * the rule `descend()` already follows for framing.
    */
   public depth = { near: 0.5, far: 2000, minDistance: 15, maxDistance: 480 };
+  /**
+   * Two pairs, not one. A landed camera's "up" is the ground it stands on —
+   * past level there is nothing to see but the underside of that ground, so
+   * `surfaceMaxPolarAngle` keeps the old ceiling just short of horizontal.
+   * Free orbit and a descended body have no ground to clip through, so
+   * `maxPolarAngle` opens the same margin on the far pole too, letting a
+   * drag carry the camera under the plane to look up through it.
+   */
   private minPolarAngle = 0.12;
-  private maxPolarAngle = Math.PI / 2 - 0.04; // Stay above plane
+  private maxPolarAngle = Math.PI - 0.12;
+  private surfaceMaxPolarAngle = Math.PI / 2 - 0.04;
 
   constructor(
     width: number,
@@ -509,9 +518,10 @@ export class WorldCameraManager {
     const rotateSpeed = 0.005;
     this.sphericalTarget.theta -= deltaX * rotateSpeed;
     this.sphericalTarget.phi -= deltaY * rotateSpeed;
+    const maxPolarAngle = this.surface ? this.surfaceMaxPolarAngle : this.maxPolarAngle;
     this.sphericalTarget.phi = Math.max(
       this.minPolarAngle,
-      Math.min(this.maxPolarAngle, this.sphericalTarget.phi)
+      Math.min(maxPolarAngle, this.sphericalTarget.phi)
     );
   }
 

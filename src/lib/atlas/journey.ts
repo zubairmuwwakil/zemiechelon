@@ -296,6 +296,14 @@ export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
       return { position: ascendFrom(journey.position, bodies), card: null, console: null };
 
     case "reset":
-      return AT_SOLAR_SYSTEM;
+      // Spread, and the spread is load-bearing. Every other branch returns a
+      // journey that differs from the one it was given, so identity takes care
+      // of itself; reset is the one event whose whole job is to be a no-op as
+      // far as *state* goes and still mean something. Returning the constant
+      // itself made `useReducer` bail out — no re-render, no framing effect,
+      // no camera — precisely when the visitor was already at the top and had
+      // only moved the camera. That is the common case, so the button looked
+      // broken more often than it looked like it worked.
+      return { ...AT_SOLAR_SYSTEM };
   }
 }
