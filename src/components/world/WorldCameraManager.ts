@@ -3,7 +3,7 @@ import { derivePlanets } from "@/lib/atlas/planets";
 import { bodiesFor } from "@/lib/atlas/bodies";
 import { SOLAR_SYSTEMS, type Scope } from "@/lib/atlas/scopes";
 import { ASTROLABE_OUTER, SCENE_SCALE } from "@/lib/atlas/scale";
-import { GALAXY_SKY_OUTER } from "@/lib/atlas/galaxyPlacement";
+import { GALAXY_REACH, GALAXY_SKY_OUTER } from "@/lib/atlas/galaxyPlacement";
 import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
 export type CameraTargetPreset =
@@ -116,8 +116,25 @@ const SOLAR_SYSTEM_POSE: CameraPose = {
   target: new THREE.Vector3(0, 0, 0),
 };
 
+/**
+ * The galaxy's framing.
+ *
+ * A fixed `CameraPose`, legitimately — unlike a planet's. `setPreset`'s doc
+ * warns that a preset naming a body must not come through it, because the
+ * pattern carries bodies and two frozen vectors would frame where a thing
+ * stood at t=0. The galaxy frame does not rotate and solar systems do not
+ * revolve in it, so its pose is a place rather than a body.
+ *
+ * Sized against `GALAXY_REACH` with the same ratios `SOLAR_SYSTEM_POSE` uses,
+ * so widening the galaxy reframes it rather than cropping it.
+ */
+const GALAXY_POSE: CameraPose = {
+  position: new THREE.Vector3(0, GALAXY_REACH * 0.9, GALAXY_REACH * 1.12),
+  target: new THREE.Vector3(0, 0, 0),
+};
+
 export const CAMERA_PRESETS: Record<string, CameraPose> = Object.assign(
-  { solarSystem: SOLAR_SYSTEM_POSE, overview: SOLAR_SYSTEM_POSE },
+  { solarSystem: SOLAR_SYSTEM_POSE, overview: SOLAR_SYSTEM_POSE, galaxy: GALAXY_POSE },
   ...SOLAR_SYSTEMS.map(presetsFor),
 );
 
@@ -456,11 +473,11 @@ export class WorldCameraManager {
   }
 
   /** The named inverse of descend: back to the frame the scope sits in. */
-  public ascend(): void {
+  public ascend(preset: CameraTargetPreset = "solarSystem"): void {
     this.surface = null;
     this.descended = null;
-    this.setFrameScale(ASTROLABE_OUTER);
-    this.setPreset("solarSystem");
+    this.setFrameScale(preset === "galaxy" ? GALAXY_REACH : ASTROLABE_OUTER);
+    this.setPreset(preset);
   }
 
   /** Arrive rather than fly. Every pose the lerps were heading for, taken now. */

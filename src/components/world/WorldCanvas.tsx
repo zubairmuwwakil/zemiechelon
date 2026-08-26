@@ -9,7 +9,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, ASTROLABE_OUTER } from "./WorldCameraManager";
-import { framedBody } from "./planetFrames";
+import { framedBody, framedSystem } from "./planetFrames";
 import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
 import {
@@ -19,6 +19,7 @@ import {
   type SurfaceTarget,
 } from "./WorldSceneBuilder";
 import { GalaxyBuilder } from "./GalaxyBuilder";
+import { GALAXY_REACH } from "@/lib/atlas/galaxyPlacement";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { SOLAR_SYSTEMS, SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
 import { bodiesFor } from "@/lib/atlas/bodies";
@@ -681,20 +682,32 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     surfaceTargetsRef.current = [];
     builder.setStandingOn(null);
     builder.setScopeCull(null);
-    dayNightRef.current?.setFogReference(null);
+    // The palette's own planes are sized to the atlas — `fogFar` is
+    // `ASTROLABE_OUTER * 5` — so at the galaxy pose the atlas at the origin is
+    // already past `fogNear` and the far rim is past `fogFar` entirely: in day
+    // mode, where the fog colour IS the paper, the whole view washes out. The
+    // galaxy gets the fog referenced to its own scale, the same lever the
+    // surface branch above pulls in the other direction.
+    dayNightRef.current?.setFogReference(framing.kind === "galaxy" ? GALAXY_REACH : null);
     // Back out to the galaxy: the frustum has to reach the planets again.
-    dayNightRef.current?.setShadowReach(ASTROLABE_OUTER);
+    dayNightRef.current?.setShadowReach(
+      framing.kind === "galaxy" ? GALAXY_REACH : ASTROLABE_OUTER,
+    );
 
-    // `galaxy` has no camera pose of its own yet — that lands with the galaxy
-    // camera work — so it borrows the solar system's for now rather than
-    // falling through to `framedBody`, which does not know what to do with it.
+    // A place, not a body: the galaxy frame does not rotate and solar systems
+    // do not revolve in it, which is what makes a fixed pose honest here and
+    // nowhere below.
     if (framing.kind === "galaxy") {
-      camera.ascend();
+      camera.ascend("galaxy");
       return;
     }
 
     if (framing.kind === "solarSystem") {
-      camera.ascend();
+      const target = framedSystem(sceneBuildersRef.current, framing.scope);
+      // A system this scene does not draw is framed from the galaxy rather
+      // than throwing — the same answer the pins already give.
+      if (target) camera.descend(target.frame, target.radius, target.offset);
+      else camera.ascend("galaxy");
       return;
     }
 

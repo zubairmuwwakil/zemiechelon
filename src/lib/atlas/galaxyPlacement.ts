@@ -147,11 +147,6 @@ export function placeSolarSystem(system: Scope): SystemPlacement {
 }
 
 /**
- * How far the galaxy reaches, in scene units — the outermost rim of the
- * outermost system. What the galaxy camera pose is sized against, exactly as
- * `SOLAR_SYSTEM_POSE` is sized against `ASTROLABE_OUTER`.
- */
-/**
  * The sky shell's inner and outer radius, as multiples of `GALAXY_REACH`.
  *
  * Kept here rather than inside the builder that draws them because the CAMERA
@@ -166,6 +161,11 @@ export function placeSolarSystem(system: Scope): SystemPlacement {
 export const SKY_SHELL_INNER = 1.5;
 export const SKY_SHELL_DEPTH = 1.3;
 
+/**
+ * How far the galaxy reaches, in scene units — the outermost rim of the
+ * outermost system. What the galaxy camera pose is sized against, exactly as
+ * `SOLAR_SYSTEM_POSE` is sized against `ASTROLABE_OUTER`.
+ */
 export const GALAXY_REACH: number = Math.max(
   ...SOLAR_SYSTEMS.map((system) => {
     const c = placeSolarSystem(system).center;

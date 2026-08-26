@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import type { WorldSceneBuilder } from "./WorldSceneBuilder";
 import { PLANET_CENTERS, PLANET_RADII } from "./WorldCameraManager";
-import type { Body } from "@/lib/atlas/types";
+import type { Body, ScopeId } from "@/lib/atlas/types";
 import type { Framing } from "@/lib/atlas/journey";
+import { getScope } from "@/lib/atlas/scopes";
+import { systemReach } from "@/lib/atlas/galaxyPlacement";
 
 /**
  * A live handle on where a body is DRAWN: a scene-graph frame plus a fixed
@@ -110,4 +112,28 @@ export function framedBody(
   // `MOON_SIZE` is applied, so there stays one definition of how large a moon
   // is drawn.
   return { frame: group, offset: new THREE.Vector3(), radius: builder.moonDrawnRadius(body.arm) };
+}
+
+/**
+ * A whole solar system, as something to frame.
+ *
+ * Its radius is the system's own reach, so descending on a system frames the
+ * disc rather than the sun at its centre — the same rule `framedBody` follows
+ * for a planet, one level up.
+ *
+ * Routed through `descend` rather than given a pose of its own, unlike the
+ * galaxy: a system's root rides the galaxy frame and its own pattern turns
+ * inside it, so where it is drawn is a live read at every instant.
+ */
+export function framedSystem(
+  builders: Map<ScopeId, WorldSceneBuilder>,
+  scopeId: ScopeId,
+): FramedBody | null {
+  const builder = builders.get(scopeId);
+  if (!builder) return null;
+  return {
+    frame: builder.rootGroup,
+    offset: new THREE.Vector3(),
+    radius: systemReach(getScope(scopeId)),
+  };
 }
