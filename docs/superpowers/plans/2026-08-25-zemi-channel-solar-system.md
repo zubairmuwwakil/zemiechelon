@@ -2098,6 +2098,19 @@ Delete the old `if (framing.kind === "solarSystem") { camera.ascend(); return; }
 branch. `dayNightRef.current?.setShadowReach(ASTROLABE_OUTER)` above it becomes
 `setShadowReach(framing.kind === "galaxy" ? GALAXY_REACH : ASTROLABE_OUTER)`.
 
+**The fog has to follow, or the galaxy pose sees nothing.** Noted from Task 8,
+where the channel was found to be fogged out of the day view before the galaxy
+camera exists at all. The palette's planes are sized to the atlas —
+`fogFar = ASTROLABE_OUTER * 5 = 1025` — and the galaxy pose sits at
+`GALAXY_REACH * 1.12`, about 750 units out, so the atlas at the origin is
+already past `fogNear` (328) and the far rim of the galaxy is beyond `fogFar`
+entirely. The whole view washes into the paper. `setFogReference` is the
+existing lever and already takes a frame's own scale: give the galaxy branch
+`setFogReference(GALAXY_REACH)` alongside its `setShadowReach`, the same way
+the surface branch pulls the fog in to the frame it is standing on. Verify it
+in the browser rather than by eye on the numbers — day mode is where it bites,
+because the fog colour IS the paper.
+
 - [ ] **Step 6: Run and verify in the browser**
 
 Run: `npx vitest run && npx tsc --noEmit && npx eslint --max-warnings 0`

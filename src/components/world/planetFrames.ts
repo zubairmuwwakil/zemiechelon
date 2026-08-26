@@ -34,7 +34,9 @@ export interface DrawnFrame {
  * Where a planet — or the core — is drawn, resolvable at any instant.
  *
  * Returns null for an id that is neither: an arm with no scope and no placement
- * is not a planet at all, and the callers would rather skip it than guess.
+ * is not a planet at all, and the callers would rather skip it than guess. An
+ * arm belonging to a DIFFERENT solar system is the same answer for the same
+ * reason — it is not a planet *here*.
  */
 export function planetFrame(builder: WorldSceneBuilder, id: string): DrawnFrame | null {
   // The core is the solar system's own origin, which the pattern turns about,
@@ -43,6 +45,16 @@ export function planetFrame(builder: WorldSceneBuilder, id: string): DrawnFrame 
 
   const group = builder.scopeGroups.get(`planet:${id}`);
   if (group) return { frame: group, offset: new THREE.Vector3() };
+
+  // `PLANET_CENTERS` is the whole galaxy's table — it answers for every arm in
+  // every system, and says so. What it does NOT carry is which frame a centre
+  // belongs in: each is expressed in its own system's local space, and this
+  // function composes it through whatever builder it was handed. With one
+  // solar system that distinction could not be observed. With two it is the
+  // difference between a pin and a pin over another system's planet, drawn
+  // inside this one. The system's own arm table is the authority on what this
+  // scene draws.
+  if (!(id in builder.scope.arms)) return null;
 
   const center = PLANET_CENTERS[id];
   if (!center) return null;

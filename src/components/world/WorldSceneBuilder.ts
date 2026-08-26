@@ -237,6 +237,16 @@ interface MoonOrbit {
   rate: number;
 }
 
+/**
+ * The part of a scene object that owns GPU memory. `Object3D` declares none of
+ * it — a `Group` has neither field — which is exactly why disposal has to ask
+ * each node rather than assume the shape of one.
+ */
+interface GpuOwner {
+  geometry?: THREE.BufferGeometry;
+  material?: THREE.Material | THREE.Material[];
+}
+
 /** The core is the epoch, so its size is the one thing here that is not a date. */
 const CORE_RADIUS = 7.5;
 
@@ -1853,5 +1863,53 @@ export class WorldSceneBuilder {
   /** The scope whose surface the camera is standing on, if any. */
   public get standingScope(): ScopeId | null {
     return this.standingOn;
+  }
+
+  /**
+   * Give back everything this builder put on the GPU.
+   *
+   * Not housekeeping. `WorldCanvas` lists `cosmicMode` among its scene effect's
+   * dependencies, so every day/night toggle constructs a whole new orrery, and
+   * a visitor can toggle as often as they like. `renderer.dispose()` releases
+   * the context's own caches, never the buffers a builder uploaded, so without
+   * this the discarded orrery's geometries, materials and label textures stayed
+   * resident for the life of the page — and the galaxy now holds two of them.
+   *
+   * Asked of the scene graph rather than of a list kept while building, for the
+   * reason `setStandingOn` gives above: the list is the part that goes stale. A
+   * build step added later cannot forget to register a mesh it parented, and
+   * `build()` puts exactly one node — `rootGroup` — into the scene, so the
+   * graph under it is the whole inventory by construction.
+   *
+   * A material's `map` goes with it, because the paper labels own canvas
+   * textures nothing else holds a reference to. Disposing one resource twice is
+   * a no-op in three.js, so materials shared between meshes need no bookkeeping.
+   *
+   * Sprites are the one exception, and not a cosmetic one. `THREE.Sprite`
+   * assigns every instance in the process the same module-level quad — one
+   * `BufferGeometry`, created on the first sprite and handed to all of them.
+   * Disposing it here would not free this builder's memory; it would blank
+   * every label in the app, including the other solar system's and those of
+   * any scene built afterwards. Their materials and textures are their own and
+   * still go. Finding resources by asking the graph is right; assuming
+   * everything found there belongs to this builder is not.
+   */
+  public dispose(): void {
+    this.rootGroup.traverse((object) => {
+      const owner = object as THREE.Object3D & GpuOwner;
+      if (!(object as THREE.Sprite).isSprite) owner.geometry?.dispose();
+      const materials = owner.material
+        ? Array.isArray(owner.material)
+          ? owner.material
+          : [owner.material]
+        : [];
+      for (const material of materials) {
+        (material as THREE.Material & { map?: THREE.Texture | null }).map?.dispose();
+        material.dispose();
+      }
+    });
+    // Detaches from whatever it hangs off: the scene at `build()` time, and the
+    // galaxy's own placement node once `GalaxyBuilder.attach` has re-parented it.
+    this.rootGroup.removeFromParent();
   }
 }

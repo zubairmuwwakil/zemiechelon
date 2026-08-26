@@ -6,16 +6,22 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import type { Body, ScreenPoint, Vec3 } from "@/lib/atlas/types";
+import type { Body, ScopeId, ScreenPoint, Vec3 } from "@/lib/atlas/types";
 import { DayNightController, type CosmicMode } from "./DayNightController";
 import { WorldCameraManager, ASTROLABE_OUTER } from "./WorldCameraManager";
 import { framedBody } from "./planetFrames";
 import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
-import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
+import {
+  WorldSceneBuilder,
+  fieldDensityFor,
+  type HoverTarget,
+  type SurfaceTarget,
+} from "./WorldSceneBuilder";
 import { GalaxyBuilder } from "./GalaxyBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
-import { SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEMS, SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
+import { bodiesFor } from "@/lib/atlas/bodies";
 import { THE_END } from "@/lib/atlas/timeline";
 
 export interface WorldCanvasHandle {
@@ -131,7 +137,22 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneBuilderRef = useRef<WorldSceneBuilder | null>(null);
+  /**
+   * One builder per solar system, in registry order.
+   *
+   * A map rather than a field per system, because almost nothing here wants to
+   * know which system is which: every per-frame call iterates it. Insertion
+   * order is `SOLAR_SYSTEMS` order, which is what keeps the atlas first
+   * wherever order decides an otherwise ambiguous answer.
+   */
+  const sceneBuildersRef = useRef<Map<ScopeId, WorldSceneBuilder>>(new Map());
+  /**
+   * The builder drawing one named system, or null if this scene has not built
+   * it. Null rather than a throw: the framing owner runs before construction on
+   * the first render, and "not yet" is not a data error.
+   */
+  const builderFor = (scopeId: ScopeId): WorldSceneBuilder | null =>
+    sceneBuildersRef.current.get(scopeId) ?? null;
   const galaxyBuilderRef = useRef<GalaxyBuilder | null>(null);
   const cameraManagerRef = useRef<WorldCameraManager | null>(null);
   const dayNightRef = useRef<DayNightController | null>(null);
@@ -146,10 +167,14 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // Expose handle methods
   useImperativeHandle(ref, () => ({
     triggerPaddleHit: () => {},
+    // Told to every system, not just the atlas. `validateGalaxy` guarantees arm
+    // ids are unique across the galaxy, so the one system that owns the arm
+    // lights its label and the rest clear theirs — which is also the clearing
+    // the system the pointer just left needs.
     setHoveredPlanet: (id: string | null) => {
-      const builder = sceneBuilderRef.current;
-      if (!builder) return;
-      builder.setHoveredTarget(id ? { type: "planet", id } : null);
+      for (const builder of sceneBuildersRef.current.values()) {
+        builder.setHoveredTarget(id ? { type: "planet", id } : null);
+      }
     },
   }));
 
@@ -158,13 +183,13 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // THREE scene on every dependency change, and a scrub drag can fire many
   // times a second — this only ever touches the already-built scene.
   useEffect(() => {
-    sceneBuilderRef.current?.setClockDate(clockDate);
+    for (const builder of sceneBuildersRef.current.values()) builder.setClockDate(clockDate);
   }, [clockDate]);
 
   // Sync Day/Night mode & bloom parameters
   useEffect(() => {
     dayNightRef.current?.setMode(cosmicMode);
-    sceneBuilderRef.current?.setCosmicMode(cosmicMode);
+    for (const builder of sceneBuildersRef.current.values()) builder.setCosmicMode(cosmicMode);
     galaxyBuilderRef.current?.setCosmicMode(cosmicMode);
     if (bloomPassRef.current) {
       bloomPassRef.current.strength = BLOOM[cosmicMode].strength;
@@ -239,23 +264,33 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     galaxyBuilder.setCosmicMode(cosmicMode);
     galaxyBuilderRef.current = galaxyBuilder;
 
-    const sceneBuilder = new WorldSceneBuilder(
-      scene,
-      SOLAR_SYSTEM_ZEMI,
-      bodies,
-      today,
-      fieldDensityFor(width),
-      reduced,
-    );
-    sceneBuilder.build();
-    sceneBuilder.setResolution(width, height);
-    sceneBuilder.setCosmicMode(cosmicMode);
-    // Not a dependency (see the dedicated clock effect above) — read fresh at
-    // construction time only, via the ref.
-    sceneBuilder.setClockDate(clockDateRef.current);
-    sceneBuilderRef.current = sceneBuilder;
-    // Reparents the root off the scene and onto the galaxy frame.
-    galaxyBuilder.attach(SOLAR_SYSTEM_ZEMI, sceneBuilder.rootGroup);
+    // One loop over the registry, not one construction per system: a second
+    // orrery is this builder with a different scope, and the day a third
+    // system is registered nothing here should have to be edited to draw it.
+    // Each system's bodies come from `bodiesFor` rather than from the `bodies`
+    // prop, because the prop can only ever describe one of them.
+    const builders = new Map<ScopeId, WorldSceneBuilder>();
+    for (const system of SOLAR_SYSTEMS) {
+      const builder = new WorldSceneBuilder(
+        scene,
+        system,
+        bodiesFor(system),
+        today,
+        fieldDensityFor(width),
+        reduced,
+      );
+      builder.build();
+      builder.setResolution(width, height);
+      builder.setCosmicMode(cosmicMode);
+      // Not a dependency (see the dedicated clock effect above) — read fresh at
+      // construction time only, via the ref.
+      builder.setClockDate(clockDateRef.current);
+      // Reparents the root off the scene and onto the galaxy frame, which is
+      // also what applies the system's centre and its lean.
+      galaxyBuilder.attach(system, builder.rootGroup);
+      builders.set(system.id, builder);
+    }
+    sceneBuildersRef.current = builders;
 
     // Both refs are live now, so the framing owner can seed the initial pose —
     // and re-seed it whenever this effect rebuilds the scene.
@@ -264,6 +299,31 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // 6. Raycasting and pointer interaction
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
+    /**
+     * Every hit target in the galaxy, each paired with the system that owns it.
+     *
+     * Paired rather than flattened, because `isHitVisible` and
+     * `setHoveredTarget` are a builder's own business: a target is only
+     * meaningful next to the scene it was registered from. Order follows the
+     * map, so the atlas comes first and an ambiguous hit resolves the way it
+     * resolved when the atlas was the only system there was.
+     */
+    const hitObjects = () =>
+      [...builders.values()].flatMap((builder) =>
+        builder.hitObjects.map((hitObj) => ({ builder, hitObj })),
+      );
+
+    /**
+     * Hover is one visitor's attention, so at most one system may hold it.
+     * The others are cleared rather than left alone — a highlight in the system
+     * the pointer has just left would otherwise stay lit for good.
+     */
+    const setHovered = (owner: WorldSceneBuilder | null, target: HoverTarget | null) => {
+      for (const builder of builders.values()) {
+        builder.setHoveredTarget(builder === owner ? target : null);
+      }
+    };
     let isDragging = false;
     let dragDistance = 0;
     let previousPointer = { x: 0, y: 0 };
@@ -284,16 +344,16 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       const hoverTypes = new Set(["ideal", "planet", "ring", "arm"]);
       // isHitVisible is a no-op for ring/arm (always true) and only actually
       // filters ideal/planet — an un-born one must not be hoverable either.
-      const candidates = sceneBuilder.hitObjects.filter(
-        (h) => hoverTypes.has(h.type) && sceneBuilder.isHitVisible(h),
+      const candidates = hitObjects().filter(
+        ({ builder, hitObj }) => hoverTypes.has(hitObj.type) && builder.isHitVisible(hitObj),
       );
       if (candidates.length === 0) return;
 
-      const meshes = candidates.map((h) => h.mesh);
+      const meshes = candidates.map((c) => c.hitObj.mesh);
       const intersects = raycaster.intersectObjects(meshes, true);
 
       if (intersects.length === 0) {
-        sceneBuilder.setHoveredTarget(null);
+        setHovered(null, null);
         return;
       }
 
@@ -307,7 +367,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
       const resolvedHits = intersects
         .map((hit) => {
-          const hitObj = candidates.find((h) => {
+          const owner = candidates.find(({ hitObj: h }) => {
             if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
             let curr: THREE.Object3D | null = hit.object;
             while (curr) {
@@ -316,12 +376,14 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
             }
             return false;
           });
-          return hitObj ? { hitObj, hit } : null;
+          return owner ? { ...owner, hit } : null;
         })
-        .filter((item): item is { hitObj: (typeof candidates)[0]; hit: THREE.Intersection } => item !== null);
+        .filter(
+          (item): item is (typeof candidates)[0] & { hit: THREE.Intersection } => item !== null,
+        );
 
       if (resolvedHits.length === 0) {
-        sceneBuilder.setHoveredTarget(null);
+        setHovered(null, null);
         return;
       }
 
@@ -333,7 +395,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       });
 
       const best = resolvedHits[0];
-      sceneBuilder.setHoveredTarget({
+      setHovered(best.builder, {
         type: best.hitObj.type as "ideal" | "planet" | "ring" | "arm",
         id: best.hitObj.id,
         instanceId: best.hit.instanceId,
@@ -366,12 +428,12 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         // Raycasting ignores `Object3D.visible`, so a body the timeline
         // transport hasn't drawn yet must be excluded here explicitly rather
         // than relying on it being hidden.
-        const clickable = sceneBuilder.hitObjects.filter(
-          (h) =>
-            (h.type === "planet" || h.type === "sector" || h.type === "body") &&
-            sceneBuilder.isHitVisible(h),
+        const clickable = hitObjects().filter(
+          ({ builder, hitObj }) =>
+            (hitObj.type === "planet" || hitObj.type === "sector" || hitObj.type === "body") &&
+            builder.isHitVisible(hitObj),
         );
-        const meshesToTest = clickable.map((h) => h.mesh);
+        const meshesToTest = clickable.map((c) => c.hitObj.mesh);
         const intersects = raycaster.intersectObjects(meshesToTest, true);
 
         if (intersects.length > 0) {
@@ -379,7 +441,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
           // The five planets are one InstancedMesh, so the mesh alone no longer
           // says which was clicked — without the instance check every planet
           // resolves to whichever registered first.
-          const hitObj = clickable.find((h) => {
+          const hitObj = clickable.find(({ hitObj: h }) => {
             if (h.instanceId !== undefined && h.instanceId !== hit.instanceId) return false;
             let curr: THREE.Object3D | null = hit.object;
             while (curr) {
@@ -387,7 +449,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
               curr = curr.parent;
             }
             return false;
-          });
+          })?.hitObj;
 
           if (hitObj) {
             if (hitObj.type === "planet" || hitObj.type === "sector") {
@@ -401,7 +463,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     };
 
     const onPointerLeave = () => {
-      sceneBuilder.setHoveredTarget(null);
+      setHovered(null, null);
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -424,8 +486,10 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       renderer.setSize(width, height);
       composer.setSize(width, height);
       bloomPass.resolution.set(width, height);
-      sceneBuilder.setResolution(width, height);
-    sceneBuilder.setCosmicMode(cosmicMode);
+      for (const builder of builders.values()) {
+        builder.setResolution(width, height);
+        builder.setCosmicMode(cosmicMode);
+      }
     };
     window.addEventListener("resize", onResize);
 
@@ -441,11 +505,18 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
       // Update controllers
       dayNight.update(delta);
-      // The sun travels, so the planets are told where it is every frame.
-      sceneBuilder.setLightDirection(dayNight.sunDirection());
       cameraManager.update(delta);
-      sceneBuilder.update(elapsed, delta);
+      // Once, and before the systems that hang off it.
       galaxyBuilder.update(elapsed);
+      // The sun travels, so the planets are told where it is every frame — one
+      // sun for the whole galaxy, read once. `sunDirection` returns a vector it
+      // reuses and `setLightDirection` copies it, so asking per builder would
+      // buy nothing but the same answer twice.
+      const sun = dayNight.sunDirection();
+      for (const builder of builders.values()) {
+        builder.setLightDirection(sun);
+        builder.update(elapsed, delta);
+      }
 
       // Render through EffectComposer with Optical Bloom
       composer.render();
@@ -459,10 +530,24 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
         // `planetPins.ts`, where the rule can be tested: heights are authored,
         // the horizontal comes off the scene graph every frame, because the
         // pattern turns and a constant would leave the pins behind.
-        for (const { id, anchor } of planetPinAnchors(sceneBuilder)) {
-          const p = projectToScreen(anchor, cam, width, height);
-          if (p.depth < 1) {
-            points.push({ id, x: p.x, y: p.y, visible: true, depth: p.depth });
+        // Per builder and concatenated. `PIN_HEIGHTS` is keyed by arm,
+        // `validateGalaxy` guarantees arm ids are unique across the galaxy, and
+        // `planetFrame` answers only for the arms its own system declares — so
+        // no two builders offer the same arm.
+        //
+        // The core is the exception, and not one uniqueness can settle: every
+        // solar system HAS one, and they all answer to the id `solarSystem`.
+        // The overlay keys pins by id, so only the atlas's is projected. Which
+        // system's core is worth naming is the system switcher's question, and
+        // it is answered where that lands.
+        for (const [scopeId, builder] of builders) {
+          const isAtlas = scopeId === SOLAR_SYSTEM_ZEMI.id;
+          for (const { id, anchor } of planetPinAnchors(builder)) {
+            if (id === "solarSystem" && !isAtlas) continue;
+            const p = projectToScreen(anchor, cam, width, height);
+            if (p.depth < 1) {
+              points.push({ id, x: p.x, y: p.y, visible: true, depth: p.depth });
+            }
           }
         }
 
@@ -520,12 +605,19 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       window.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onResize);
+      // Every system, then the frame they hang off. This effect rebuilds on a
+      // day/night toggle, so anything missed here is stranded on the GPU for
+      // the life of the page, once per toggle, for as long as a visitor keeps
+      // pressing it.
+      for (const builder of builders.values()) builder.dispose();
       galaxyBuilder.dispose();
       composer.dispose();
       renderer.dispose();
     };
   }, [
-    bodies,
+    // `bodies` is deliberately absent: each system's body set now comes from
+    // `bodiesFor`, so the prop no longer describes anything this effect builds.
+    // It is still what the framing owner below measures against.
     onSelectSector,
     onSelectBody,
     onProjectPins,
@@ -552,7 +644,11 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   const surfaceTargetsRef = useRef<SurfaceTarget[]>([]);
   const frameRef = useRef<() => void>(() => {});
   frameRef.current = () => {
-    const builder = sceneBuilderRef.current;
+    // Asks for the atlas by name rather than for "the builder". Every framing
+    // this switch handles today names something in the atlas; which system a
+    // framing belongs to is the galaxy camera's question, and it is answered
+    // where that lands.
+    const builder = builderFor(SOLAR_SYSTEM_ZEMI.id);
     const camera = cameraManagerRef.current;
     if (!builder || !camera) return;
 

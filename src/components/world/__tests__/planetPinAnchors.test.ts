@@ -9,7 +9,16 @@ import { patternAngle } from "@/lib/atlas/motion";
 import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
-const PLANETS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "solarSystem");
+/**
+ * The arms THIS system draws, taken from its own declaration.
+ *
+ * Not `PIN_HEIGHTS` minus the core, which is what it was while the atlas was
+ * the only solar system there was. That table is keyed by arm across the whole
+ * galaxy, so once the channel was registered it began to describe planets this
+ * builder does not draw — and every assertion below would have gone on passing,
+ * because the layout fallback answered for them.
+ */
+const PLANETS = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
 
 function built() {
   const builder = new WorldSceneBuilder(new THREE.Scene(), SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
@@ -30,8 +39,23 @@ describe("planet pins are anchored to planets", () => {
     const scoped = [...built().scopeGroups.keys()].filter((k) => k.startsWith("planet:"));
     expect(scoped.length).toBeLessThan(PLANETS.length);
     expect(planetPinAnchors(built()).map((p) => p.id).sort()).toEqual(
-      Object.keys(PIN_HEIGHTS).sort(),
+      ["solarSystem", ...PLANETS].sort(),
     );
+  });
+
+  it("pins no planet belonging to another solar system", () => {
+    // The pins of two systems are projected into one overlay, keyed by arm. A
+    // builder that answers for an arm it does not draw does not merely add a
+    // stray label: it anchors another system's planet inside this one, at a
+    // layout centre expressed in a frame that is not the one it is composed
+    // through. Every id here would also collide with the same id from the
+    // system that really owns it.
+    const drawn = new Set(planetPinAnchors(built()).map((p) => p.id));
+    const elsewhere = Object.keys(PIN_HEIGHTS).filter(
+      (arm) => arm !== "solarSystem" && !(arm in SOLAR_SYSTEM_ZEMI.arms),
+    );
+    expect(elsewhere.length, "no other system declares arms, so this proves nothing").toBeGreaterThan(0);
+    expect(elsewhere.filter((arm) => drawn.has(arm))).toEqual([]);
   });
 
   it("keeps every pin over its own planet once the pattern has turned", () => {

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { CAMERA_PRESETS, PLANET_RADII, WorldCameraManager } from "../WorldCameraManager";
 import { planetFrame, drawnWorldPosition, framedBody } from "../planetFrames";
-import { planetPinAnchors, PIN_HEIGHTS } from "../planetPins";
+import { planetPinAnchors } from "../planetPins";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { patternAngle } from "@/lib/atlas/motion";
 import { AT_SOLAR_SYSTEM, framingFor, journeyReducer } from "@/lib/atlas/journey";
@@ -13,8 +13,16 @@ import { declaresSurface } from "@/lib/atlas/surfaces";
 import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
-/** Every arm the top nav can name. */
-const ARMS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "solarSystem");
+/**
+ * Every arm THIS solar system draws — which is every arm the nav can name while
+ * the atlas is the system being framed.
+ *
+ * Taken from the system's own declaration rather than from `PIN_HEIGHTS`, which
+ * is keyed by arm across the whole galaxy: since the channel was registered,
+ * that table names four planets this builder does not draw, and asking it for
+ * them is asking the wrong scene.
+ */
+const ARMS = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
 
 let builder: WorldSceneBuilder;
 let camera: WorldCameraManager;
