@@ -343,6 +343,15 @@ export class WorldSceneBuilder {
 
   constructor(
     private scene: THREE.Scene,
+    /**
+     * The solar system this builder draws.
+     *
+     * Everything below is derived from it: the root group's id, the epoch days
+     * are counted from, and the arm angles the spiral is wound on. A second
+     * orrery is this builder with a different scope, which is the whole reason
+     * there is no second builder.
+     */
+    public readonly scope: Scope,
     private bodies: Body[],
     private today: string,
     /** Fraction of the field budget to draw. See `fieldDensityFor`. */
@@ -357,7 +366,7 @@ export class WorldSceneBuilder {
      */
     private reducedMotion = false,
   ) {
-    for (const body of bodies) this.bornDayById.set(body.id, daysSinceEpoch(body.bornAt));
+    for (const body of bodies) this.bornDayById.set(body.id, daysSinceEpoch(body.bornAt, this.scope.epoch));
   }
 
   public build(): void {
@@ -398,20 +407,20 @@ export class WorldSceneBuilder {
    * ideals' lean stays on the ring group inside.
    */
   private registerScopeGroups(): void {
-    this.rootGroup.name = SOLAR_SYSTEM_ZEMI.id;
-    this.scopeGroups.set(SOLAR_SYSTEM_ZEMI.id, this.rootGroup);
+    this.rootGroup.name = this.scope.id;
+    this.scopeGroups.set(this.scope.id, this.rootGroup);
 
     const centers = new Map(
-      derivePlanets(this.bodies).map((p) => [p.arm, toScene(p.center)]),
+      derivePlanets(this.bodies, this.scope).map((p) => [p.arm, toScene(p.center)]),
     );
-    for (const scope of derivePlanetScopes(this.bodies)) {
-      const center = centers.get(scope.id.replace("planet:", ""));
+    for (const planetScope of derivePlanetScopes(this.bodies, this.scope)) {
+      const center = centers.get(planetScope.id.replace("planet:", ""));
       if (!center) continue;
       const group = new THREE.Group();
-      group.name = scope.id;
+      group.name = planetScope.id;
       group.position.set(center.x, PLANET_Y, center.z);
       this.rootGroup.add(group);
-      this.scopeGroups.set(scope.id, group);
+      this.scopeGroups.set(planetScope.id, group);
     }
   }
 
@@ -427,7 +436,7 @@ export class WorldSceneBuilder {
    * made visible rather than asserted.
    */
   private buildAstrolabeConcentricRings(): void {
-    const reach = deriveWorldRadius(this.bodies);
+    const reach = deriveWorldRadius(this.bodies, this.scope);
 
     for (let month = 1; ; month++) {
       const layoutRadius = radiusScale(month * DAYS_PER_MONTH);
@@ -461,7 +470,7 @@ export class WorldSceneBuilder {
       pick.rotation.x = -Math.PI / 2;
       this.rootGroup.add(pick);
 
-      const ann = deriveRingAnnotation(month, this.bodies, SOLAR_SYSTEM_ZEMI, DAYS_PER_MONTH);
+      const ann = deriveRingAnnotation(month, this.bodies, this.scope, DAYS_PER_MONTH);
       const label = this.createAnnotationLabel(ann.title, ann.subtitle);
       label.position.set(0, 0.8, -rScene);
       label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -512,7 +521,7 @@ export class WorldSceneBuilder {
     frontierPick.rotation.x = -Math.PI / 2;
     this.rootGroup.add(frontierPick);
 
-    const frontierAnn = deriveRingAnnotation("frontier", this.bodies, SOLAR_SYSTEM_ZEMI);
+    const frontierAnn = deriveRingAnnotation("frontier", this.bodies, this.scope);
     const frontierLabel = this.createAnnotationLabel(frontierAnn.title, frontierAnn.subtitle);
     frontierLabel.position.set(0, 0.8, -frontierR);
     frontierLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -598,13 +607,13 @@ export class WorldSceneBuilder {
   /**
    * 2. The deep field. Dark points on a light ground: engraved, not emitted.
    *
-   * The old haze re-derived the spiral from `SOLAR_SYSTEM_ZEMI.arms` and then rotated
+   * The old haze re-derived the spiral from the system's own `arms` and then rotated
    * itself in `update()`, so within two minutes the drawn arms had slid off the
    * repositories they were drawing. This one is anchored on the placements and
    * does not move.
    */
   public buildBackgroundField(): void {
-    const { positions, armDustDays, phases } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
+    const { positions, armDustDays, phases } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE, this.scope);
 
     // The buffer is always generated whole — it is one cheap pass — and the
     // narrow-viewport budget is taken as a prefix. The generator draws in
@@ -704,7 +713,7 @@ export class WorldSceneBuilder {
     corePick.position.set(0, 0, 0);
     sunGroup.add(corePick);
 
-    const coreAnn = derivePlanetAnnotation("solarSystem", this.bodies, SOLAR_SYSTEM_ZEMI);
+    const coreAnn = derivePlanetAnnotation("solarSystem", this.bodies, this.scope);
     const coreLabel = this.createAnnotationLabel(coreAnn.title, coreAnn.subtitle);
     coreLabel.position.set(0, 1.2, CORE_RADIUS + 4.2);
     coreLabel.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -732,7 +741,7 @@ export class WorldSceneBuilder {
    * planets — pattern, spin, base, accent — rides on instance attributes.
    */
   private buildPlanetarySpheres(): void {
-    const planets = derivePlanets(this.bodies);
+    const planets = derivePlanets(this.bodies, this.scope);
     const count = planets.length;
 
     // Radius 1: the drawn size is the instance scale, so mass stays a property
@@ -763,7 +772,7 @@ export class WorldSceneBuilder {
       // Read the pole off a vector rather than assembling Euler angles by hand.
       // Composing angles by hand is exactly the error that put the surface
       // spike's first landing ninety degrees off its parent.
-      const lean = obliquityFor(planet.arm);
+      const lean = obliquityFor(planet.arm, this.scope);
       const pole = new THREE.Vector3(
         Math.sin(lean.magnitude) * Math.cos(lean.azimuth),
         Math.cos(lean.magnitude),
@@ -798,7 +807,7 @@ export class WorldSceneBuilder {
       pickSphere.position.set(center.x, PLANET_Y, center.z);
       this.rootGroup.add(pickSphere);
 
-      const ann = derivePlanetAnnotation(planet.arm, this.bodies, SOLAR_SYSTEM_ZEMI);
+      const ann = derivePlanetAnnotation(planet.arm, this.bodies, this.scope);
       const label = this.createAnnotationLabel(ann.title, ann.subtitle);
       label.position.set(center.x, PLANET_Y, center.z + radius + 4.5);
       label.scale.set(ANNOTATION_LABEL_SCALE * ANNOTATION_LABEL_ASPECT, ANNOTATION_LABEL_SCALE, 1);
@@ -857,7 +866,7 @@ export class WorldSceneBuilder {
   private buildIdealRings(): void {
     const labels = new Map(this.bodies.map((b) => [b.id, b.label || b.id]));
 
-    for (const planet of derivePlanets(this.bodies)) {
+    for (const planet of derivePlanets(this.bodies, this.scope)) {
       const ideals = idealsFor(planet.arm);
       if (ideals.length === 0) continue;
 
@@ -874,8 +883,8 @@ export class WorldSceneBuilder {
       // Derived, not authored: the old per-planet `tilt` was a typed table.
       // Reading the arm's own base angle gives every planet a different plane,
       // and a sixth arm gets one without anybody choosing a number.
-      group.rotation.x = -Math.PI / 2 + SOLAR_SYSTEM_ZEMI.arms[planet.arm] * 0.28;
-      group.rotation.y = SOLAR_SYSTEM_ZEMI.arms[planet.arm] * 0.14;
+      group.rotation.x = -Math.PI / 2 + this.scope.arms[planet.arm] * 0.28;
+      group.rotation.y = this.scope.arms[planet.arm] * 0.14;
 
       for (const ideal of ideals) {
         const r = radius * (1.6 + ideal.ordinal * 0.36);
@@ -1056,7 +1065,7 @@ export class WorldSceneBuilder {
    * Generates generous invisible ribbon pick meshes and constant screen-size labels for all galactic arms.
    */
   private buildArmDustPickTargets(): void {
-    const placements = placeBodies(this.bodies);
+    const placements = placeBodies(this.bodies, this.scope);
     const armOf = new Map(this.bodies.map((b) => [b.id, b.arm]));
     const spans = new Map<string, { min: number; max: number; count: number }>();
 
@@ -1071,7 +1080,7 @@ export class WorldSceneBuilder {
     const segments = 36;
     for (const [arm, span] of spans.entries()) {
       const ann = deriveArmAnnotation(arm, this.bodies);
-      const baseAngle = SOLAR_SYSTEM_ZEMI.arms[arm];
+      const baseAngle = this.scope.arms[arm];
       if (baseAngle === undefined) continue;
 
       const rMin = Math.max(BULGE, span.min * 0.85);
@@ -1082,7 +1091,7 @@ export class WorldSceneBuilder {
       for (let s = 0; s <= segments; s++) {
         const t = s / segments;
         const r = rMin + t * (rMax - rMin);
-        const theta = baseAngle + SOLAR_SYSTEM_ZEMI.windRate * Math.log(1 + r);
+        const theta = baseAngle + this.scope.windRate * Math.log(1 + r);
         const dTheta = 0.35 + r * 0.012;
 
         const rScene = r * SCENE_SCALE;
@@ -1117,7 +1126,7 @@ export class WorldSceneBuilder {
       this.rootGroup.add(pickMesh);
 
       const rMid = (rMin + rMax) / 2;
-      const thetaMid = baseAngle + SOLAR_SYSTEM_ZEMI.windRate * Math.log(1 + rMid);
+      const thetaMid = baseAngle + this.scope.windRate * Math.log(1 + rMid);
       const labelPos = new THREE.Vector3(
         Math.cos(thetaMid) * rMid * SCENE_SCALE,
         1.2,
@@ -1282,7 +1291,7 @@ export class WorldSceneBuilder {
    */
   public setClockDate(date: string): void {
     this.clockDate = date;
-    const day = daysSinceEpoch(date, SOLAR_SYSTEM_ZEMI.epoch); // Task 7 replaces this with this.scope.
+    const day = daysSinceEpoch(date, this.scope.epoch);
 
     this.visibleBodyIds.clear();
     for (const gate of this.bodyGates) {
@@ -1299,7 +1308,7 @@ export class WorldSceneBuilder {
     }
 
     if (this.planetMesh) {
-      const growthByArm = new Map(planetGrowthAt(this.bodies, day).map((p) => [p.arm, p]));
+      const growthByArm = new Map(planetGrowthAt(this.bodies, day, this.scope).map((p) => [p.arm, p]));
       this.visiblePlanetArms.clear();
       for (const instance of this.planetInstances) {
         const growth = growthByArm.get(instance.arm);
@@ -1368,13 +1377,13 @@ export class WorldSceneBuilder {
    */
   private buildMoons(): void {
     const centers = new Map(
-      derivePlanets(this.bodies).map((p) => [
+      derivePlanets(this.bodies, this.scope).map((p) => [
         p.arm,
         { center: toScene(p.center), radius: p.radius * SCENE_SCALE },
       ]),
     );
 
-    for (const moon of deriveMoons(this.bodies)) {
+    for (const moon of deriveMoons(this.bodies, this.scope)) {
       const planet = centers.get(moon.arm);
       if (!planet) continue;
 
@@ -1496,11 +1505,11 @@ export class WorldSceneBuilder {
 
   /** 6. 🛰️ Satellites and Repositories orbiting their respective planets */
   private buildSatellitesAndBodies(): void {
-    const placements = placeBodies(this.bodies);
+    const placements = placeBodies(this.bodies, this.scope);
     const placementMap = new Map(placements.map((p) => [p.id, p]));
     // Drawn in orbit by buildMoons. `placeBodies` still lays all of them out —
     // the layout is untouched — but a body belongs on screen exactly once.
-    const inOrbit = moonIds(this.bodies);
+    const inOrbit = moonIds(this.bodies, this.scope);
 
     for (const body of this.bodies) {
       if (inOrbit.has(body.id)) continue;

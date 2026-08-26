@@ -5,6 +5,7 @@ import { DayNightController, SUN_ARC_PERIOD_SECONDS } from "../DayNightControlle
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { ASTROLABE_OUTER } from "../WorldCameraManager";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 function controller() {
   return new DayNightController(new THREE.Scene(), "day");
@@ -53,7 +54,7 @@ describe("the sun moves", () => {
 
 function builtScene() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, loadBodies(), "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, loadBodies(), "2026-08-22", 1);
   builder.build();
   const mesh = builder.rootGroup.getObjectByName("planet-surfaces") as THREE.InstancedMesh;
   return { builder, material: mesh.material as THREE.ShaderMaterial };

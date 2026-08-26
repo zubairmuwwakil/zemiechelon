@@ -10,6 +10,7 @@ import { patternAngle } from "@/lib/atlas/motion";
 import { AT_SOLAR_SYSTEM, framingFor, journeyReducer } from "@/lib/atlas/journey";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { declaresSurface } from "@/lib/atlas/surfaces";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 /** Every arm the top nav can name. */
@@ -19,7 +20,7 @@ let builder: WorldSceneBuilder;
 let camera: WorldCameraManager;
 
 beforeEach(() => {
-  builder = new WorldSceneBuilder(new THREE.Scene(), bodies, "2026-08-22", 1);
+  builder = new WorldSceneBuilder(new THREE.Scene(), SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   camera = new WorldCameraManager(1200, 897);
 });

@@ -3,11 +3,11 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
-import { planetScopeId } from "@/lib/atlas/scopes";
+import { SOLAR_SYSTEM_ZEMI, planetScopeId } from "@/lib/atlas/scopes";
 
 function built() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, loadBodies(), "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, loadBodies(), "2026-08-22", 1);
   builder.build();
   return { scene, builder };
 }

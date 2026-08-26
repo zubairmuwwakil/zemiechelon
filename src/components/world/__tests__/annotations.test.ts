@@ -10,7 +10,7 @@ const bodies = loadBodies();
 describe("element annotations and hit testing", () => {
   it("registers generous pick meshes for astrolabe month rings and the frontier ring", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     const ringHits = builder.hitObjects.filter((h) => h.type === "ring");
@@ -31,7 +31,7 @@ describe("element annotations and hit testing", () => {
 
   it("registers pick meshes for all 5 galactic arms", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     const armHits = builder.hitObjects.filter((h) => h.type === "arm");
@@ -54,7 +54,7 @@ describe("element annotations and hit testing", () => {
 
   it("registers planet hit objects for all planets and central core", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     const planetHits = builder.hitObjects.filter((h) => h.type === "planet");
@@ -66,7 +66,7 @@ describe("element annotations and hit testing", () => {
 
   it("handles hover transitions for astrolabe rings", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     // Hover month 3 ring
@@ -77,7 +77,7 @@ describe("element annotations and hit testing", () => {
 
   it("handles hover transitions for planets and arms", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     // Hover Products planet
@@ -92,7 +92,7 @@ describe("element annotations and hit testing", () => {
 
   it("swaps cosmic mode between day and night without error", () => {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
     builder.build();
 
     expect(() => builder.setCosmicMode("night")).not.toThrow();

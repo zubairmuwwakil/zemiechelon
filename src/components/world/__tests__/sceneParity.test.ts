@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import golden from "./__fixtures__/scene-golden.json";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const EXPECTED_COUNT = 45;
 
@@ -17,7 +18,7 @@ const EXPECTED_COUNT = 45;
  */
 function captureWorldPositions(): Array<{ id: string; position: number[] }> {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, loadBodies(), "2026-08-21");
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, loadBodies(), "2026-08-21");
   builder.build();
   builder.rootGroup.updateMatrixWorld(true);
 

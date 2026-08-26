@@ -21,7 +21,7 @@ let camera: WorldCameraManager;
 
 beforeEach(() => {
   scene = new THREE.Scene();
-  builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   camera = new WorldCameraManager(1280, 800);
 });

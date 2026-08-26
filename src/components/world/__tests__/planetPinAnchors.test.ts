@@ -6,12 +6,13 @@ import { PIN_HEIGHTS, planetPinAnchors } from "../planetPins";
 import { PLANET_CENTERS } from "../WorldCameraManager";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { patternAngle } from "@/lib/atlas/motion";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 const PLANETS = Object.keys(PIN_HEIGHTS).filter((id) => id !== "solarSystem");
 
 function built() {
-  const builder = new WorldSceneBuilder(new THREE.Scene(), bodies, "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(new THREE.Scene(), SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   return builder;
 }

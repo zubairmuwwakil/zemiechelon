@@ -9,13 +9,14 @@ import type { SurfaceTargetPoint } from "../WorldCanvas";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { moonScopeId, planetScopeId } from "@/lib/atlas/galaxy";
 import { surfacePropsFor } from "@/lib/atlas/surfaces";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 const PRODUCTS = planetScopeId("products");
 const PICKME = moonScopeId("PickMe");
 
 function builder() {
-  const b = new WorldSceneBuilder(new THREE.Scene(), bodies, "2026-08-22", 1);
+  const b = new WorldSceneBuilder(new THREE.Scene(), SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   b.build();
   return b;
 }

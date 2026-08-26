@@ -5,13 +5,14 @@ import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { deriveMoons } from "@/lib/atlas/moons";
 import { moonScopeId, planetScopeId } from "@/lib/atlas/galaxy";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 const PRODUCTS = planetScopeId("products");
 
 function built() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   return { scene, builder };
 }

@@ -241,6 +241,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
 
     const sceneBuilder = new WorldSceneBuilder(
       scene,
+      SOLAR_SYSTEM_ZEMI,
       bodies,
       today,
       fieldDensityFor(width),

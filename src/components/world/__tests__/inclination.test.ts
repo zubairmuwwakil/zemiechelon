@@ -6,13 +6,14 @@ import { loadBodies } from "@/lib/atlas/bodies";
 import { deriveMoons } from "@/lib/atlas/moons";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { MAX_INCLINATION } from "@/lib/atlas/motion";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 const moons = deriveMoons(bodies);
 
 function built() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   return builder;
 }

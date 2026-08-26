@@ -15,7 +15,7 @@ const asDate = (day: number) => dateAtDay(day, SOLAR_SYSTEM_ZEMI.epoch);
 
 function build(): WorldSceneBuilder {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-21");
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-21");
   builder.build();
   builder.rootGroup.updateMatrixWorld(true);
   return builder;

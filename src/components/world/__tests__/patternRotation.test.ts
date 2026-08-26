@@ -20,7 +20,7 @@ const bodies = loadBodies();
 
 function built() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   return builder;
 }
@@ -76,7 +76,7 @@ describe("the pattern turns", () => {
     const scene = new THREE.Scene();
     const galaxy = new GalaxyBuilder(scene);
     galaxy.build();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
     builder.build();
     galaxy.attach(SOLAR_SYSTEM_ZEMI, builder.rootGroup);
 
@@ -181,7 +181,7 @@ describe("positions are read, not remembered", () => {
 describe("reduced motion", () => {
   function still() {
     const scene = new THREE.Scene();
-    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1, true);
+    const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1, true);
     builder.build();
     return builder;
   }

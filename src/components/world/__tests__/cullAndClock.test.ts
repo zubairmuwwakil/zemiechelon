@@ -19,7 +19,7 @@ const bodies = loadBodies();
 
 function built() {
   const scene = new THREE.Scene();
-  const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+  const builder = new WorldSceneBuilder(scene, SOLAR_SYSTEM_ZEMI, bodies, "2026-08-22", 1);
   builder.build();
   return { scene, builder };
 }
