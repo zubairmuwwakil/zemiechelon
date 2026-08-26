@@ -41,7 +41,7 @@ export function fieldDensityFor(width: number): number {
   return width < NARROW_VIEWPORT ? MOBILE_FIELD_SCALE : 1;
 }
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -338,13 +338,6 @@ export class WorldSceneBuilder {
   private armDustGeometry: THREE.BufferGeometry | null = null;
   private armDustSortedDays: Float32Array = new Float32Array(0);
 
-  /**
-   * The 12,000-point sky. Held because it is a child of `rootGroup` and must be
-   * counter-rotated: rotation is only perceptible against something that is not
-   * rotating, and without this the pattern and its own reference cancel.
-   */
-  private skyShell: THREE.Points | null = null;
-
   /** Every body's own birth day, since the galaxy epoch. Computed once; gating reads it many times. */
   private readonly bornDayById = new Map<string, number>();
 
@@ -613,51 +606,18 @@ export class WorldSceneBuilder {
   public buildBackgroundField(): void {
     const { positions, armDustDays, phases } = buildFieldGeometry(this.bodies, 20260820, SCENE_SCALE);
 
-    // The shell reads as sky and the dust as ground, so they need different
-    // weights — but not different generation passes. Two geometries over
-    // subarray views of one buffer: `setDrawRange` lives on the geometry, so
-    // sharing one would give both layers the same range.
-    const layer = (
-      from: number,
-      count: number,
-      size: number,
-      opacity: number,
-      attenuate: boolean,
-      name: string,
-    ) => {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(positions.subarray(from * 3, (from + count) * 3), 3),
-      );
-      geometry.setAttribute(
-        "aPhase",
-        new THREE.BufferAttribute(phases.subarray(from, from + count), 1),
-      );
-      const points = new THREE.Points(
-        geometry,
-        // The shell is sky. Fading it into the paper would delete it, since
-        // the fog colour is the paper — so fog follows attenuation, as before.
-        createFieldMaterial({ size, opacity, attenuate, fog: attenuate }),
-      );
-      points.name = name;
-      if (name === "background-field") this.skyShell = points;
-      this.fieldMaterials.push(points.material as THREE.ShaderMaterial);
-      // The shell is larger than any frustum test three.js will infer cheaply,
-      // and a wrongly-culled sky is indistinguishable from a missing one.
-      points.frustumCulled = false;
-      this.rootGroup.add(points);
-    };
-
-    // Stars do not attenuate: they sit 300-870 units out, where a world-space
-    // size of 0.9 rasterises to half a pixel and is dropped entirely. A fixed
-    // pixel size is also what a sky should do — it must not swell on zoom.
     // The buffer is always generated whole — it is one cheap pass — and the
-    // narrow-viewport budget is taken as a prefix of each region. The generator
-    // draws in random order, so a prefix is a uniform sample of the same field
-    // rather than a different one.
+    // narrow-viewport budget is taken as a prefix. The generator draws in
+    // random order, so a prefix is a uniform sample of the same field rather
+    // than a different one.
+    //
+    // Only the dust half is drawn here. The sky belongs to `GalaxyBuilder`, and
+    // the star half of this buffer is now generated and dropped on the floor —
+    // deliberately, and it must stay that way: the two halves come off ONE
+    // `mulberry32` stream, stars first, so skipping the star loop would leave
+    // the dust drawing from a stream 36,000 draws earlier and move every mote
+    // in the map. `dustParity.test.ts` is the guard on exactly that.
     const budget = (n: number) => Math.max(1, Math.round(n * this.fieldDensity));
-    layer(0, budget(BACKGROUND_STAR_COUNT), 1.6, 0.5, false, "background-field");
 
     // Arm dust follows its anchor bodies (§3.8): the buffer is re-ordered by
     // each point's anchor birth day so a plain `setDrawRange` prefix is exactly
@@ -1602,9 +1562,6 @@ export class WorldSceneBuilder {
     // claiming that angle means arm and radius means time.
     const pattern = this.reducedMotion ? 0 : patternAngle(elapsed);
     this.rootGroup.rotation.y = pattern;
-    // The sky is the fixed reference the pattern is seen against. It rides the
-    // root like everything else, so it has to be given the rotation back.
-    if (this.skyShell) this.skyShell.rotation.y = -pattern;
 
     // Rotate central corona rings
     this.centralCoronaRings.forEach((ring, idx) => {

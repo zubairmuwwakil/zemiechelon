@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder } from "../WorldSceneBuilder";
+import { GALAXY_SKY, GalaxyBuilder } from "../GalaxyBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import {
   PATTERN_PERIOD_SECONDS,
@@ -63,16 +64,29 @@ describe("the pattern turns", () => {
   });
 
   it("holds the sky still, or the rotation cancels and ships as a still image", () => {
-    // The 12,000-point shell is a child of rootGroup. Rotating the root without
-    // countering the shell rotates the reference with the content, and the two
-    // cancel to zero perceived motion — a bug invisible to code review and to
-    // every placement test.
-    const builder = built();
-    const shell = builder.rootGroup.getObjectByName("background-field")!;
+    // Rotating the root while the sky rides it rotates the reference with the
+    // content, and the two cancel to zero perceived motion — a bug invisible to
+    // code review and to every placement test.
+    //
+    // This used to be bought with `skyShell.rotation.y = -pattern`, a correction
+    // applied every frame. The sky now hangs off the galaxy frame, which does
+    // not rotate, so the property is structural rather than maintained. The
+    // assertion is unchanged on purpose: it is the same guarantee, and it is
+    // still the one worth guarding — only the mechanism that provides it moved.
+    const scene = new THREE.Scene();
+    const galaxy = new GalaxyBuilder(scene);
+    galaxy.build();
+    const builder = new WorldSceneBuilder(scene, bodies, "2026-08-22", 1);
+    builder.build();
+    galaxy.attach(SOLAR_SYSTEM_ZEMI, builder.rootGroup);
+
+    const shell = galaxy.rootGroup.getObjectByName(GALAXY_SKY) as THREE.Points;
     const sample = (): THREE.Vector3 => {
-      builder.rootGroup.updateMatrixWorld(true);
-      const geometry = (shell as THREE.Points).geometry;
-      const local = new THREE.Vector3().fromBufferAttribute(geometry.getAttribute("position"), 0);
+      scene.updateMatrixWorld(true);
+      const local = new THREE.Vector3().fromBufferAttribute(
+        shell.geometry.getAttribute("position"),
+        0,
+      );
       return local.applyMatrix4(shell.matrixWorld);
     };
     const before = sample();

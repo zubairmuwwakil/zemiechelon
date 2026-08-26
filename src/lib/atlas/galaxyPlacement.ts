@@ -151,9 +151,27 @@ export function placeSolarSystem(system: Scope): SystemPlacement {
  * outermost system. What the galaxy camera pose is sized against, exactly as
  * `SOLAR_SYSTEM_POSE` is sized against `ASTROLABE_OUTER`.
  */
+/**
+ * The sky shell's inner and outer radius, as multiples of `GALAXY_REACH`.
+ *
+ * Kept here rather than inside the builder that draws them because the CAMERA
+ * has to know how far the sky reaches: `setFrameScale`'s far plane is
+ * contracted to reach the whole world, and since this task the sky is the
+ * outermost thing in it. Two readers, one fact.
+ *
+ * The multiples themselves are unchanged from the shell this replaced — only
+ * what they multiply is different, which is what makes "the sky got bigger"
+ * the whole of the visible change.
+ */
+export const SKY_SHELL_INNER = 1.5;
+export const SKY_SHELL_DEPTH = 1.3;
+
 export const GALAXY_REACH: number = Math.max(
   ...SOLAR_SYSTEMS.map((system) => {
     const c = placeSolarSystem(system).center;
     return Math.hypot(c.x, c.y, c.z) + systemReach(system);
   }),
 );
+
+/** How far the sky reaches, in scene units. The outermost thing in the world. */
+export const GALAXY_SKY_OUTER: number = GALAXY_REACH * (SKY_SHELL_INNER + SKY_SHELL_DEPTH);

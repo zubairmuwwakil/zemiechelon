@@ -3,6 +3,7 @@ import { derivePlanets } from "@/lib/atlas/planets";
 import { bodiesFor } from "@/lib/atlas/bodies";
 import { SOLAR_SYSTEMS, type Scope } from "@/lib/atlas/scopes";
 import { ASTROLABE_OUTER, SCENE_SCALE } from "@/lib/atlas/scale";
+import { GALAXY_SKY_OUTER } from "@/lib/atlas/galaxyPlacement";
 import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
 export type CameraTargetPreset =
@@ -309,14 +310,24 @@ export class WorldCameraManager {
    * out of the sky — and standing on a moon, the core and the opposite arm are
    * exactly what you see when you turn away from the parent. What `far` has to
    * reach is the world, not the frame.
+   *
+   * So it is solved for rather than typed. This used to be a flat floor of
+   * 2000, which cleared a sky that reached 205 * 2.8 = 574 units by a margin
+   * nobody had to think about. The sky belongs to the galaxy now and reaches
+   * `GALAXY_SKY_OUTER`, and the old floor clipped a disc out of the middle of
+   * it at full zoom-out — a missing star being indistinguishable from a star
+   * that was never drawn. The three terms are the whole worst case: the far
+   * rim of the sky, the furthest from the origin a framed target sits, and the
+   * furthest the camera can then orbit from that target.
    */
   public setFrameScale(radius: number): void {
     const near = THREE.MathUtils.clamp(radius * 0.06, 0.02, 0.5);
+    const maxDistance = Math.max(480, radius * 2.4);
     this.depth = {
       near,
-      far: Math.max(2000, radius * 10),
+      far: Math.max(GALAXY_SKY_OUTER + ASTROLABE_OUTER + maxDistance, radius * 10),
       minDistance: radius * 0.12,
-      maxDistance: Math.max(480, radius * 2.4),
+      maxDistance,
     };
     this.camera.near = this.depth.near;
     this.camera.far = this.depth.far;

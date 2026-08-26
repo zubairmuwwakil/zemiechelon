@@ -13,6 +13,7 @@ import { framedBody } from "./planetFrames";
 import type { Framing } from "@/lib/atlas/journey";
 import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
+import { GalaxyBuilder } from "./GalaxyBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
 import { THE_END } from "@/lib/atlas/timeline";
@@ -131,6 +132,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneBuilderRef = useRef<WorldSceneBuilder | null>(null);
+  const galaxyBuilderRef = useRef<GalaxyBuilder | null>(null);
   const cameraManagerRef = useRef<WorldCameraManager | null>(null);
   const dayNightRef = useRef<DayNightController | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
@@ -163,6 +165,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   useEffect(() => {
     dayNightRef.current?.setMode(cosmicMode);
     sceneBuilderRef.current?.setCosmicMode(cosmicMode);
+    galaxyBuilderRef.current?.setCosmicMode(cosmicMode);
     if (bloomPassRef.current) {
       bloomPassRef.current.strength = BLOOM[cosmicMode].strength;
       bloomPassRef.current.threshold = BLOOM[cosmicMode].threshold;
@@ -225,7 +228,17 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     composerRef.current = composer;
 
     // 5. Scene Builder
+    //
+    // The galaxy frame goes up first, because the solar system hangs off it.
+    // It owns the sky — sized to the whole galaxy rather than to the atlas —
+    // and it is what `attach` parents each system's root to. The atlas resolves
+    // to the origin, unleaned, so nothing on screen moves because of this.
     const today = new Date().toISOString().slice(0, 10);
+    const galaxyBuilder = new GalaxyBuilder(scene, fieldDensityFor(width), reduced);
+    galaxyBuilder.build();
+    galaxyBuilder.setCosmicMode(cosmicMode);
+    galaxyBuilderRef.current = galaxyBuilder;
+
     const sceneBuilder = new WorldSceneBuilder(
       scene,
       bodies,
@@ -240,6 +253,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // construction time only, via the ref.
     sceneBuilder.setClockDate(clockDateRef.current);
     sceneBuilderRef.current = sceneBuilder;
+    // Reparents the root off the scene and onto the galaxy frame.
+    galaxyBuilder.attach(SOLAR_SYSTEM_ZEMI, sceneBuilder.rootGroup);
 
     // Both refs are live now, so the framing owner can seed the initial pose —
     // and re-seed it whenever this effect rebuilds the scene.
@@ -429,6 +444,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       sceneBuilder.setLightDirection(dayNight.sunDirection());
       cameraManager.update(delta);
       sceneBuilder.update(elapsed, delta);
+      galaxyBuilder.update(elapsed);
 
       // Render through EffectComposer with Optical Bloom
       composer.render();
@@ -503,6 +519,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       window.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onResize);
+      galaxyBuilder.dispose();
       composer.dispose();
       renderer.dispose();
     };

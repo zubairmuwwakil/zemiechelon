@@ -30,13 +30,13 @@ describe("field material", () => {
 
 describe("the field is animated", () => {
   it("gives every point its own phase", () => {
+    // Arm dust alone: the sky is the galaxy's now, and `galaxyFrame.test.ts`
+    // makes the same assertion about it there.
     const builder = built();
-    for (const name of ["background-field", "arm-dust"]) {
-      const geometry = points(builder, name).geometry;
-      const attribute = geometry.getAttribute("aPhase");
-      expect(attribute).toBeDefined();
-      expect(attribute.count).toBe(geometry.getAttribute("position").count);
-    }
+    const geometry = points(builder, "arm-dust").geometry;
+    const attribute = geometry.getAttribute("aPhase");
+    expect(attribute).toBeDefined();
+    expect(attribute.count).toBe(geometry.getAttribute("position").count);
   });
 
   it("draws phases that are not all the same, or nothing twinkles", () => {
