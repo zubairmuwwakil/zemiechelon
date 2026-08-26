@@ -17,6 +17,9 @@ import type { CameraTargetPreset } from "../world/WorldCameraManager";
 import { GithubIcon } from "../icons/GithubIcon";
 import { ZemiMark } from "../icons/ZemiMark";
 import { sound } from "@/lib/audio";
+import { SOLAR_SYSTEMS, getScope } from "@/lib/atlas/scopes";
+import type { ScopeId } from "@/lib/atlas/types";
+import { ARM_META } from "@/data/arms";
 
 interface WorldHUDProps {
   cosmicMode: CosmicMode;
@@ -29,6 +32,9 @@ interface WorldHUDProps {
   isLegendOpen?: boolean;
   onToggleLegend?: () => void;
   onOpenTerminal: () => void;
+  activeSystem: ScopeId;
+  onSelectSolarSystem: (id: ScopeId) => void;
+  onAscendToGalaxy: () => void;
 }
 
 export function WorldHUD({
@@ -42,6 +48,9 @@ export function WorldHUD({
   isLegendOpen = false,
   onToggleLegend,
   onOpenTerminal,
+  activeSystem,
+  onSelectSolarSystem,
+  onAscendToGalaxy,
 }: WorldHUDProps) {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
 
@@ -53,13 +62,12 @@ export function WorldHUD({
 
   const isDay = cosmicMode === "day";
 
-  const sectors = [
-    { id: "foundations", label: "Foundations" },
-    { id: "products", label: "Products" },
-    { id: "labs", label: "Labs" },
-    { id: "self", label: "Self" },
-    { id: "creative", label: "Creative" },
-  ];
+  // Derived from the system the visitor is in, not typed. A fifth arm in
+  // either system appears here by being declared in that system's `arms`.
+  const sectors = Object.keys(getScope(activeSystem).arms).map((arm) => ({
+    id: arm,
+    label: ARM_META[arm]?.name ?? arm,
+  }));
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-30 p-3 sm:p-5 select-none">
@@ -86,6 +94,69 @@ export function WorldHUD({
             </span>
           </div>
         </motion.div>
+
+        {/* 1b. System Switcher: which orrery the visitor is in, always visible so
+               the second system is discoverable without ascending. Clicking the
+               already-active system ascends one level, the same "up" the Escape
+               key and the brand badge already offer, rather than doing nothing. */}
+        <div className="flex flex-col items-center gap-1.5">
+          <nav
+            className={`pointer-events-auto hidden md:flex items-center rounded-full p-1 transition-all duration-300 ${
+              isDay ? "glass-pill-day" : "glass-pill-night"
+            }`}
+          >
+            {SOLAR_SYSTEMS.map((system, idx) => {
+              const isActive = activeSystem === system.id;
+
+              return (
+                <div key={system.id} className="flex items-center relative">
+                  {idx > 0 && (
+                    <div
+                      className={`h-2.5 w-px mx-0.5 ${
+                        isDay ? "bg-zinc-300/70" : "bg-white/10"
+                      }`}
+                    />
+                  )}
+                  <button
+                    onClick={() => {
+                      sound.playClick(560, 0.05);
+                      if (isActive) {
+                        onAscendToGalaxy();
+                      } else {
+                        onSelectSolarSystem(system.id);
+                      }
+                    }}
+                    className={`relative rounded-full px-3 py-1 text-[10px] font-medium transition-colors duration-200 z-10 ${
+                      isActive
+                        ? isDay
+                          ? "text-zinc-950 font-semibold"
+                          : "text-white font-semibold"
+                        : isDay
+                        ? "text-zinc-600 hover:text-zinc-900"
+                        : "text-zinc-400 hover:text-zinc-100"
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeSystemPill"
+                        className={`absolute inset-0 rounded-full shadow-md z-[-1] ${
+                          isDay
+                            ? "bg-white border border-zinc-200/90 shadow-zinc-950/10"
+                            : "bg-white/18 border border-white/25 shadow-black/40 backdrop-blur-md"
+                        }`}
+                        transition={{
+                          type: "spring",
+                          stiffness: 480,
+                          damping: 36,
+                        }}
+                      />
+                    )}
+                    <span>{system.label}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
 
         {/* 2. Center Segmented Capsule Pill Dock with Fluid Framer-Motion Spring Morphing */}
         <nav
@@ -141,7 +212,8 @@ export function WorldHUD({
               </div>
             );
           })}
-        </nav>
+          </nav>
+        </div>
 
         {/* 3. Right Utility Icons with Micro-Spring Interactions */}
         <div className="pointer-events-auto flex items-center gap-2">

@@ -37,7 +37,7 @@ export interface TimelineTransportProps {
   bodies: Body[];
   cosmicMode: CosmicMode;
   /** Fires on every clock change — scrub, play tick, or a reduced-motion jump. */
-  onClockDayChange: (date: string) => void;
+  onClockDateChange: (date: string) => void;
 }
 
 /**
@@ -46,7 +46,7 @@ export interface TimelineTransportProps {
  * atlas's own span, but the caller only ever learns the resulting calendar
  * date, which is what `WorldCanvas` filters the map by.
  */
-export function TimelineTransport({ bodies, cosmicMode, onClockDayChange }: TimelineTransportProps) {
+export function TimelineTransport({ bodies, cosmicMode, onClockDateChange }: TimelineTransportProps) {
   const isDay = cosmicMode === "day";
   const daySpan = useMemo(() => deriveDaySpan(bodies), [bodies]);
   const milestones = useMemo(() => deriveTimelineMilestones(bodies), [bodies]);
@@ -61,8 +61,8 @@ export function TimelineTransport({ bodies, cosmicMode, onClockDayChange }: Time
   const [speed, setSpeed] = useState<TimelineSpeed>(DEFAULT_TIMELINE_SPEED);
 
   useEffect(() => {
-    onClockDayChange(dateAtDay(clockDay, SOLAR_SYSTEM_ZEMI.epoch));
-    // Only the clock's own value should re-fire this — `onClockDayChange`
+    onClockDateChange(dateAtDay(clockDay, SOLAR_SYSTEM_ZEMI.epoch));
+    // Only the clock's own value should re-fire this — `onClockDateChange`
     // identity is the caller's business, not a reason to re-announce.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clockDay]);

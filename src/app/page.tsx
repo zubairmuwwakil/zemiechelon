@@ -23,11 +23,13 @@ import {
   framingFor,
   journeyReducer,
   panelScope,
+  scopeIdFor,
   standingScope,
   deepLinkBodyId,
 } from "@/lib/atlas/journey";
+import { SOLAR_SYSTEM_ZEMI, scopeChain } from "@/lib/atlas/scopes";
 import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
-import type { ScreenPoint } from "@/lib/atlas/types";
+import type { ScopeId, ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
 import { THE_END } from "@/lib/atlas/timeline";
 
@@ -55,6 +57,23 @@ export default function HomePage() {
   /** The surface underfoot, and the console panel — never both (see `journey`). */
   const onSurface = standingScope(journey);
   const landedPanel = panelScope(journey);
+
+  /**
+   * The solar system the visitor is in, at any depth. Read off the scope
+   * chain rather than tracked alongside the journey — the same rule that
+   * keeps `Position` free of a system field.
+   */
+  const activeSystem = useMemo(() => {
+    const scope = scopeIdFor(journey.position);
+    return scope
+      ? (scopeChain(scope).find((s) => s.kind === "solarSystem")?.id ?? SOLAR_SYSTEM_ZEMI.id)
+      : SOLAR_SYSTEM_ZEMI.id;
+  }, [journey]);
+
+  const handleSelectSolarSystem = useCallback((id: ScopeId) => {
+    sound.playClick(520, 0.05);
+    travel({ type: "selectSolarSystem", id });
+  }, []);
 
   /** How the visitor's environment answers, read where an event is raised. */
   const environment = useCallback(
@@ -259,6 +278,9 @@ export default function HomePage() {
         isLegendOpen={isLegendOpen}
         onToggleLegend={() => setIsLegendOpen((prev) => !prev)}
         onOpenTerminal={() => setIsTerminalOpen(true)}
+        activeSystem={activeSystem}
+        onSelectSolarSystem={handleSelectSolarSystem}
+        onAscendToGalaxy={() => travel({ type: "ascend" })}
       />
 
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
@@ -266,7 +288,7 @@ export default function HomePage() {
 
       {/* 5b. Timeline transport: play, pause, scrub and speed the galaxy's own clock */}
       {sceneIsClear && (
-        <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDayChange={setClockDate} />
+        <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDateChange={setClockDate} />
       )}
 
       {/* 6. Landed consoles. The descent is the camera's; this annotates it. */}

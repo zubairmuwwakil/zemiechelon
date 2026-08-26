@@ -32,7 +32,7 @@ const milestones = deriveTimelineMilestones(bodies);
 describe("TimelineTransport", () => {
   it("exposes play, scrub and speed as keyboard-operable controls with accessible names", () => {
     stubReducedMotion(false);
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={vi.fn()} />);
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={vi.fn()} />);
 
     expect(screen.getByRole("slider", { name: /timeline/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /play/i })).toBeTruthy();
@@ -41,7 +41,7 @@ describe("TimelineTransport", () => {
 
   it("defaults the clock to the full span, so the map starts fully built", () => {
     stubReducedMotion(false);
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={vi.fn()} />);
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={vi.fn()} />);
 
     const slider = screen.getByRole("slider", { name: /timeline/i }) as HTMLInputElement;
     expect(Number(slider.max)).toBe(daySpan);
@@ -50,13 +50,13 @@ describe("TimelineTransport", () => {
 
   it("reports every scrub to the caller, and shows the derived repository count", () => {
     stubReducedMotion(false);
-    const onClockDayChange = vi.fn();
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={onClockDayChange} />);
+    const onClockDateChange = vi.fn();
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={onClockDateChange} />);
 
     const slider = screen.getByRole("slider", { name: /timeline/i });
     fireEvent.change(slider, { target: { value: "0" } });
 
-    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
+    expect(onClockDateChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
     const dayZeroCount = bodies.filter((b) => b.bornAt === bodies
       .map((x) => x.bornAt)
       .sort()[0]).length;
@@ -66,7 +66,7 @@ describe("TimelineTransport", () => {
 
   it("names each milestone from the body's own editorial caption, never a typed date", () => {
     stubReducedMotion(false);
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={vi.fn()} />);
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={vi.fn()} />);
     for (const milestone of milestones) {
       expect(screen.getByTitle(new RegExp(milestone.title))).toBeTruthy();
     }
@@ -74,7 +74,7 @@ describe("TimelineTransport", () => {
 
   it("toggles to a pause control once play starts", async () => {
     stubReducedMotion(false);
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={vi.fn()} />);
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={vi.fn()} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /play/i }));
     expect(screen.getByRole("button", { name: /pause/i })).toBeTruthy();
@@ -82,24 +82,24 @@ describe("TimelineTransport", () => {
 
   it("under reduced motion, play jumps straight to the end instead of animating", async () => {
     stubReducedMotion(true);
-    const onClockDayChange = vi.fn();
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={onClockDayChange} />);
+    const onClockDateChange = vi.fn();
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={onClockDateChange} />);
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /play/i }));
 
-    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(daySpan, SOLAR_SYSTEM_ZEMI.epoch));
+    expect(onClockDateChange).toHaveBeenCalledWith(dateAtDay(daySpan, SOLAR_SYSTEM_ZEMI.epoch));
     // Never enters a playing state — there is nothing to pause.
     expect(screen.queryByRole("button", { name: /pause/i })).toBeNull();
   });
 
   it("still allows scrubbing under reduced motion", () => {
     stubReducedMotion(true);
-    const onClockDayChange = vi.fn();
-    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDayChange={onClockDayChange} />);
+    const onClockDateChange = vi.fn();
+    render(<TimelineTransport bodies={bodies} cosmicMode="day" onClockDateChange={onClockDateChange} />);
 
     const slider = screen.getByRole("slider", { name: /timeline/i });
     fireEvent.change(slider, { target: { value: "0" } });
-    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
+    expect(onClockDateChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
   });
 });
