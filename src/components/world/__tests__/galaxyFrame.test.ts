@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { GalaxyBuilder, GALAXY_SKY } from "../GalaxyBuilder";
-import { MOBILE_FIELD_SCALE, BACKGROUND_STAR_COUNT } from "../WorldSceneBuilder";
+import { MOBILE_FIELD_SCALE, BACKGROUND_STAR_COUNT, WorldSceneBuilder } from "../WorldSceneBuilder";
 import { GALAXY_ZEMI, SOLAR_SYSTEM_CHANNEL, SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
+import { bodiesFor } from "@/lib/atlas/bodies";
 import {
   GALAXY_REACH,
   GALAXY_SKY_OUTER,
@@ -41,10 +43,13 @@ describe("the galaxy frame", () => {
     const group = new THREE.Group();
     galaxy.attach(SOLAR_SYSTEM_CHANNEL, group);
     const expected = placeSolarSystem(SOLAR_SYSTEM_CHANNEL).center;
-    expect(group.position.x).toBeCloseTo(expected.x, 6);
-    expect(group.position.y).toBeCloseTo(expected.y, 6);
-    expect(group.position.z).toBeCloseTo(expected.z, 6);
-    expect(group.parent).toBe(galaxy.rootGroup);
+    const world = group.getWorldPosition(new THREE.Vector3());
+    expect(world.x).toBeCloseTo(expected.x, 6);
+    expect(world.y).toBeCloseTo(expected.y, 6);
+    expect(world.z).toBeCloseTo(expected.z, 6);
+    // Not a direct child: the lean lives on a placement node between `group`
+    // and `rootGroup`, so `group` itself is free to spin without touching it.
+    expect(group.parent?.parent).toBe(galaxy.rootGroup);
   });
 
   it("leaves the repository atlas at the origin, unrotated", () => {
@@ -52,11 +57,12 @@ describe("the galaxy frame", () => {
     const { galaxy } = built();
     const group = new THREE.Group();
     galaxy.attach(SOLAR_SYSTEM_ZEMI, group);
-    expect(group.position.length()).toBe(0);
-    // Asserted on the quaternion, which is what three.js actually transforms
-    // by. `rotation` is a decomposition of it and reports a signed -0 for a
-    // composed identity; it also cannot see a stray yaw, which this does.
-    expect(group.quaternion.angleTo(new THREE.Quaternion())).toBe(0);
+    expect(group.getWorldPosition(new THREE.Vector3()).length()).toBe(0);
+    // Asserted on the world quaternion, which is what three.js actually
+    // transforms by. `rotation` is a decomposition of it and reports a signed
+    // -0 for a composed identity; it also cannot see a stray yaw, which this
+    // does.
+    expect(group.getWorldQuaternion(new THREE.Quaternion()).angleTo(new THREE.Quaternion())).toBe(0);
   });
 
   it("hands a system's own rotation back to it, unspent by the attach", () => {
@@ -65,7 +71,9 @@ describe("the galaxy frame", () => {
     const { galaxy } = built();
     const group = new THREE.Group();
     galaxy.attach(SOLAR_SYSTEM_CHANNEL, group);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(group.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(
+      group.getWorldQuaternion(new THREE.Quaternion()),
+    );
     const lean = up.angleTo(new THREE.Vector3(0, 1, 0));
     expect(lean).toBeCloseTo(placeSolarSystem(SOLAR_SYSTEM_CHANNEL).tilt, 6);
   });
@@ -74,6 +82,23 @@ describe("the galaxy frame", () => {
     const { scene, galaxy } = built();
     galaxy.dispose();
     expect(scene.children).not.toContain(galaxy.rootGroup);
+  });
+
+  it("keeps a leaned system's lean intact once its own pattern rotation spins", () => {
+    // GalaxyBuilder.attach leans `group` by composing rotateY(bearing) ->
+    // rotateZ(tilt) -> rotateY(-bearing) directly on it. WorldSceneBuilder.update
+    // then does `this.rootGroup.rotation.y = pattern` on that SAME object —
+    // an absolute Euler assignment, not an additional rotation. Read on its own,
+    // that line looks harmless; it only collides once a leaned system's root is
+    // the thing being spun, which nothing before this test exercised.
+    const { galaxy } = built();
+    const builder = new WorldSceneBuilder(new THREE.Scene(), SOLAR_SYSTEM_ZEMI, bodiesFor(SOLAR_SYSTEM_ZEMI), "2026-08-25");
+    builder.build();
+    galaxy.attach(SOLAR_SYSTEM_CHANNEL, builder.rootGroup);
+    builder.update(123, 1 / 60);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(builder.rootGroup.getWorldQuaternion(new THREE.Quaternion()));
+    const lean = up.angleTo(new THREE.Vector3(0, 1, 0));
+    expect(lean).toBeCloseTo(placeSolarSystem(SOLAR_SYSTEM_CHANNEL).tilt, 6);
   });
 });
 

@@ -131,20 +131,30 @@ export class GalaxyBuilder {
    * The atlas's epoch is the galaxy epoch, so its centre is the origin and its
    * tilt is zero — it is attached by exactly this call and does not move,
    * which is what keeps every camera preset and pin anchor correct.
+   *
+   * `group` is `WorldSceneBuilder.rootGroup`, which sets its OWN `rotation.y`
+   * absolutely every frame for pattern rotation. Leaning `group` directly here
+   * would put both writes on one Euler: the frame's own spin would overwrite
+   * the lean's x/z components rather than compose with them. A child's local
+   * rotation never touches its parent's, so the lean lives on a placement
+   * node this builder owns, and `group` hangs off it untouched — free to spin
+   * however it likes without ever being asked about the lean again.
    */
   public attach(system: Scope, group: THREE.Object3D): void {
     const { center, tilt } = placeSolarSystem(system);
-    group.position.set(center.x, center.y, center.z);
+    const placement = new THREE.Group();
+    placement.name = `${system.id}:placement`;
+    placement.position.set(center.x, center.y, center.z);
     // Leaned about the axis pointing back at the core, so the lean is a lean
     // rather than a yaw — a rotation about +Y would only spin the system in
     // its own plane and change nothing you can see. The bearing is spent and
     // then given back, so the system's own pattern rotation starts from zero.
     const bearing = Math.atan2(center.z, center.x);
-    group.rotation.set(0, 0, 0);
-    group.rotateY(bearing);
-    group.rotateZ(tilt);
-    group.rotateY(-bearing);
-    this.rootGroup.add(group);
+    placement.rotateY(bearing);
+    placement.rotateZ(tilt);
+    placement.rotateY(-bearing);
+    placement.add(group);
+    this.rootGroup.add(placement);
   }
 
   /**
