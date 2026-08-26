@@ -64,6 +64,22 @@ export class DayNightController {
   private reducedMotion = false;
   /** Reused so `sunDirection` allocates nothing in the render loop. */
   private readonly sunDir = new THREE.Vector3();
+  /**
+   * The palette's sun position: a direction and an authored height, in the
+   * frame of whatever the light is lighting.
+   *
+   * Held here rather than read back off `directionalSun.position`, which is no
+   * longer the same thing — the light is placed at `shadowCenter + sunOffset`
+   * so its shadow volume can travel, and only this vector still answers "which
+   * way is the sun".
+   */
+  private readonly sunBase = new THREE.Vector3();
+  /** `sunBase` pushed out to the standoff `placeSun` solves for. */
+  private readonly sunOffset = new THREE.Vector3();
+  /** What the shadow volume is centred on. See `setShadowCenter`. */
+  private readonly shadowCenter = new THREE.Vector3();
+  /** Half-width of the shadow volume. See `setShadowReach`. */
+  private shadowRadius = 35;
   private isTransitioning: boolean = false;
   private transitionSpeed: number = 2.5;
 
@@ -89,20 +105,61 @@ export class DayNightController {
     this.scene.add(this.hemisphereLight);
 
     this.directionalSun = new THREE.DirectionalLight(palette.sunLight, palette.sunIntensity);
-    this.directionalSun.position.set(...palette.sunPosition);
+    this.sunBase.set(...palette.sunPosition);
     this.directionalSun.castShadow = true;
     this.directionalSun.shadow.mapSize.width = 2048;
     this.directionalSun.shadow.mapSize.height = 2048;
-    this.directionalSun.shadow.camera.near = 0.5;
-    this.directionalSun.shadow.camera.far = 150;
-    const d = 35;
-    this.directionalSun.shadow.camera.left = -d;
-    this.directionalSun.shadow.camera.right = d;
-    this.directionalSun.shadow.camera.top = d;
-    this.directionalSun.shadow.camera.bottom = -d;
     this.directionalSun.shadow.bias = -0.0005;
 
     this.scene.add(this.directionalSun);
+    // **The target has to be in the scene.** A `DirectionalLight`'s shadow
+    // camera aims at `light.target`, and three only refreshes that object's
+    // world matrix if something is walking it — so a target left out of the
+    // graph reports the identity, and the shadow volume is pinned to the world
+    // origin no matter where the light goes. That is what it did: standing on a
+    // shard 115 units out set a frustum three units wide around the origin, so
+    // the landed frame was never in the shadow map at all.
+    this.scene.add(this.directionalSun.target);
+    // One definition of the frustum, rather than a constructor that states it
+    // in numbers and a setter that states it in a rule.
+    this.setShadowReach(this.shadowRadius);
+  }
+
+  /**
+   * Put the light where it can see the volume it is lighting.
+   *
+   * A directional light shades by its DIRECTION alone, so moving the light and
+   * its target together by the same offset changes the shadow volume and
+   * nothing else about the lighting — which is what lets the volume travel
+   * without the terminator moving on a single planet.
+   *
+   * The standoff is solved rather than authored. `sunPosition` puts the sun 73
+   * units out, which was outside the world when the world was an island and is
+   * *inside* it now: a caster standing higher than the light falls behind the
+   * near plane and stops casting. Pushing the light to at least twice the
+   * frustum's half-width guarantees the whole volume is in front of it, at
+   * every scale, without touching the authored bearing or height ratio.
+   */
+  private placeSun(): void {
+    const standoff = Math.max(this.sunBase.length(), this.shadowRadius * 2);
+    this.sunOffset.copy(this.sunBase).setLength(standoff);
+    this.directionalSun.position.copy(this.shadowCenter).add(this.sunOffset);
+    this.directionalSun.target.position.copy(this.shadowCenter);
+  }
+
+  /**
+   * Centre the shadow volume on a point in the world — the frame being looked
+   * at, which the render loop reads off the camera every frame.
+   *
+   * Per frame rather than per framing change, because the frames it has to
+   * cover MOVE: the pattern turns and carries the planets, and a moon rides its
+   * orbit. `setShadowReach` says how wide the volume is, which only a change of
+   * framing can change; this says where it is, which every frame can.
+   */
+  public setShadowCenter(center: THREE.Vector3): void {
+    if (this.shadowCenter.equals(center)) return;
+    this.shadowCenter.copy(center);
+    this.placeSun();
   }
 
   /**
@@ -149,7 +206,10 @@ export class DayNightController {
    * term was a hardcoded direction, so no planet had a terminator that moved.
    */
   public sunDirection(): THREE.Vector3 {
-    return this.sunDir.copy(this.directionalSun.position).normalize();
+    // From `sunBase`, not from the light's position: the position now carries
+    // the shadow volume's centre as well, and normalising THAT would swing the
+    // planets' terminator around as the camera moved.
+    return this.sunDir.copy(this.sunBase).normalize();
   }
 
   /**
@@ -166,16 +226,13 @@ export class DayNightController {
     const palette = this.currentMode === "day" ? DAY_PALETTE : NIGHT_PALETTE;
     const [x, y, z] = palette.sunPosition;
     const base = new THREE.Vector3(x, y, z);
-    // Mid-transition the palette lerp owns the position, so the arc is applied
-    // on top of whatever it just wrote rather than on top of one endpoint.
-    if (this.isTransitioning) base.copy(this.directionalSun.position);
+    // Mid-transition the palette lerp owns the base, so the arc is applied on
+    // top of whatever it just wrote rather than on top of one endpoint.
+    if (this.isTransitioning) base.copy(this.sunBase);
     const radius = Math.hypot(base.x, base.z);
     const bearing = Math.atan2(base.z, base.x) + this.arcAngle;
-    this.directionalSun.position.set(
-      Math.cos(bearing) * radius,
-      base.y,
-      Math.sin(bearing) * radius,
-    );
+    this.sunBase.set(Math.cos(bearing) * radius, base.y, Math.sin(bearing) * radius);
+    this.placeSun();
   }
 
   /** The sun's shadow camera, so callers can size it and tests can read it. */
@@ -197,14 +254,22 @@ export class DayNightController {
    * narrows again on descent rather than being set once to the widest case.
    */
   public setShadowReach(radius: number): void {
+    this.shadowRadius = radius;
     const camera = this.shadowCamera;
     camera.left = -radius;
     camera.right = radius;
     camera.top = radius;
     camera.bottom = -radius;
-    // The light sits outside the frame it lights, so the depth range has to
-    // cross the frame and then reach the far side of it.
-    camera.far = Math.max(150, radius * 4);
+    // The standoff changed with the radius, so the light moves before the depth
+    // range is solved against where it now stands.
+    this.placeSun();
+    // Solved, not padded. The volume is the sphere of `radius` about the
+    // centre, so along the light's own axis it starts one radius short of the
+    // centre and ends one radius past it. `Math.max(150, radius * 4)` was a
+    // guess that happened to clear one scale and clipped at the others.
+    const standoff = this.sunOffset.length();
+    camera.near = Math.max(0.5, standoff - radius);
+    camera.far = standoff + radius;
     camera.updateProjectionMatrix();
   }
 
@@ -262,11 +327,12 @@ export class DayNightController {
     this.directionalSun.color = sunCol;
     this.directionalSun.intensity = THREE.MathUtils.lerp(day.sunIntensity, night.sunIntensity, t);
 
-    this.directionalSun.position.lerpVectors(
+    this.sunBase.lerpVectors(
       new THREE.Vector3(...day.sunPosition),
       new THREE.Vector3(...night.sunPosition),
       t
     );
+    this.placeSun();
   }
 
   public getProgress(): number {

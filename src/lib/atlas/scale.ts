@@ -28,3 +28,15 @@ export const ASTROLABE_OUTER = 205;
 export const SCENE_SCALE =
   ASTROLABE_OUTER /
   Math.max(...SOLAR_SYSTEMS.map((system) => deriveWorldRadius(bodiesFor(system), system)));
+
+/**
+ * Scene units the planets ride above their system's plane.
+ *
+ * Here rather than in the builder that draws them because it is not only a
+ * drawing decision: it is where a planet IS, and the camera and the pins both
+ * have to agree with the drawing about that. `PLANET_CENTERS` said y = 0 while
+ * every draw site substituted this, so the framing table sat one unit under
+ * every planet — unobservable for as long as `framePose` discarded height, and
+ * a disc hanging off the top of the frame the moment it stopped.
+ */
+export const PLANET_Y = 1.0;

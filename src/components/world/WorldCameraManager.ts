@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { derivePlanets } from "@/lib/atlas/planets";
 import { bodiesFor } from "@/lib/atlas/bodies";
 import { SOLAR_SYSTEMS, type Scope } from "@/lib/atlas/scopes";
-import { ASTROLABE_OUTER, SCENE_SCALE } from "@/lib/atlas/scale";
+import { ASTROLABE_OUTER, PLANET_Y, SCENE_SCALE } from "@/lib/atlas/scale";
 import { GALAXY_REACH, GALAXY_SKY_OUTER } from "@/lib/atlas/galaxyPlacement";
 import { SURFACE_ALTITUDE_RATIO, SURFACE_OFFSET_RATIO } from "@/lib/atlas/surfaces";
 
@@ -44,10 +44,20 @@ export function planetRadiiFor(system: Scope): Record<string, number> {
   );
 }
 
-/** Each planet's centre in ITS OWN solar system's local frame. */
+/**
+ * Each planet's centre in ITS OWN solar system's local frame.
+ *
+ * `PLANET_Y`, not the layout's own height. Every draw site in
+ * `WorldSceneBuilder` substitutes it — the scope group, the pick sphere, the
+ * label, the instanced mesh — so it is where a planet is, and a table that
+ * disagreed with the drawing would be a table nobody could frame from.
+ */
 export function planetCentersFor(system: Scope): Record<string, THREE.Vector3> {
   return Object.fromEntries(
-    derivePlanets(bodiesFor(system), system).map((p) => [p.arm, toScene(p.center)]),
+    derivePlanets(bodiesFor(system), system).map((p) => {
+      const center = toScene(p.center);
+      return [p.arm, center.setY(PLANET_Y)];
+    }),
   );
 }
 
@@ -85,10 +95,17 @@ export const PLANET_CENTERS: Record<string, THREE.Vector3> = Object.assign(
  *
  * Writes into `out` rather than allocating: the per-frame caller is the reason
  * this exists at all.
+ *
+ * Every term is an offset FROM `center`, height included. The heights used to
+ * be absolute, which is the same thing while everything framable sits on the
+ * galactic plane and a different thing as soon as something does not: a solar
+ * system is lifted out of the plane by the same angle it leans (see
+ * `placeSolarSystem`), and framing the channel aimed at the empty plane 88
+ * units under it, hanging the disc off the top of the frame.
  */
 function framePose(center: THREE.Vector3, radius: number, out: CameraPose): CameraPose {
-  out.position.set(center.x, radius * 3.6, center.z + radius * 4.8);
-  out.target.set(center.x, radius * 0.3, center.z);
+  out.position.set(center.x, center.y + radius * 3.6, center.z + radius * 4.8);
+  out.target.set(center.x, center.y + radius * 0.3, center.z);
   return out;
 }
 

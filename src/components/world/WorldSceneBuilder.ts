@@ -26,6 +26,7 @@ import {
 import { DIRECTION_A } from "@/lib/theme/directionA";
 import type { CosmicMode } from "./DayNightController";
 import { SCENE_SCALE, toScene } from "./WorldCameraManager";
+import { PLANET_Y } from "@/lib/atlas/scale";
 import { PLANET_ATTRIBUTES, SURFACE_FAMILIES, createPlanetMaterial } from "./PlanetSurfaces";
 
 export const BACKGROUND_STAR_COUNT = 12_000;
@@ -186,8 +187,12 @@ interface AnnotatedRing {
 /**
  * Scene units the planets ride above the plane. The pins in WorldCanvas are
  * placed relative to this, so it is one number rather than six.
+ *
+ * Re-exported rather than declared, the same way `SCENE_SCALE` is: it moved to
+ * `lib/atlas/scale.ts` when the camera had to agree with the drawing about it.
+ * See that file for why there is exactly one of them.
  */
-export const PLANET_Y = 1.0;
+export { PLANET_Y };
 
 const RING_SEGMENTS = 192;
 

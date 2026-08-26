@@ -507,6 +507,13 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
       // Update controllers
       dayNight.update(delta);
       cameraManager.update(delta);
+      // The shadow volume follows what the camera is looking at. `setShadowReach`
+      // sizes it when the framing changes, which is as often as its WIDTH can
+      // change; where it sits is a per-frame question, because the frames it has
+      // to cover move — the pattern turns and carries the planets, and a moon
+      // rides its orbit. The camera's target is already that point, lerped and
+      // live, so there is nothing here to keep in step with it.
+      dayNight.setShadowCenter(cameraManager.target);
       // Once, and before the systems that hang off it.
       galaxyBuilder.update(elapsed);
       // The sun travels, so the planets are told where it is every frame — one
