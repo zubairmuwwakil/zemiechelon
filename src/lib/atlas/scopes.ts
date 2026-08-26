@@ -2,7 +2,6 @@ import type { Body, ScopeId } from "./types";
 import {
   GALAXY_ZEMI,
   SOLAR_SYSTEMS,
-  SOLAR_SYSTEM_CHANNEL,
   SOLAR_SYSTEM_ZEMI,
   moonScopeId,
   planetScopeId,
