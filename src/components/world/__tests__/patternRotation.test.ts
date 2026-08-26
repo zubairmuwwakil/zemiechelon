@@ -12,6 +12,8 @@ import {
 import { ASTROLABE_OUTER } from "../WorldCameraManager";
 import { moonScopeId } from "@/lib/atlas/galaxy";
 import { deriveMoons } from "@/lib/atlas/moons";
+import { dateAtDay } from "@/lib/atlas/timeline";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 
@@ -127,9 +129,9 @@ describe("the pattern is rigid", () => {
     const builder = built();
     builder.update(120, 120);
     const turned = builder.rootGroup.rotation.y;
-    builder.setClockDay(0);
+    builder.setClockDate(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
     expect(builder.rootGroup.rotation.y).toBe(turned);
-    builder.setClockDay(100000);
+    builder.setClockDate(dateAtDay(100000, SOLAR_SYSTEM_ZEMI.epoch));
     expect(builder.rootGroup.rotation.y).toBe(turned);
   });
 });

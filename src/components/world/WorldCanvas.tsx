@@ -15,6 +15,7 @@ import { planetPinAnchors } from "./planetPins";
 import { WorldSceneBuilder, fieldDensityFor, type SurfaceTarget } from "./WorldSceneBuilder";
 import { shardRadiusFor } from "@/lib/atlas/surfaces";
 import { SOLAR_SYSTEM_ZEMI, getScope } from "@/lib/atlas/scopes";
+import { THE_END } from "@/lib/atlas/timeline";
 
 export interface WorldCanvasHandle {
   triggerPaddleHit: () => void;
@@ -43,12 +44,12 @@ export interface WorldCanvasProps {
   onSelectBody: (bodyId: string) => void;
   onProjectPins?: (points: ScreenPoint[]) => void;
   /**
-   * The timeline transport's clock, in days since the galaxy epoch. Drives only
-   * what the scene shows — see `WorldSceneBuilder.setClockDay` — never a
-   * rebuild: applied through a dedicated effect, not the scene's own deps, so
-   * scrubbing never tears down and reconstructs the map underneath it.
+   * The timeline transport's clock, as a calendar date. Drives only what the
+   * scene shows — see `WorldSceneBuilder.setClockDate` — never a rebuild:
+   * applied through a dedicated effect, not the scene's own deps, so scrubbing
+   * never tears down and reconstructs the map underneath it.
    */
-  clockDay?: number;
+  clockDate?: string;
   /**
    * Scene-space anchors projected alongside the planet pins each frame. This is
    * what lets an HTML layer be *in* the scene: the quote sky hangs on these, so
@@ -120,7 +121,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     onSelectSector,
     onSelectBody,
     onProjectPins,
-    clockDay = Infinity,
+    clockDate = THE_END,
     anchors,
     onProjectAnchors,
     onProjectSurfaceTargets,
@@ -137,8 +138,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // Read at construction time only — see the mount effect below. Kept fresh by
   // its own effect so a scene rebuild (day/night, a resized body set) always
   // reads the clock the transport is actually on, not the one from first mount.
-  const clockDayRef = useRef(clockDay);
-  clockDayRef.current = clockDay;
+  const clockDateRef = useRef(clockDate);
+  clockDateRef.current = clockDate;
 
   // Expose handle methods
   useImperativeHandle(ref, () => ({
@@ -155,8 +156,8 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
   // THREE scene on every dependency change, and a scrub drag can fire many
   // times a second — this only ever touches the already-built scene.
   useEffect(() => {
-    sceneBuilderRef.current?.setClockDay(clockDay);
-  }, [clockDay]);
+    sceneBuilderRef.current?.setClockDate(clockDate);
+  }, [clockDate]);
 
   // Sync Day/Night mode & bloom parameters
   useEffect(() => {
@@ -237,7 +238,7 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     sceneBuilder.setCosmicMode(cosmicMode);
     // Not a dependency (see the dedicated clock effect above) — read fresh at
     // construction time only, via the ref.
-    sceneBuilder.setClockDay(clockDayRef.current);
+    sceneBuilder.setClockDate(clockDateRef.current);
     sceneBuilderRef.current = sceneBuilder;
 
     // Both refs are live now, so the framing owner can seed the initial pose —

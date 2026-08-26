@@ -5,9 +5,14 @@ import { daysSinceEpoch } from "../position";
 import {
   advanceClockDay,
   bodyVisibleAt,
+  bodyVisibleOn,
   dateAtDay,
+  THE_END,
   visibleBodyIds,
+  visibleBodyIdsOn,
 } from "../timeline";
+import { SOLAR_SYSTEM_CHANNEL } from "../scopes";
+import { loadChannelBodies } from "../channel";
 
 const bodies = loadBodies();
 
@@ -64,5 +69,29 @@ describe("dateAtDay", () => {
 
   it("advances the calendar date by the day count", () => {
     expect(dateAtDay(1, "2025-11-06")).toBe("2025-11-07");
+  });
+});
+
+describe("an absolute clock over two epochs", () => {
+  const atlas = loadBodies();
+  const channel = loadChannelBodies();
+
+  it("hides a body born after the date, in either system", () => {
+    const early = "2025-12-01";
+    expect(channel.every((b) => !bodyVisibleOn(b, early, SOLAR_SYSTEM_CHANNEL))).toBe(true);
+    expect(atlas.some((b) => bodyVisibleOn(b, early, SOLAR_SYSTEM_ZEMI))).toBe(true);
+  });
+
+  it("shows everything at THE_END", () => {
+    expect(visibleBodyIdsOn(atlas, THE_END, SOLAR_SYSTEM_ZEMI).size).toBe(atlas.length);
+    expect(visibleBodyIdsOn(channel, THE_END, SOLAR_SYSTEM_CHANNEL).size).toBe(channel.length);
+  });
+
+  it("resolves one date against each system's own epoch", () => {
+    // The whole point: one calendar date, two epochs, and each system filters
+    // its own bodies correctly without the caller converting anything.
+    const date = SOLAR_SYSTEM_CHANNEL.epoch;
+    expect(visibleBodyIdsOn(channel, date, SOLAR_SYSTEM_CHANNEL).size).toBeGreaterThan(0);
+    expect(visibleBodyIdsOn(atlas, date, SOLAR_SYSTEM_ZEMI).size).toBeGreaterThan(0);
   });
 });

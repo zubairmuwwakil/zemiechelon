@@ -37,13 +37,14 @@ export interface TimelineTransportProps {
   bodies: Body[];
   cosmicMode: CosmicMode;
   /** Fires on every clock change — scrub, play tick, or a reduced-motion jump. */
-  onClockDayChange: (clockDay: number) => void;
+  onClockDayChange: (date: string) => void;
 }
 
 /**
  * Play, pause, scrub and speed for the galaxy's own clock (§3.8). Owns its
- * playback state entirely — the caller only ever learns the resulting
- * `clockDay`, which is what `WorldCanvas` filters the map by.
+ * playback state entirely — scrubbing stays in days internally, over the
+ * atlas's own span, but the caller only ever learns the resulting calendar
+ * date, which is what `WorldCanvas` filters the map by.
  */
 export function TimelineTransport({ bodies, cosmicMode, onClockDayChange }: TimelineTransportProps) {
   const isDay = cosmicMode === "day";
@@ -60,7 +61,7 @@ export function TimelineTransport({ bodies, cosmicMode, onClockDayChange }: Time
   const [speed, setSpeed] = useState<TimelineSpeed>(DEFAULT_TIMELINE_SPEED);
 
   useEffect(() => {
-    onClockDayChange(clockDay);
+    onClockDayChange(dateAtDay(clockDay, SOLAR_SYSTEM_ZEMI.epoch));
     // Only the clock's own value should re-fire this — `onClockDayChange`
     // identity is the caller's business, not a reason to re-announce.
     // eslint-disable-next-line react-hooks/exhaustive-deps

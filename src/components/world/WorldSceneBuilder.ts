@@ -8,6 +8,7 @@ import type { Body, ScopeId } from "@/lib/atlas/types";
 import { BULGE, daysSinceEpoch, placeBodies, radiusScale } from "@/lib/atlas/position";
 import { SOLAR_SYSTEM_ZEMI, derivePlanetScopes, planetScopeId, scopeChain, type Scope } from "@/lib/atlas/scopes";
 import { magnitude } from "@/lib/atlas/magnitude";
+import { THE_END } from "@/lib/atlas/timeline";
 import { derivePlanets, deriveWorldRadius, planetGrowthAt } from "@/lib/atlas/planets";
 import { idealsFor } from "@/lib/atlas/ideals";
 import { deriveMoons, moonIds } from "@/lib/atlas/moons";
@@ -312,11 +313,11 @@ export class WorldSceneBuilder {
   //
   // Positions are laid out once, in the builders above, over the full body
   // set — never touched again. The clock only ever toggles what is drawn and,
-  // for planets alone, how big they are. See `setClockDay` and §3.8 of the
+  // for planets alone, how big they are. See `setClockDate` and §3.8 of the
   // surface design spec.
 
-  /** No `setClockDay` call yet means "show everything" — the pre-transport behaviour. */
-  private clockDay = Infinity;
+  /** No `setClockDate` call yet means "show everything" — the pre-transport behaviour. */
+  private clockDate = THE_END;
   /** Every drawn body/moon: the day it exists from, and what to show or hide. */
   private readonly bodyGates: Array<{ id: string; day: number; objects: THREE.Object3D[] }> = [];
   /** Ids currently shown, kept because raycasting ignores `Object3D.visible`. */
@@ -329,7 +330,7 @@ export class WorldSceneBuilder {
     arm: string;
     index: number;
     center: THREE.Vector3;
-    /** L2. Held here because `setClockDay` rebuilds the matrix and must re-compose it. */
+    /** L2. Held here because `setClockDate` rebuilds the matrix and must re-compose it. */
     tilt: THREE.Quaternion;
   }> = [];
   private readonly visiblePlanetArms = new Set<string>();
@@ -381,8 +382,8 @@ export class WorldSceneBuilder {
     this.buildSurfaces();
 
     // One code path decides what is drawn, whatever day it runs at — so the
-    // freshly-built scene and a later `setClockDay` call can never disagree.
-    this.setClockDay(this.clockDay);
+    // freshly-built scene and a later `setClockDate` call can never disagree.
+    this.setClockDate(this.clockDate);
   }
 
   public groupFor(scopeId: ScopeId): THREE.Group {
@@ -862,7 +863,7 @@ export class WorldSceneBuilder {
         },
       });
 
-      // The centre is frozen here, from the full-set derivation. `setClockDay`
+      // The centre is frozen here, from the full-set derivation. `setClockDate`
       // only ever rewrites this instance's scale, never its position.
       this.planetInstances.push({
         arm: planet.arm,
@@ -920,7 +921,7 @@ export class WorldSceneBuilder {
         const r = radius * (1.6 + ideal.ordinal * 0.36);
         const gold = new THREE.Color(DIRECTION_A.gold);
 
-        // Everything this one ideal draws, so `setClockDay` can show or hide
+        // Everything this one ideal draws, so `setClockDate` can show or hide
         // the whole claim — ring, hover target and orbiting bead — in one
         // assignment rather than three.
         const idealGroup = new THREE.Group();
@@ -1316,11 +1317,12 @@ export class WorldSceneBuilder {
    * moons, ideal rings) and, for planets alone, how much mass they show.
    *
    * Safe to call before `bornDayById` and the gate lists are populated: `build()`
-   * calls it once at the end, at whatever `clockDay` the builder was given, so
+   * calls it once at the end, at whatever `clockDate` the builder was given, so
    * the freshly-built scene and a later call agree by construction.
    */
-  public setClockDay(day: number): void {
-    this.clockDay = day;
+  public setClockDate(date: string): void {
+    this.clockDate = date;
+    const day = daysSinceEpoch(date, SOLAR_SYSTEM_ZEMI.epoch); // Task 7 replaces this with this.scope.
 
     this.visibleBodyIds.clear();
     for (const gate of this.bodyGates) {

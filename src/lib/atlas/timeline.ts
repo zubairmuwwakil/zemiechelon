@@ -22,6 +22,40 @@ export function visibleBodyIds(
   );
 }
 
+/**
+ * The sentinel for "show everything", as a date rather than as `Infinity`.
+ *
+ * A far-future ISO date rather than a magic number, so it flows through
+ * `daysSinceEpoch` and every comparison below without a branch of its own —
+ * the same reason `clockDay` used `Infinity` before there were two epochs to
+ * resolve a day against.
+ */
+export const THE_END = "9999-12-31";
+
+/**
+ * Whether a body exists on a given calendar date.
+ *
+ * Absolute, not an offset. Two solar systems have two epochs, so a day count
+ * no longer names a moment: the same `clockDay` would mean March in one system
+ * and July in the other. The date is resolved against each system's own epoch
+ * here, once, so no caller ever converts.
+ */
+export function bodyVisibleOn(
+  body: Body,
+  date: string,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
+): boolean {
+  return bodyVisibleAt(body, daysSinceEpoch(date, scope.epoch), scope);
+}
+
+export function visibleBodyIdsOn(
+  bodies: Body[],
+  date: string,
+  scope: Scope = SOLAR_SYSTEM_ZEMI,
+): Set<string> {
+  return visibleBodyIds(bodies, daysSinceEpoch(date, scope.epoch), scope);
+}
+
 /** Playback speeds, in simulated days advanced per real second of play. */
 export const TIMELINE_SPEEDS = [1, 4, 14, 30] as const;
 export type TimelineSpeed = (typeof TIMELINE_SPEEDS)[number];

@@ -5,6 +5,7 @@ import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/galaxy";
 import { MAX_OBLIQUITY, obliquityFor } from "@/lib/atlas/motion";
+import { dateAtDay } from "@/lib/atlas/timeline";
 
 const bodies = loadBodies();
 const ARMS = Object.keys(SOLAR_SYSTEM_ZEMI.arms);
@@ -50,11 +51,11 @@ describe("axial tilt", () => {
   });
 
   it("survives the clock, which rebuilds every instance matrix", () => {
-    // setClockDay composes a fresh matrix from scale and position. Written
+    // setClockDate composes a fresh matrix from scale and position. Written
     // naively it erases the tilt, and build() calls it as its LAST step, so the
     // tilt would never reach a frame. This is the test for that trap.
     const builder = built();
-    builder.setClockDay(400);
+    builder.setClockDate(dateAtDay(400, SOLAR_SYSTEM_ZEMI.epoch));
     for (const arm of ARMS) {
       expect(poleOf(builder, arm).angleTo(UP)).toBeCloseTo(obliquityFor(arm).magnitude, 6);
     }

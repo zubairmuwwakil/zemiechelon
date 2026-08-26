@@ -29,6 +29,7 @@ import {
 import { bodyIdToHash, hashToBodyId } from "@/lib/atlas/deepLink";
 import type { ScreenPoint } from "@/lib/atlas/types";
 import { sound } from "@/lib/audio";
+import { THE_END } from "@/lib/atlas/timeline";
 
 export default function HomePage() {
   const bodies = useMemo(() => loadBodies(), []);
@@ -74,10 +75,10 @@ export default function HomePage() {
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  // The timeline transport's clock, in days since the galaxy epoch. Infinity
-  // until the transport reports its own default (the full span) — same "show
+  // The timeline transport's clock, as a calendar date. THE_END until the
+  // transport reports its own default (the full span) — same "show
   // everything" state either way, so there is no flash of an empty galaxy.
-  const [clockDay, setClockDay] = useState(Infinity);
+  const [clockDate, setClockDate] = useState(THE_END);
 
   /**
    * Every control below raises an event; none of them decides what the event
@@ -211,7 +212,7 @@ export default function HomePage() {
         onSelectSector={handleSelectSector}
         onSelectBody={handleSelectBody}
         onProjectPins={setScreenPoints}
-        clockDay={clockDay}
+        clockDate={clockDate}
         anchors={QUOTE_STARS}
         onProjectAnchors={setQuotePoints}
         onProjectSurfaceTargets={setSurfaceTargets}
@@ -265,7 +266,7 @@ export default function HomePage() {
 
       {/* 5b. Timeline transport: play, pause, scrub and speed the galaxy's own clock */}
       {sceneIsClear && (
-        <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDayChange={setClockDay} />
+        <TimelineTransport bodies={bodies} cosmicMode={cosmicMode} onClockDayChange={setClockDate} />
       )}
 
       {/* 6. Landed consoles. The descent is the camera's; this annotates it. */}

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { WorldSceneBuilder, buildFieldGeometry } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { createFieldMaterial } from "../FieldShader";
+import { dateAtDay } from "@/lib/atlas/timeline";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 const bodies = loadBodies();
 
@@ -72,9 +74,9 @@ describe("the field is animated", () => {
 
   it("leaves the clock's draw-range gating alone", () => {
     const builder = built();
-    builder.setClockDay(0);
+    builder.setClockDate(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
     const early = points(builder, "arm-dust").geometry.drawRange.count;
-    builder.setClockDay(100000);
+    builder.setClockDate(dateAtDay(100000, SOLAR_SYSTEM_ZEMI.epoch));
     const late = points(builder, "arm-dust").geometry.drawRange.count;
     expect(late).toBeGreaterThan(early);
   });

@@ -36,6 +36,8 @@ export function magnitude(body: Body): number {
     return MOON_MAGNITUDE * Math.sqrt(body.runtimeSeconds / 60 / RUNTIME_PIVOT_MINUTES);
   }
   if (body.kind === "moon") return MOON_MAGNITUDE;
+  // A difference, so the epoch cancels and the default is harmless — this is
+  // a duration, not a position. Do not thread a scope through it.
   const lifespanDays = daysSinceEpoch(body.lastTouchedAt) - daysSinceEpoch(body.bornAt);
   return BASE + Math.sqrt(lifespanDays) * 0.12 + SATELLITE_K * (body.satellites?.length ?? 0);
 }

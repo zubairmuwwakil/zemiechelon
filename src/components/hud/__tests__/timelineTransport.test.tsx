@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { deriveDaySpan, deriveTimelineMilestones } from "@/lib/atlas/derivedFigures";
+import { dateAtDay } from "@/lib/atlas/timeline";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 import { TimelineTransport } from "../TimelineTransport";
 
 afterEach(() => {
@@ -54,7 +56,7 @@ describe("TimelineTransport", () => {
     const slider = screen.getByRole("slider", { name: /timeline/i });
     fireEvent.change(slider, { target: { value: "0" } });
 
-    expect(onClockDayChange).toHaveBeenCalledWith(0);
+    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
     const dayZeroCount = bodies.filter((b) => b.bornAt === bodies
       .map((x) => x.bornAt)
       .sort()[0]).length;
@@ -86,7 +88,7 @@ describe("TimelineTransport", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /play/i }));
 
-    expect(onClockDayChange).toHaveBeenCalledWith(daySpan);
+    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(daySpan, SOLAR_SYSTEM_ZEMI.epoch));
     // Never enters a playing state — there is nothing to pause.
     expect(screen.queryByRole("button", { name: /pause/i })).toBeNull();
   });
@@ -98,6 +100,6 @@ describe("TimelineTransport", () => {
 
     const slider = screen.getByRole("slider", { name: /timeline/i });
     fireEvent.change(slider, { target: { value: "0" } });
-    expect(onClockDayChange).toHaveBeenCalledWith(0);
+    expect(onClockDayChange).toHaveBeenCalledWith(dateAtDay(0, SOLAR_SYSTEM_ZEMI.epoch));
   });
 });

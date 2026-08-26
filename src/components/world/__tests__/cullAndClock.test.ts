@@ -5,6 +5,8 @@ import { WorldSceneBuilder } from "../WorldSceneBuilder";
 import { loadBodies } from "@/lib/atlas/bodies";
 import { moonScopeId, planetScopeId } from "@/lib/atlas/galaxy";
 import { daysSinceEpoch } from "@/lib/atlas/position";
+import { dateAtDay } from "@/lib/atlas/timeline";
+import { SOLAR_SYSTEM_ZEMI } from "@/lib/atlas/scopes";
 
 /**
  * The clock and the scope cull both decide what is drawn, and they decide it by
@@ -26,6 +28,9 @@ function built() {
 const LATE = bodies.reduce((latest, b) => (b.bornAt > latest.bornAt ? b : latest), bodies[0]);
 const LATE_DAY = daysSinceEpoch(LATE.bornAt);
 const FULL_SPAN = Math.max(...bodies.map((b) => daysSinceEpoch(b.bornAt)));
+
+/** setClockDate resolves a date, not a day — this file still thinks in days. */
+const asDate = (day: number) => dateAtDay(day, SOLAR_SYSTEM_ZEMI.epoch);
 
 function objectsFor(scene: THREE.Scene, id: string): THREE.Object3D[] {
   const found: THREE.Object3D[] = [];
@@ -51,7 +56,7 @@ describe("scope cull and the timeline clock", () => {
   // pass if the lookup found nothing at all. This one fails loudly in that case.
   it("finds the body it is about to assert on", () => {
     const { scene, builder } = built();
-    builder.setClockDay(FULL_SPAN);
+    builder.setClockDate(asDate(FULL_SPAN));
     expect(objectsFor(scene, LATE.id).length).toBeGreaterThan(0);
     expect(anyVisible(objectsFor(scene, LATE.id))).toBe(true);
   });
@@ -59,16 +64,16 @@ describe("scope cull and the timeline clock", () => {
   it("does not resurrect an unborn body when the clock advances under a cull", () => {
     const { scene, builder } = built();
     // Rewind so the newest body is not born yet, then land.
-    builder.setClockDay(LATE_DAY - 1);
+    builder.setClockDate(asDate(LATE_DAY - 1));
     builder.setScopeCull(planetScopeId("products"));
     // The clock ticks while landed — the transport keeps running underneath.
-    builder.setClockDay(LATE_DAY - 1);
+    builder.setClockDate(asDate(LATE_DAY - 1));
     expect(anyVisible(objectsFor(scene, LATE.id))).toBe(false);
   });
 
   it("does not resurrect an unborn body when the cull is released", () => {
     const { scene, builder } = built();
-    builder.setClockDay(LATE_DAY - 1);
+    builder.setClockDate(asDate(LATE_DAY - 1));
     builder.setScopeCull(planetScopeId("products"));
     builder.setScopeCull(null);
     expect(anyVisible(objectsFor(scene, LATE.id))).toBe(false);
@@ -77,7 +82,7 @@ describe("scope cull and the timeline clock", () => {
   it("restores a planet to the clock's radius, not its full-grown one", () => {
     const { scene, builder } = built();
     const index = builder.planetInstanceIndex("labs");
-    builder.setClockDay(Math.floor(FULL_SPAN * 0.5));
+    builder.setClockDate(asDate(Math.floor(FULL_SPAN * 0.5)));
     const atHalf = instanceScale(scene, index);
     builder.setScopeCull(planetScopeId("products"));
     builder.setScopeCull(null);
@@ -118,7 +123,7 @@ describe("standing on a surface, against the clock and the cull", () => {
     const { scene, builder } = built();
     const index = builder.planetInstanceIndex("products");
     builder.setStandingOn(planetScopeId("products"));
-    builder.setClockDay(FULL_SPAN);
+    builder.setClockDate(asDate(FULL_SPAN));
     expect(instanceScale(scene, index)).toBeCloseTo(0, 5);
   });
 
