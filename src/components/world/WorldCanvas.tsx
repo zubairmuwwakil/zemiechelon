@@ -570,6 +570,14 @@ export const WorldCanvas = forwardRef<WorldCanvasHandle, WorldCanvasProps>(funct
     // Back out to the galaxy: the frustum has to reach the planets again.
     dayNightRef.current?.setShadowReach(ASTROLABE_OUTER);
 
+    // `galaxy` has no camera pose of its own yet — that lands with the galaxy
+    // camera work — so it borrows the solar system's for now rather than
+    // falling through to `framedBody`, which does not know what to do with it.
+    if (framing.kind === "galaxy") {
+      camera.ascend();
+      return;
+    }
+
     if (framing.kind === "solarSystem") {
       camera.ascend();
       return;

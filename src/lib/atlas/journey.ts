@@ -1,7 +1,7 @@
 import type { Body, ScopeId } from "./types";
-import { loadBodies } from "./bodies";
+import { allBodies } from "./bodies";
 import { moonScopeId, planetScopeId } from "./galaxy";
-import { SOLAR_SYSTEM_ZEMI, SCOPES } from "./scopes";
+import { GALAXY_ZEMI, SOLAR_SYSTEM_ZEMI, SCOPES } from "./scopes";
 import { landingMode, resolveBodySelection } from "./navigation";
 
 /**
@@ -22,8 +22,16 @@ import { landingMode, resolveBodySelection } from "./navigation";
 export type PlanetMode = "orbit" | "panel" | "surface";
 export type MoonMode = "flyby" | "surface";
 
+/**
+ * A planet or moon position carries no system field. `planetScopeId(arm)` and
+ * `moonScopeId(bodyId)` are globally unique — `validateGalaxy` in `galaxy.ts`
+ * is what makes that true — so which solar system a planet or moon belongs to
+ * is read off `Scope.parent`, not stored here. A stored copy of that answer is
+ * the shape every drift in this scene has taken; see `ascendFrom`.
+ */
 export type Position =
-  | { kind: "solarSystem" }
+  | { kind: "galaxy" }
+  | { kind: "solarSystem"; id: ScopeId }
   /**
    * An arm, whether or not it has a scope. All five planets are drawn; only the
    * arms that have shipped enough get a scope, so `arm` rather than a `ScopeId`
@@ -50,7 +58,8 @@ export interface Journey {
  * different camera path from the other three for two commits.
  */
 export type Framing =
-  | { kind: "solarSystem" }
+  | { kind: "galaxy" }
+  | { kind: "solarSystem"; scope: ScopeId }
   | { kind: "planet"; arm: string }
   | { kind: "moon"; scope: ScopeId }
   | { kind: "surface"; scope: ScopeId };
@@ -58,14 +67,17 @@ export type Framing =
 export type JourneyEvent =
   | { type: "selectSector"; sectorId: string; viewportWidth: number; reducedMotion: boolean }
   | { type: "selectBody"; bodyId: string }
+  | { type: "selectSolarSystem"; id: ScopeId }
   | { type: "openConsole"; consoleId: string }
   | { type: "closeConsole" }
   | { type: "closeCard" }
   | { type: "ascend" }
   | { type: "reset" };
 
+export const AT_GALAXY: Journey = { position: { kind: "galaxy" }, card: null, console: null };
+
 export const AT_SOLAR_SYSTEM: Journey = {
-  position: { kind: "solarSystem" },
+  position: { kind: "solarSystem", id: SOLAR_SYSTEM_ZEMI.id },
   card: null,
   console: null,
 };
@@ -88,7 +100,8 @@ export function positionFor(scopeId: ScopeId): Position {
   if (scopeId.startsWith("planet:")) {
     return { kind: "planet", arm: scopeId.slice("planet:".length), mode: "orbit" };
   }
-  return { kind: "solarSystem" };
+  if (scopeId.startsWith("solarSystem:")) return { kind: "solarSystem", id: scopeId };
+  return { kind: "galaxy" };
 }
 
 /**
@@ -98,8 +111,10 @@ export function positionFor(scopeId: ScopeId): Position {
  */
 export function scopeIdFor(position: Position): ScopeId | null {
   switch (position.kind) {
+    case "galaxy":
+      return GALAXY_ZEMI.id;
     case "solarSystem":
-      return SOLAR_SYSTEM_ZEMI.id;
+      return position.id;
     case "planet": {
       const id = planetScopeId(position.arm);
       return SCOPES[id] ? id : null;
@@ -119,21 +134,30 @@ export function scopeIdFor(position: Position): ScopeId | null {
  * taken. `journey.test.ts` asserts this agrees with the scope tree for every
  * scope that has a parent, so the two cannot separate quietly.
  */
-export function ascendFrom(position: Position, bodies: Body[] = loadBodies()): Position {
+export function ascendFrom(position: Position, bodies: Body[] = allBodies()): Position {
   switch (position.kind) {
+    case "galaxy":
+      return { kind: "galaxy" };
     case "solarSystem":
-      return { kind: "solarSystem" };
-    case "planet":
-      return { kind: "solarSystem" };
+      return { kind: "galaxy" };
+    case "planet": {
+      // The system the tree says this planet is in. An arm with no scope is
+      // drawn but not somewhere you can be inside, so it falls back to the
+      // atlas — the same answer it gave before there were two systems.
+      const scope = SCOPES[planetScopeId(position.arm)];
+      return { kind: "solarSystem", id: scope?.parent ?? SOLAR_SYSTEM_ZEMI.id };
+    }
     case "moon": {
       const arm = bodyArm(position.bodyId, bodies);
-      return arm ? { kind: "planet", arm, mode: "orbit" } : { kind: "solarSystem" };
+      return arm
+        ? { kind: "planet", arm, mode: "orbit" }
+        : { kind: "solarSystem", id: SOLAR_SYSTEM_ZEMI.id };
     }
   }
 }
 
 /** The arm the HUD should show as active, at any depth. */
-export function activeArm(journey: Journey, bodies: Body[] = loadBodies()): string {
+export function activeArm(journey: Journey, bodies: Body[] = allBodies()): string {
   const { position } = journey;
   if (position.kind === "planet") return position.arm;
   if (position.kind === "moon") return bodyArm(position.bodyId, bodies) ?? "solarSystem";
@@ -142,7 +166,7 @@ export function activeArm(journey: Journey, bodies: Body[] = loadBodies()): stri
 
 /** Whether the visitor is on the ground, at either depth. */
 export function isStanding(position: Position): boolean {
-  return position.kind !== "solarSystem" && position.mode === "surface";
+  return position.kind !== "galaxy" && position.kind !== "solarSystem" && position.mode === "surface";
 }
 
 /** The scope whose surface the visitor is standing on, or null in orbit. */
@@ -183,8 +207,10 @@ export function deepLinkBodyId(journey: Journey): string | null {
 export function framingFor(journey: Journey): Framing {
   const { position } = journey;
   switch (position.kind) {
+    case "galaxy":
+      return { kind: "galaxy" };
     case "solarSystem":
-      return { kind: "solarSystem" };
+      return { kind: "solarSystem", scope: position.id };
     case "planet": {
       const scope = scopeIdFor(position);
       // Only a scoped arm can declare ground, so a surface always has a scope.
@@ -208,7 +234,7 @@ export function framingFor(journey: Journey): Framing {
  * because they are not separate things to set.
  */
 export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
-  const bodies = loadBodies();
+  const bodies = allBodies();
 
   switch (event.type) {
     case "selectSector": {
@@ -245,6 +271,9 @@ export function journeyReducer(journey: Journey, event: JourneyEvent): Journey {
         console: null,
       };
     }
+
+    case "selectSolarSystem":
+      return { position: { kind: "solarSystem", id: event.id }, card: null, console: null };
 
     case "openConsole":
       // A console is a thing you walk up to and switch on, so there has to be

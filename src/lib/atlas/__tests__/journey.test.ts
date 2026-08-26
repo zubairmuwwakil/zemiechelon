@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { loadBodies } from "../bodies";
-import { moonScopeId, planetScopeId } from "../galaxy";
-import { SCOPES, SOLAR_SYSTEM_ZEMI, scopeChain } from "../scopes";
+import { allBodies } from "../bodies";
+import { SOLAR_SYSTEM_CHANNEL, moonScopeId, planetScopeId } from "../galaxy";
+import { SCOPES, SOLAR_SYSTEM_ZEMI } from "../scopes";
 import { declaresSurface } from "../surfaces";
 import {
+  AT_GALAXY,
   AT_SOLAR_SYSTEM,
   ascendFrom,
   framingFor,
@@ -17,7 +18,7 @@ import {
   type Journey,
 } from "../journey";
 
-const bodies = loadBodies();
+const bodies = allBodies();
 const WIDE = { viewportWidth: 1280, reducedMotion: false };
 const NARROW = { viewportWidth: 480, reducedMotion: false };
 
@@ -110,7 +111,7 @@ describe("ascending is one level, and the level comes from the scope tree", () =
     expect(journey.position).toEqual({ kind: "planet", arm: "products", mode: "orbit" });
   });
 
-  it("ascends from a planet to the galaxy", () => {
+  it("ascends from a planet to its own solar system", () => {
     const journey = walk(
       { type: "selectSector", sectorId: "products", ...WIDE },
       { type: "ascend" },
@@ -118,8 +119,8 @@ describe("ascending is one level, and the level comes from the scope tree", () =
     expect(journey.position.kind).toBe("solarSystem");
   });
 
-  it("stays at the galaxy when there is nowhere further out to go", () => {
-    expect(journeyReducer(AT_SOLAR_SYSTEM, { type: "ascend" })).toEqual(AT_SOLAR_SYSTEM);
+  it("ascends from the solar system to the galaxy", () => {
+    expect(journeyReducer(AT_SOLAR_SYSTEM, { type: "ascend" }).position).toEqual({ kind: "galaxy" });
   });
 
   it("agrees with the scope tree for every scope that has a parent", () => {
@@ -127,16 +128,7 @@ describe("ascending is one level, and the level comes from the scope tree", () =
     // this same answer, and the copy is what went stale. If the scope tree ever
     // gains a level, this fails rather than the camera quietly ascending too far.
     for (const scope of Object.values(SCOPES)) {
-      // Every solar system is excluded: each has a parent (the galaxy), but
-      // `Position` has no galaxy-level state to ascend into yet — that state is
-      // deliberately deferred until the journey model itself grows a galaxy
-      // level. See docs/superpowers/plans/... galaxy wrapper notes.
-      if (!scope.parent || scope.kind === "solarSystem") continue;
-      // A planet or moon outside the atlas is excluded too: `ascendFrom` and
-      // `scopeIdFor` do not yet know which solar system a "planet" or
-      // "solarSystem" position belongs to — they answer for the atlas only,
-      // until `Position` grows an identified solar system of its own.
-      if (!scopeChain(scope.id).includes(SOLAR_SYSTEM_ZEMI)) continue;
+      if (!scope.parent) continue;
       const parent = ascendFrom(positionFor(scope.id), bodies);
       expect(scopeIdFor(parent), scope.id).toBe(scope.parent);
     }
@@ -239,8 +231,8 @@ describe("framing is resolved in one place", () => {
     expect(framingFor(panelled)).toEqual({ kind: "planet", arm: "labs" });
   });
 
-  it("frames the galaxy at the root", () => {
-    expect(framingFor(AT_SOLAR_SYSTEM)).toEqual({ kind: "solarSystem" });
+  it("frames the solar system at its own root", () => {
+    expect(framingFor(AT_SOLAR_SYSTEM)).toEqual({ kind: "solarSystem", scope: SOLAR_SYSTEM_ZEMI.id });
   });
 
   it("names the surface to stand on, with the scope that has the ground", () => {
@@ -317,5 +309,41 @@ describe("what the URL should say", () => {
 
   it("names nothing at the galaxy with nothing open", () => {
     expect(deepLinkBodyId(AT_SOLAR_SYSTEM)).toBeNull();
+  });
+});
+
+describe("the galaxy level", () => {
+  it("ascends from a solar system to the galaxy", () => {
+    expect(ascendFrom({ kind: "solarSystem", id: SOLAR_SYSTEM_ZEMI.id }, bodies))
+      .toEqual({ kind: "galaxy" });
+  });
+
+  it("stays at the galaxy, because there is nowhere further out", () => {
+    expect(ascendFrom({ kind: "galaxy" }, bodies)).toEqual({ kind: "galaxy" });
+  });
+
+  it("ascends from a planet to its OWN solar system, read from the tree", () => {
+    // Not to a remembered system: a stored copy of a derived fact is the shape
+    // every drift in this scene has taken.
+    expect(ascendFrom({ kind: "planet", arm: "vlogs", mode: "orbit" }, bodies))
+      .toEqual({ kind: "solarSystem", id: SOLAR_SYSTEM_CHANNEL.id });
+    expect(ascendFrom({ kind: "planet", arm: "products", mode: "orbit" }, bodies))
+      .toEqual({ kind: "solarSystem", id: SOLAR_SYSTEM_ZEMI.id });
+  });
+
+  it("frames the galaxy and a named system distinctly", () => {
+    expect(framingFor({ ...AT_GALAXY })).toEqual({ kind: "galaxy" });
+    expect(framingFor(AT_SOLAR_SYSTEM))
+      .toEqual({ kind: "solarSystem", scope: SOLAR_SYSTEM_ZEMI.id });
+  });
+
+  it("arrives at a system, putting down whatever was open", () => {
+    const journey = journeyReducer(
+      { position: { kind: "planet", arm: "products", mode: "panel" }, card: "PickMe", console: "pickme" },
+      { type: "selectSolarSystem", id: SOLAR_SYSTEM_CHANNEL.id },
+    );
+    expect(journey.position).toEqual({ kind: "solarSystem", id: SOLAR_SYSTEM_CHANNEL.id });
+    expect(journey.card).toBeNull();
+    expect(journey.console).toBeNull();
   });
 });
