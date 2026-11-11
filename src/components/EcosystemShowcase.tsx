@@ -27,7 +27,7 @@ export function EcosystemShowcase() {
             Inunity — Standalone Financial SaaS
           </h2>
           <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-            Inunity is an independently branded financial SaaS product of Zemi Echelon Inc. The other products below are distinct tools that can integrate with it.
+            Inunity is an independently branded personal-finance SaaS with its own customers, data and subscriptions. The other products below are distinct tools that can integrate with it.
           </p>
         </div>
 
@@ -379,7 +379,7 @@ export function EcosystemShowcase() {
             PB Social — Sports SaaS
           </h2>
           <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-            PB Social is a separate sports SaaS product of Zemi Echelon Inc. Echelon Community Athletics Inc. is an independent nonprofit program organizer that may use PB Social as a customer.
+            PB Social is a standalone, multi-tenant sports SaaS for clubs, leagues and players. Echelon Community Athletics Inc. is a separate, independent not-for-profit that uses PB Social for program registration.
           </p>
         </div>
 
