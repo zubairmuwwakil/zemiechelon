@@ -24,10 +24,10 @@ export function EcosystemShowcase() {
             <span>Pillar 01 — Capital &amp; Financial Operating Systems</span>
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
-            The Inunity Financial Continuum
+            Inunity — Standalone Financial SaaS
           </h2>
           <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-            Four independent software products engineered with zero bank-login scraping. Standalone by design, compound in unity.
+            Inunity is an independently branded financial SaaS product of Zemi Echelon Inc. The other products below are distinct tools that can integrate with it.
           </p>
         </div>
 
@@ -89,7 +89,7 @@ export function EcosystemShowcase() {
                 <span>github/MoneyTalks</span>
                 <ArrowUpRight className="size-3" />
               </a>
-              <span className="text-[11px] text-zinc-400 font-mono">Central Command Hub</span>
+              <span className="text-[11px] text-zinc-400 font-mono">Standalone Zemi SaaS</span>
             </div>
           </div>
 
@@ -376,10 +376,10 @@ export function EcosystemShowcase() {
             <span>Pillar 03 — Sports Systems &amp; Operations</span>
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
-            The Pickleball Social &amp; PickleOps
+            PB Social — Sports SaaS
           </h2>
           <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-            Shipped mobile apps and operational platforms for competitive round-robins, court session scheduling, and dynamic skill ratings.
+            PB Social is a separate sports SaaS product of Zemi Echelon Inc. Echelon Community Athletics Inc. is an independent nonprofit program organizer that may use PB Social as a customer.
           </p>
         </div>
 
@@ -390,20 +390,29 @@ export function EcosystemShowcase() {
                 SHIPPED TO APP STORE
               </span>
             </div>
-            <h3 className="text-xl font-bold text-white">The Pickleball Social &amp; PickleOps</h3>
+            <h3 className="text-xl font-bold text-white">PB Social — League and Community Platform</h3>
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Full-stack tournament management, dynamic Glicko-2 / DUPR rating sync, round-robin court rotation scheduling, and member check-ins for active athletic clubs.
+              Independent club and player SaaS: league registration, coaching, scheduling, payment management, ratings and community engagement. PickleOps is a related sports operations tool.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <a
+              href="https://www.pbsocial.ca"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-xs font-semibold text-black transition-all hover:bg-emerald-400"
+            >
+              <span>Visit PB Social</span>
+              <ArrowUpRight className="size-3.5" />
+            </a>
             <a
               href="https://github.com/zubairmuwwakil/pickleops"
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-xs font-semibold text-white transition-all hover:bg-white/[0.08]"
             >
-              <span>View Repository</span>
+              <span>View PickleOps Repository</span>
               <ArrowUpRight className="size-3.5 text-zinc-400" />
             </a>
           </div>
