@@ -7,6 +7,21 @@ The parent technology umbrella and digital portfolio representing the engineerin
 
 ---
 
+## Legal entities and independent SaaS products
+
+**Zemi Echelon Inc.** is the intended commercial publisher of these independent brands:
+
+| SaaS product | Domain | Purpose | Accounting |
+| --- | --- | --- | --- |
+| **Inunity** | [inunity.ca](https://inunity.ca) | Financial organization, records and forecasting | Independent product-level revenue and expenses under Zemi |
+| **PB Social (The Pickleball Social)** | [pbsocial.ca](https://pbsocial.ca) | Sports operations, club subscriptions and player tools | Independent product-level revenue and expenses under Zemi |
+
+Neither brand requires a separate legal corporation by default. Their customer data, subscriptions, contracts, product pricing and security access are kept distinct. Corporate IP assignments and public terms must be checked before legal publisher text is changed in production.
+
+**Echelon Community Athletics Inc.** is a separate federally incorporated Canadian nonprofit that runs community athletic programs. It is **not** a subsidiary of Zemi. It may use PB Social under a duly approved service agreement. Its funds, governance, nonprofit discounts and programs remain separate.
+
+---
+
 ## The Venture Ecosystem
 
 ### 1. Capital & Financial Operating Systems
