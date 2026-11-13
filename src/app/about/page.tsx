@@ -190,7 +190,7 @@ export default function AboutPage() {
             </div>
             <div className="space-y-6 text-base leading-8 text-zinc-700">
               <p>
-                The company's work spans backend APIs, data systems, web applications,
+                Our work spans backend APIs, data systems, web applications,
                 and native iOS development. The interactive atlas shows a broader
                 history of technical projects, including tools that were experiments
                 rather than commercial releases.
