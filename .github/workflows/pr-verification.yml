@@ -1,0 +1,36 @@
+name: Verify pull requests
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Static export build
+        run: npm run build
+      - name: Verify exported discovery pages
+        run: |
+          test -s out/index.html
+          test -s out/about/index.html
+          test -s out/sitemap.xml
+          test -s out/robots.txt
+          grep -q 'PB Social' out/about/index.html
+          grep -q 'zubairmuwwakil.com' out/about/index.html
