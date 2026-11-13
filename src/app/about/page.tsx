@@ -253,6 +253,14 @@ export default function AboutPage() {
                   also founded by Zubair Muwwakil. It is legally independent from
                   Zemi Echelon—not a subsidiary, product, or division of this business.
                 </p>
+                <a
+                  href="https://echeloncommunity.ca/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-zinc-900 underline decoration-amber-500 underline-offset-4 hover:text-amber-800"
+                >
+                  Visit Echelon Community Athletics <ArrowUpRight className="size-4" aria-hidden="true" />
+                </a>
               </div>
             </div>
           </aside>
