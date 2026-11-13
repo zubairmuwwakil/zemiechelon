@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { WorldCanvas, type WorldCanvasHandle, type SurfaceTargetPoint } from "@/components/world/WorldCanvas";
 import type { CosmicMode } from "@/components/world/DayNightController";
 import { QuoteSky, QUOTE_STARS } from "@/components/world/QuoteSky";
@@ -377,6 +379,21 @@ export default function HomePage() {
         onSelectSolarSystem={handleSelectSolarSystem}
         onAscendToGalaxy={ascendToGalaxy}
       />
+
+      {/* An ordinary, crawlable path into the company and products. It stays
+          outside the WebGL canvas and avoids the mobile interaction hints. */}
+      <Link
+        href="/about/"
+        aria-label="About Zemi Echelon and its software products"
+        className={`pointer-events-auto fixed right-3 top-24 z-30 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:bottom-6 sm:left-5 sm:right-auto sm:top-auto ${
+          cosmicMode === "day"
+            ? "glass-pill-day text-zinc-900"
+            : "glass-pill-night text-zinc-100"
+        }`}
+      >
+        About &amp; products
+        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      </Link>
 
       {/* 5. Bottom Interaction Hints Capsule (Mockup Slide 1) */}
       {sceneIsClear && <InteractionHintsPill cosmicMode={cosmicMode} />}

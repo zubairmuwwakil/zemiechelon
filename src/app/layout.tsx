@@ -2,9 +2,23 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Zemí Echelon — Atlas of Technology Holdings",
+  metadataBase: new URL("https://zemiechelon.com"),
+  title: "Zemi Echelon — Software Ventures & Engineering",
   description:
-    "A navigable celestial atlas of 45 repositories in five arms: technology ventures, native iOS copilots, autonomous AI runtimes, and high-concurrency systems engineered by Zubair Muwwakil.",
+    "Zemi Echelon is a software business founded by Zubair Muwwakil. Explore PB Social, Inunity, PickMe, and the engineering atlas.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Zemi Echelon — Software Ventures & Engineering",
+    description: "Software products and engineering systems by Zubair Muwwakil.",
+    url: "/",
+    siteName: "Zemi Echelon",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Zemi Echelon — Software Ventures & Engineering",
+    description: "Software products and engineering systems by Zubair Muwwakil.",
+  },
   icons: {
     icon: [
       { url: "/favicon-light.png", media: "(prefers-color-scheme: light)" },
@@ -23,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="h-screen w-screen overflow-hidden bg-[#f7f6f2] text-zinc-900 antialiased selection:bg-zinc-900 selection:text-white">
+      <body className="min-h-screen w-full bg-[#f7f6f2] text-zinc-900 antialiased selection:bg-amber-200 selection:text-zinc-950">
         {children}
       </body>
     </html>
