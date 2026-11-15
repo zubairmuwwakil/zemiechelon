@@ -16,7 +16,7 @@ export function FounderProfile() {
             </h2>
 
             <p className="text-sm text-zinc-300 leading-relaxed">
-              I love starting with a small problem and seeing what an idea can grow into. One feature becomes something else, a new need changes the direction, and I get to keep learning while I build. That curiosity is behind Zemi Echelon's products in sports, finance, and software.
+              I love starting with a small problem and seeing what an idea can grow into. One feature becomes something else, a new need changes the direction, and I get to keep learning while I build. That curiosity is behind Zemi Echelon&apos;s products in sports, finance, and software.
             </p>
 
             <div className="flex flex-wrap items-center gap-y-2 gap-x-4 pt-2 text-xs font-mono text-zinc-400">
