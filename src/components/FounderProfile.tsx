@@ -16,7 +16,7 @@ export function FounderProfile() {
             </h2>
 
             <p className="text-sm text-zinc-300 leading-relaxed">
-              Full-stack / systems software engineer building high-concurrency Java/Spring Boot pipelines, Next.js web applications, native Swift iOS systems, and autonomous agent infrastructure. Founder of Zemi Echelon and creator of the Inunity financial continuum.
+              I love starting with a small problem and seeing what an idea can grow into. One feature becomes something else, a new need changes the direction, and I get to keep learning while I build. That curiosity is behind Zemi Echelon&apos;s products in sports, finance, and software.
             </p>
 
             <div className="flex flex-wrap items-center gap-y-2 gap-x-4 pt-2 text-xs font-mono text-zinc-400">
@@ -33,12 +33,12 @@ export function FounderProfile() {
 
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
             <a
-              href="https://zubairmuwwakil.com"
+              href="https://zubairmuwwakil.com/story/"
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-6 text-xs font-semibold text-black shadow-md transition-all hover:bg-zinc-200"
             >
-              <span>Visit zubairmuwwakil.com</span>
+              <span>Read my founder story</span>
               <ArrowUpRight className="size-4" />
             </a>
             <div className="flex items-center gap-3">
