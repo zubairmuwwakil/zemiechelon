@@ -223,27 +223,27 @@ export default function AboutPage() {
                 <div className="space-y-4 text-base leading-8 text-zinc-700">
                   <p>
                     I started Zemi Echelon because I genuinely love building things.
-                    I can get completely caught up in a problem, and I'm usually
+                    I can get completely caught up in a problem, and I&apos;m usually
                     just as excited by what an idea could become as I am by the idea
                     itself. You build one piece, learn from the people using it,
                     and discover possibilities you never planned for.
                   </p>
                   <p>
-                    That's happened with the sports software I've built and with
-                    my work in personal finance. I want useful tools to make people's
+                    That&apos;s happened with the sports software I&apos;ve built and with
+                    my work in personal finance. I want useful tools to make people&apos;s
                     lives a little easier and give them more freedom to make their
                     own choices. The products are different, but that curiosity and
                     purpose are what connect them.
                   </p>
                   <p>
-                    My own path hasn't always gone according to plan, either.
+                    My own path hasn&apos;t always gone according to plan, either.
                     I've written more about that on my personal website, where the
                     full story belongs.
                   </p>
                 </div>
                 <div className="mt-7 flex flex-wrap gap-4 text-sm font-semibold">
                   <a href="https://zubairmuwwakil.com/story/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-b border-zinc-950 pb-1 hover:text-amber-800">
-                    The founder's story <ArrowUpRight className="size-4" aria-hidden="true" />
+                    The founder&apos;s story <ArrowUpRight className="size-4" aria-hidden="true" />
                   </a>
                   <a href="https://www.linkedin.com/in/zubairmuwwakil/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-b border-zinc-950 pb-1 hover:text-amber-800">
                     LinkedIn <ArrowUpRight className="size-4" aria-hidden="true" />
