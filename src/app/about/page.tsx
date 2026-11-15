@@ -237,7 +237,7 @@ export default function AboutPage() {
                   </p>
                   <p>
                     My own path hasn&apos;t always gone according to plan, either.
-                    I've written more about that on my personal website, where the
+                    I&apos;ve written more about that on my personal website, where the
                     full story belongs.
                   </p>
                 </div>
