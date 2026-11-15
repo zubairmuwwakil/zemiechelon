@@ -38,6 +38,34 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen w-full bg-[#f7f6f2] text-zinc-900 antialiased selection:bg-amber-200 selection:text-zinc-950">
+        {/* Entity reconciliation: tells Google this company and the person at
+            zubairmuwwakil.com are the same story, on every page rather than
+            only on /about, where the single founder link lives today. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "@id": "https://zemiechelon.com/#organization",
+              name: "Zemi Echelon",
+              url: "https://zemiechelon.com/",
+              description:
+                "Software business building PB Social, Inunity and PickMe.",
+              founder: {
+                "@type": "Person",
+                "@id": "https://zubairmuwwakil.com/#person",
+                name: "Zubair Muwwakil",
+                url: "https://zubairmuwwakil.com/",
+              },
+              sameAs: [
+                "https://zubairmuwwakil.com/",
+                "https://github.com/zubairmuwwakil",
+                "https://www.linkedin.com/in/zubairmuwwakil/",
+              ],
+            }),
+          }}
+        />
         {children}
       </body>
     </html>
