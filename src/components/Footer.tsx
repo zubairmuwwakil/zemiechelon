@@ -38,7 +38,7 @@ export function Footer() {
               rel="noreferrer"
               className="hover:text-white transition-colors"
             >
-              GitHub Organization
+              Zubair Muwwakil on GitHub
             </a>
             <a
               href="mailto:zmuwwakil1@gmail.com"

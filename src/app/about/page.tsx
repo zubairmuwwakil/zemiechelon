@@ -55,11 +55,11 @@ const products = [
     name: "PickMe",
     otherName: "Offline iOS card copilot",
     category: "Native iOS engineering",
-    status: "In development",
+    status: "Available on the App Store",
     description:
-      "A privacy-first, on-device iOS project designed to compare credit card rewards at checkout. The project is not yet available as a public App Store release.",
-    href: "https://github.com/zubairmuwwakil/PickMe",
-    linkText: "View the development repository",
+      "A privacy-first, on-device iOS app that compares Canadian credit card rewards at checkout.",
+    href: "https://apps.apple.com/ca/app/pick-me/id6801966373",
+    linkText: "View PickMe on the App Store",
     icon: Smartphone,
   },
 ] as const;
